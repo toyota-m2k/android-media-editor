@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="MediaEditor">
+        <attr name="ameCropMaskColor" format="color"/>
+        <attr name="ameShowHandle" format="boolean"/>
+        <attr name="ameHandleFillColor" format="color"/>
+        <attr name="ameHandleStrokeColor" format="color"/>
+        <attr name="ameHandleStrokeWidth" format="dimension"/>
+
+        <attr name="amePanelPadding" format="dimension"/>
+        <attr name="amePanelPaddingStart" format="dimension"/>
+        <attr name="amePanelPaddingTop" format="dimension"/>
+        <attr name="amePanelPaddingEnd" format="dimension"/>
+        <attr name="amePanelPaddingBottom" format="dimension"/>
+    </declare-styleable>
+</resources>

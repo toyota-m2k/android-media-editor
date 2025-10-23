@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:layout_gravity="center">
+    <io.github.toyota32k.lib.media.editor.view.EditorExoPlayerHost
+        android:id="@+id/player"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_gravity="center"
+        app:ampAttrsByParent="true"
+        />
+    <io.github.toyota32k.lib.player.view.ControlPanel
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/controller"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:ampAttrsByParent="true"
+        />
+
+    <View
+        android:id="@+id/volume_guard_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:clickable="true"
+        android:visibility="gone"
+        tools:visibility="visible"
+        />
+
+    <io.github.toyota32k.lib.player.view.VolumePanel
+        android:id="@+id/volume_panel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:layout_constraintBottom_toTopOf="@+id/controller"
+        android:paddingHorizontal="50dp"
+        android:layout_marginBottom="20dp"
+        app:ampAttrsByParent="true"
+        android:visibility="gone"
+        tools:visibility="visible"
+        />
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="magnify_timeline">Magnify Timeline</string>
+    <string name="make_chapter">Add a chapter at current position</string>
+    <string name="make_chapter_and_skip">Add a chapter at current position and disable before section.</string>
+    <string name="make_region_skip">Disable current section.</string>
+    <string name="remove_prev_chapter">Remove previous chapter.</string>
+    <string name="remove_next_chapter">Remove next chapter</string>
+    <string name="undo_chapter">Undo chapter modification</string>
+    <string name="redo_chapter">Redo chapter modification</string>
+    <string name="chop_video">Split video file at current position.</string>
+    <string name="crop">Crop video/image</string>
+    <string name="save_video">Save changes to file</string>
+    <string name="resolution_480">480</string>
+    <string name="resolution_720">720</string>
+    <string name="resolution_1280">1280</string>
+    <string name="resolution_1920">1920</string>
+    <string name="crop_store_to_memory">Store Crop Region to Memory</string>
+    <string name="crop_restore_from_memory">Restore Crop Region from Memory</string>
+    <string name="reset_crop">Reset Crop Region</string>
+    <string name="resolution_button">Change Resolution of the Photo</string>
+</resources>

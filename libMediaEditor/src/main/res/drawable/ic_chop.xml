@@ -1,0 +1,4 @@
+<!-- drawable/close_circle_outline.xml -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:height="24dp" android:width="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#000000" android:pathData="M 18 16V 13H 15V 22H 13V 2H 15V 11H 18V 8L 22 12 18 16M 2 12L 6 16V 13H 9V 22H 11V 2H 9V 11H 6V 8L 2 12Z" />
+</vector>
