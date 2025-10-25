@@ -42,7 +42,7 @@ class CropMaskView@JvmOverloads constructor(context: Context, attrs: AttributeSe
     }
 
     private fun setViewAttributes(sar: StyledAttrRetriever) {
-        maskDrawable = sar.getDrawableWithAlphaOnFallback(R.styleable.MediaEditor_ameCropMaskColor, com.google.android.material.R.attr.colorOnSurface, Color.WHITE, 0x50)
+        maskDrawable = sar.getDrawableWithAlphaOnFallback(R.styleable.MediaEditor_ameCropMaskColor, com.google.android.material.R.attr.colorOnSurface, Color.WHITE, 0xB0)
         showHandle = sar.sa.getBoolean(R.styleable.MediaEditor_ameShowHandle, true)
 
         this.isClickable = showHandle
@@ -64,8 +64,18 @@ class CropMaskView@JvmOverloads constructor(context: Context, attrs: AttributeSe
         }
     }
 
+    fun setMaskDrawable(drawable: Drawable) {
+        maskDrawable = drawable
+        invalidate()
+    }
+
     fun setCropMaskViewAttributes(sarForEditor:StyledAttrRetriever) {
         setViewAttributes(sarForEditor)
+    }
+
+    override fun setPadding(left: Int, top: Int, right: Int, bottom: Int) {
+        viewModel?.setViewDimension(getLayoutWidth(), getLayoutHeight(), left)
+        super.setPadding(left, top, right, bottom)
     }
 
     init {
@@ -89,19 +99,25 @@ class CropMaskView@JvmOverloads constructor(context: Context, attrs: AttributeSe
             }
     }
 
-    fun resetCrop() {
-        viewModel?.apply {
-            resetCrop()
-            clearDirty { invalidate() }
-        }
-    }
+//    fun resetCrop() {
+//        viewModel?.apply {
+//            resetCrop()
+//            clearDirty { invalidate() }
+//        }
+//    }
+//
+//    fun applyCropFromMemory() {
+//        viewModel?.apply {
+//            memory.value?.also {
+//                setParams(it)
+//                clearDirty { invalidate() }
+//            }
+//        }
+//    }
 
-    fun applyCropFromMemory() {
+    fun invalidateIfNeed() {
         viewModel?.apply {
-            memory.value?.also {
-                setParams(it)
-                clearDirty { invalidate() }
-            }
+            clearDirty { invalidate() }
         }
     }
 

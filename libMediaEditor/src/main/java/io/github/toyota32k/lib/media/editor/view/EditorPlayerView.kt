@@ -5,6 +5,7 @@ import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.widget.FrameLayout
 import io.github.toyota32k.binder.Binder
+import io.github.toyota32k.binder.BoolConvert
 import io.github.toyota32k.binder.VisibilityBinding
 import io.github.toyota32k.binder.clickBinding
 import io.github.toyota32k.binder.command.bindCommand
@@ -48,6 +49,7 @@ class EditorPlayerView @JvmOverloads constructor(context: Context, attrs: Attrib
         binder
             .visibilityBinding(controls.controller, model.playerControllerModel.showControlPanel, hiddenMode = VisibilityBinding.HiddenMode.HideByGone)
             .multiVisibilityBinding(arrayOf(controls.volumePanel,controls.volumeGuardView), showVolumePanel, hiddenMode = VisibilityBinding.HiddenMode.HideByGone)
+            .visibilityBinding(controls.controller, model.cropHandler.croppingNow, BoolConvert.Inverse, hiddenMode = VisibilityBinding.HiddenMode.HideByGone)
             .clickBinding(controls.volumeGuardView) {
                 showVolumePanel.value = false
             }

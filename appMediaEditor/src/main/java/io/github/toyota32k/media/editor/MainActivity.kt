@@ -23,14 +23,10 @@ import io.github.toyota32k.lib.media.editor.model.AbstractSaveFileHandler
 import io.github.toyota32k.lib.media.editor.model.AbstractSplitHandler
 import io.github.toyota32k.lib.media.editor.model.IMediaSourceWithMutableChapterList
 import io.github.toyota32k.lib.media.editor.model.MediaEditorModel
-import io.github.toyota32k.lib.player.common.setLayoutWidth
-import io.github.toyota32k.lib.player.model.IChapterList
 import io.github.toyota32k.lib.player.model.IMediaSource
-import io.github.toyota32k.lib.player.model.IMediaSourceWithChapter
 import io.github.toyota32k.lib.player.model.IMutableChapterList
 import io.github.toyota32k.lib.player.model.PlayerControllerModel
 import io.github.toyota32k.lib.player.model.Range
-import io.github.toyota32k.lib.player.model.chapter.ChapterList
 import io.github.toyota32k.lib.player.model.chapter.MutableChapterList
 import io.github.toyota32k.logger.UtLog
 import io.github.toyota32k.logger.UtLogConfig
@@ -38,6 +34,7 @@ import io.github.toyota32k.media.editor.databinding.ActivityMainBinding
 import io.github.toyota32k.media.lib.converter.AndroidFile
 import io.github.toyota32k.media.lib.converter.Converter
 import io.github.toyota32k.media.lib.converter.toAndroidFile
+import io.github.toyota32k.utils.android.setLayoutWidth
 import io.github.toyota32k.utils.toggle
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
@@ -191,7 +188,9 @@ class MainActivity : UtMortalActivity() {
                     }
                 }
             }
-            .visibilityBinding(controls.menuButton, viewModel.isEditing)
+            .visibilityBinding(controls.menuButton, combine(viewModel.isEditing, viewModel.editorModel.cropHandler.croppingNow) { isEditing, cropping ->
+                isEditing && !cropping
+            })
             .clickBinding(controls.menuButton) {
                 viewModel.requestShowPanel.toggle()
             }

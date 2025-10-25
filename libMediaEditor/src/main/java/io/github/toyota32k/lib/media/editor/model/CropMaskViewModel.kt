@@ -100,9 +100,9 @@ class CropMaskViewModel {
         }
 
     // view の padding (mask のハンドルの半径に相当)
-    var padding:Int = 10
+    var padding:Int = 0
         private set(v) {
-            val nv = v.coerceAtLeast(10)
+            val nv = v.coerceAtLeast(0)
             if(nv!=field) {
                 field = nv
                 isDirty = true
@@ -130,6 +130,7 @@ class CropMaskViewModel {
         rsy = 0f
         rex = 1f
         rey = 1f
+
     }
 
     // view のサイズと padding を設定する

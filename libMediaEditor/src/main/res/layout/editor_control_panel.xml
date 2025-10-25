@@ -97,15 +97,15 @@
     </LinearLayout>
 
     <LinearLayout
-        android:id="@+id/crop_buttons_panel"
+        android:id="@+id/crop_panel"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:background="?attr/colorOnPrimary"
         android:orientation="vertical"
         android:visibility="gone"
         tools:visibility="visible"
         >
         <LinearLayout
+            android:id="@+id/crop_button_panel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="horizontal"

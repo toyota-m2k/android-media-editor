@@ -23,24 +23,27 @@ import io.github.toyota32k.binder.Binder
 import io.github.toyota32k.binder.BoolConvert
 import io.github.toyota32k.binder.VisibilityBinding
 import io.github.toyota32k.binder.combinatorialVisibilityBinding
+import io.github.toyota32k.binder.command.bindCommand
 import io.github.toyota32k.binder.observe
 import io.github.toyota32k.binder.textBinding
 import io.github.toyota32k.binder.visibilityBinding
+import io.github.toyota32k.dialog.UtDialogBase
 import io.github.toyota32k.lib.media.editor.databinding.EditorExoPlayerHostBinding
 import io.github.toyota32k.lib.media.editor.model.AmeGlobal
 import io.github.toyota32k.lib.media.editor.model.EditorPlayerViewAttributes
 import io.github.toyota32k.lib.media.editor.model.MediaEditorModel
-import io.github.toyota32k.lib.player.common.getLayoutHeight
-import io.github.toyota32k.lib.player.common.getLayoutWidth
-import io.github.toyota32k.lib.player.common.setLayoutSize
 import io.github.toyota32k.lib.player.model.PlayerControllerModel
 import io.github.toyota32k.utils.FlowableEvent
 import io.github.toyota32k.utils.android.FitMode
 import io.github.toyota32k.utils.android.StyledAttrRetriever
 import io.github.toyota32k.utils.android.UtFitter
+import io.github.toyota32k.utils.android.dp
 import io.github.toyota32k.utils.android.dp2px
+import io.github.toyota32k.utils.android.getLayoutHeight
+import io.github.toyota32k.utils.android.getLayoutWidth
 import io.github.toyota32k.utils.android.lifecycleOwner
 import io.github.toyota32k.utils.android.px2dp
+import io.github.toyota32k.utils.android.setLayoutSize
 import io.github.toyota32k.utils.gesture.IUtManipulationTarget
 import io.github.toyota32k.utils.gesture.UtMinimumManipulationTarget
 import kotlinx.coroutines.Dispatchers
@@ -179,27 +182,39 @@ class EditorExoPlayerHost  @JvmOverloads constructor(context: Context, attrs: At
                     photoView.setPadding(0)
                 }
             }
-        combine(model.playerModel.videoSize, model.playerModel.rotation, rootViewSize, this::updateLayout).launchIn(scope)
+            .bindCommand(model.cropHandler.commandResetCrop) { controls.expCropMaskView.invalidateIfNeed() }
+            .bindCommand(model.cropHandler.commandRestoreCropFromMemory) { controls.expCropMaskView.invalidateIfNeed() }
+        combine(model.cropHandler.croppingNow,model.playerModel.videoSize, model.playerModel.rotation, rootViewSize,  this::updateLayout).launchIn(scope)
     }
 
+    private var handleRadius = 15.dp
     private val mFitter = UtFitter(FitMode.Inside)
-    private fun updateLayout(videoSize:Size?, rotation:Int, rootViewSize:Size?) {
+    private fun updateLayout(cropping:Boolean, videoSize:Size?, rotation:Int, rootViewSize:Size?) {
         if(rootViewSize==null||videoSize==null) return
         logger.debug("layoutSize = ${videoSize.width} x ${videoSize.height}")
 
         handler?.post {
-            if(abs(rotation%180) == 0) {
-                mFitter
-                    .setLayoutSize(rootViewSize)
-                    .fit(videoSize)
-                playerContainer.setLayoutSize(mFitter.resultWidth.toInt(), mFitter.resultHeight.toInt())
+            val padding = if (cropping) handleRadius.px(context) * 2 else 0
+            if (abs(rotation %180)==0) {
+                // image/image_preview/cropOverlay には同じ padding が設定されている
+                // コンテナー領域から、そのpaddingを差し引いた領域内に、bitmapを最大表示したときのサイズを計算
+                val w = rootViewSize.width - padding
+                val h = rootViewSize.height - padding
+                mFitter.setLayoutSize(w,h)
+                    .fit(videoSize.width, videoSize.height)
+                // bitmapのサイズに padding を加えたサイズを imageContainerにセットする。
+                playerContainer.setLayoutSize(mFitter.resultWidth.toInt()+padding, mFitter.resultHeight.toInt()+padding)
                 playerContainer.translationY = 0f
             } else {
-                mFitter
-                    .setLayoutSize(rootViewSize)
+                // image/image_preview/cropOverlay には同じ padding が設定されている
+                // コンテナー領域から、そのpaddingを差し引いた領域内に、bitmapを最大表示したときのサイズを計算
+                val w = rootViewSize.width - padding
+                val h = rootViewSize.height - padding
+                mFitter.setLayoutSize(w,h)
                     .fit(videoSize.height, videoSize.width)
-                playerContainer.setLayoutSize(mFitter.resultHeight.toInt(), mFitter.resultWidth.toInt())
-                playerContainer.translationY = -(mFitter.resultWidth-mFitter.resultHeight)/2f
+                // bitmapのサイズに padding を加えたサイズを imageContainerにセットする。
+                playerContainer.setLayoutSize(mFitter.resultHeight.toInt()+padding, mFitter.resultWidth.toInt()+padding)
+                playerContainer.translationY = -(mFitter.resultWidth - mFitter.resultHeight) / 2f
             }
             playerContainer.rotation = rotation.toFloat()
         }

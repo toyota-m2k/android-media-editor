@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Color
 import android.util.AttributeSet
 import android.view.LayoutInflater
+import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.ImageButton
 import androidx.core.view.children
@@ -15,6 +16,7 @@ import io.github.toyota32k.binder.combinatorialVisibilityBinding
 import io.github.toyota32k.binder.command.bindCommand
 import io.github.toyota32k.binder.enableBinding
 import io.github.toyota32k.binder.multiVisibilityBinding
+import io.github.toyota32k.binder.textBinding
 import io.github.toyota32k.binder.visibilityBinding
 import io.github.toyota32k.lib.media.editor.R
 import io.github.toyota32k.lib.media.editor.databinding.EditorControlPanelBinding
@@ -23,6 +25,7 @@ import io.github.toyota32k.lib.media.editor.model.EditorPlayerViewAttributes
 import io.github.toyota32k.lib.media.editor.model.MediaEditorModel
 import io.github.toyota32k.lib.player.view.ControlPanel.Companion.createButtonColorStateList
 import io.github.toyota32k.utils.lifecycle.asConstantLiveData
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 class EditorControlPanel @JvmOverloads constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0)
@@ -49,8 +52,13 @@ class EditorControlPanel @JvmOverloads constructor(context: Context, attrs: Attr
                 root.background = panelBackground
                 root.setPadding(paddingStart, paddingTop, paddingEnd, paddingBottom)
                 editorMainButtonPanel.children.forEach { (it as? ImageButton)?.imageTintList = buttonTint }
+                cropButtonPanel.children.forEach {
+                    when (it) {
+                        is ImageButton -> it.imageTintList = buttonTint
+                        is Button -> it.setTextColor(buttonTint)
+                    }
+                }
                 resolutionPanel.children.forEach { (it as? ImageButton)?.imageTintList = buttonTint }
-                cropButtonsPanel.children.forEach { (it as? ImageButton)?.imageTintList = buttonTint }
             }
         }
     }
@@ -71,7 +79,7 @@ class EditorControlPanel @JvmOverloads constructor(context: Context, attrs: Attr
             .visibilityBinding(controls.saveVideo, model.saveFileHandler.showSaveButton, BoolConvert.Straight, VisibilityBinding.HiddenMode.HideByGone)
             .multiVisibilityBinding(arrayOf(controls.cropCancelButton, controls.cropCompleteButton), model.cropHandler.showCompleteCancelButton, BoolConvert.Straight, VisibilityBinding.HiddenMode.HideByGone)
             .combinatorialVisibilityBinding(model.cropHandler.croppingNow) {
-                straightGone(controls.cropButtonsPanel)
+                straightGone(controls.cropPanel)
                 inverseGone(controls.editorMainButtonPanel)
             }
             .visibilityBinding(controls.resolutionPanel, model.cropHandler.resolutionChangingNow, BoolConvert.Straight, VisibilityBinding.HiddenMode.HideByGone)
@@ -86,6 +94,7 @@ class EditorControlPanel @JvmOverloads constructor(context: Context, attrs: Attr
             .bindCommand(model.chapterEditorHandler.commandUndoChapter, controls.undoChapter)
             .bindCommand(model.chapterEditorHandler.commandRedoChapter, controls.redoChapter)
 
+            .textBinding(controls.aspectButton, model.cropHandler.cropAspectMode.map { it.label })
             .bindCommand(model.cropHandler.commandBeginCrop, controls.cropVideo)
             .bindCommand(model.cropHandler.commandResetCrop, controls.cropResetButton)
             .bindCommand(model.cropHandler.commandCancelCrop, controls.cropCancelButton)
