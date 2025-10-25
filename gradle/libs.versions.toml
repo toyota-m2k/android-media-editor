@@ -12,9 +12,12 @@ constraintlayout = "2.2.1"
 media3ExoplayerVersion = "1.8.0"
 androidMediaProcessor = "LOCAL"
 androidMediaPlayer = "LOCAL"
+androidDialog = "6.2.0"
+slidingpanelayout = "1.2.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+androidx-slidingpanelayout = { module = "androidx.slidingpanelayout:slidingpanelayout", version.ref = "slidingpanelayout" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
@@ -24,8 +27,10 @@ androidx-media3-exoplayer = { module = "androidx.media3:media3-exoplayer", versi
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 androidx-activity = { group = "androidx.activity", name = "activity", version.ref = "activity" }
 androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
+
 android-media-player = { module = "com.github.toyota-m2k:android-media-player", version.ref = "androidMediaPlayer" }
 android-media-processor = { module = "com.github.toyota-m2k:android-media-processor", version.ref = "androidMediaProcessor" }
+android-dialog = { module = "com.github.toyota-m2k:android-dialog", version.ref = "androidDialog" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

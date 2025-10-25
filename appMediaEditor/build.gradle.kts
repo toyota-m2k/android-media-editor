@@ -70,9 +70,12 @@ kotlin {
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
+    implementation(libs.androidx.slidingpanelayout)
     implementation(libs.material)
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
+    implementation(libs.android.dialog)
+
     implementation(project(":libMediaEditor"))
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

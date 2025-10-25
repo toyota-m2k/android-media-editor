@@ -7,10 +7,14 @@ import com.google.android.material.slider.Slider
 import io.github.toyota32k.binder.Binder
 import io.github.toyota32k.binder.command.IUnitCommand
 import io.github.toyota32k.lib.player.model.IMediaSource
+import io.github.toyota32k.lib.player.model.IMediaSourceWithChapter
+import io.github.toyota32k.lib.player.model.IMutableChapterList
+import io.github.toyota32k.lib.player.model.IPlayerModel
 import io.github.toyota32k.lib.player.model.Range
 import io.github.toyota32k.media.lib.converter.Converter.Factory.RangeMs
-import io.github.toyota32k.media.lib.converter.Rotation
+import io.github.toyota32k.utils.IDisposable
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 
 enum class AspectMode(val label:String, val longSide:Float, val shortSide:Float) {
     FREE("Free", 0f, 0f),
@@ -18,30 +22,29 @@ enum class AspectMode(val label:String, val longSide:Float, val shortSide:Float)
     ASPECT_16_9("16:9", 16f, 9f)
 }
 
-interface ICropHandler {
+interface ICropHandler : IDisposable {
+    val croppable: Flow<Boolean>                // Cropをサポートするか？
+    val showCompleteCancelButton: Flow<Boolean>  // ダイアログで表示する場合などに false にして、モードの切り替えコマンドを自力で呼ぶ
+
     val maskViewModel: CropMaskViewModel
     var cropImageModel: CropImageModel
 
-    val croppable: Flow<Boolean>
     val croppingNow: Flow<Boolean>
     val resolutionChangingNow: Flow<Boolean>
     val canChangeResolution: Flow<Boolean>
     val cropAspectMode: Flow<AspectMode>
     val commandBeginCrop: IUnitCommand
-    val commandSetAccept: IUnitCommand
     val commandCancelCrop: IUnitCommand
     val commandCompleteCrop: IUnitCommand
     val commandResetCrop: IUnitCommand
     val commandSetCropToMemory: IUnitCommand
     val commandRestoreCropFromMemory: IUnitCommand
-    val commandStartResolutionChanging: IUnitCommand
-    val commandCompleteResolutionChanging: IUnitCommand
-    val commandCancelResolutionChanging: IUnitCommand
+    val commandToggleResolutionChanging: IUnitCommand
 
     val isCropped: Flow<Boolean>
     val isResolutionChanged: Flow<Boolean>
 
-    fun bindView(binder: Binder, slider: Slider, minus: Button, plus: Button, presetButtons:Map<Int, Button>)
+    fun bindView(binder: Binder, slider: Slider, minus: Button, plus: Button, presetButtons: Map<Int, Button>)
 }
 
 interface IChapterEditorHandler {
@@ -60,19 +63,29 @@ interface IChapterEditorHandler {
 }
 
 interface ISplitHandler {
-    val splittable: Flow<Boolean>
-    suspend fun splitVideoAt(targetSource: IMediaSource, positionMs:Long)
+    val showSplitButton: Flow<Boolean>
+    suspend fun splitVideoAt(targetSource: IMediaSource, positionMs:Long):Boolean
+}
+
+abstract class AbstractSplitHandler(supportSplitting:Boolean) : ISplitHandler {
+    override val showSplitButton = MutableStateFlow(supportSplitting)
+}
+
+object NoopSplitHandler : ISplitHandler {
+    override val showSplitButton: Flow<Boolean> = MutableStateFlow(false)
+    override suspend fun splitVideoAt(targetSource: IMediaSource, positionMs: Long):Boolean { return false }
 }
 
 interface ISaveFileHandler {
-    suspend fun saveImage(newBitmap:Bitmap)
-    suspend fun saveVideo(trimmingRanges:Array<RangeMs>?, rotation:Int/*degree*/, cropRect:Rect?, brightness:Float?)
+    val showSaveButton: Flow<Boolean>   // ダイアログで使用する場合などにfalseにして、保存時には、MediaEditorModel#saveFile() を利用する
+    suspend fun saveImage(newBitmap:Bitmap):Boolean
+    suspend fun saveVideo(trimmingRanges:Array<RangeMs>?, rotation:Int/*degree*/, cropRect:Rect?, brightness:Float?):Boolean
 }
 
-interface IEditorHandler : ICropHandler, ISplitHandler, IChapterEditorHandler, ISaveFileHandler {
-    val showMagnifyTimelineButton: Flow<Boolean>
-    val commandMagnifyTimeline: IUnitCommand
-    val commandSplitVideo: IUnitCommand
-    val commandSaveFile: IUnitCommand
-    val isDirty: Flow<Boolean>
+abstract class AbstractSaveFileHandler(showSaveButton:Boolean) : ISaveFileHandler {
+    override val showSaveButton = MutableStateFlow(showSaveButton)
+}
+
+interface IMediaSourceWithMutableChapterList : IMediaSourceWithChapter {
+    override suspend fun getChapterList(): IMutableChapterList
 }

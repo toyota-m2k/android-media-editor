@@ -7,27 +7,27 @@ import io.github.toyota32k.binder.command.IUnitCommand
 import io.github.toyota32k.binder.command.LiteUnitCommand
 import io.github.toyota32k.binder.observe
 import io.github.toyota32k.lib.player.model.IPlayerModel
+import io.github.toyota32k.utils.IDisposable
+import io.github.toyota32k.utils.toggle
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 
-open class CropHandler(val playerModel: IPlayerModel, croppable: Boolean) : ICropHandler {
+open class CropHandler(val playerModel: IPlayerModel, croppable: Boolean, showCompleteCancelButton:Boolean) : ICropHandler {
     override val croppable = MutableStateFlow<Boolean>(croppable)
+    override val showCompleteCancelButton = MutableStateFlow<Boolean>(showCompleteCancelButton)
     override val croppingNow = MutableStateFlow<Boolean>(false)
     override val cropAspectMode get() = maskViewModel.aspectMode
     override val resolutionChangingNow = MutableStateFlow<Boolean>(false)
     override val canChangeResolution = MutableStateFlow<Boolean>(false)
 
     override val commandBeginCrop: IUnitCommand = LiteUnitCommand(::onBeginCrop)
-    override val commandSetAccept: IUnitCommand = LiteUnitCommand() // PDメニューを表示
     override val commandResetCrop: IUnitCommand = LiteUnitCommand(::onResetCrop)
     override val commandCancelCrop: IUnitCommand = LiteUnitCommand(::onCancelCrop)
     override val commandCompleteCrop: IUnitCommand = LiteUnitCommand(::onCompleteCrop)
     override val commandSetCropToMemory: IUnitCommand = LiteUnitCommand(::onSetCropToMemory)
     override val commandRestoreCropFromMemory: IUnitCommand = LiteUnitCommand(::onRestoreCropFromMemory)
-    override val commandStartResolutionChanging: IUnitCommand = LiteUnitCommand(::onStartResolutionChanging)
-    override val commandCompleteResolutionChanging: IUnitCommand = LiteUnitCommand(::onCompleteResolutionChanging)
-    override val commandCancelResolutionChanging: IUnitCommand = LiteUnitCommand(::onCancelResolutionChanging)
+    override val commandToggleResolutionChanging: IUnitCommand = LiteUnitCommand(::onToggleResolutionChanging)
 
 
     override val maskViewModel: CropMaskViewModel = CropMaskViewModel()
@@ -74,14 +74,11 @@ open class CropHandler(val playerModel: IPlayerModel, croppable: Boolean) : ICro
     open fun onRestoreCropFromMemory() {
         maskViewModel.setParams(storedCropParams.value ?: return)
     }
-    open fun onStartResolutionChanging() {
-        resolutionChangingNow.value = true
+    open fun onToggleResolutionChanging() {
+        resolutionChangingNow.toggle()
     }
-    open fun onCompleteResolutionChanging() {
-        resolutionChangingNow.value = false
-    }
-    open fun onCancelResolutionChanging() {
-        // todo ここにキャンセル処理を書く
-        resolutionChangingNow.value = false
+
+    override fun dispose() {
+        cropImageModel.dispose()
     }
 }

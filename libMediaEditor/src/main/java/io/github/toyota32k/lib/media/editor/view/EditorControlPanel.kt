@@ -4,12 +4,9 @@ import android.content.Context
 import android.graphics.Color
 import android.util.AttributeSet
 import android.view.LayoutInflater
-import android.view.View
 import android.widget.FrameLayout
 import android.widget.ImageButton
 import androidx.core.view.children
-import androidx.core.view.isVisible
-import androidx.lifecycle.lifecycleScope
 import io.github.toyota32k.binder.Binder
 import io.github.toyota32k.binder.BoolConvert
 import io.github.toyota32k.binder.VisibilityBinding
@@ -18,7 +15,6 @@ import io.github.toyota32k.binder.combinatorialVisibilityBinding
 import io.github.toyota32k.binder.command.bindCommand
 import io.github.toyota32k.binder.enableBinding
 import io.github.toyota32k.binder.multiVisibilityBinding
-import io.github.toyota32k.binder.observe
 import io.github.toyota32k.binder.visibilityBinding
 import io.github.toyota32k.lib.media.editor.R
 import io.github.toyota32k.lib.media.editor.databinding.EditorControlPanelBinding
@@ -26,15 +22,8 @@ import io.github.toyota32k.lib.media.editor.model.AmeGlobal
 import io.github.toyota32k.lib.media.editor.model.EditorPlayerViewAttributes
 import io.github.toyota32k.lib.media.editor.model.MediaEditorModel
 import io.github.toyota32k.lib.player.view.ControlPanel.Companion.createButtonColorStateList
-import io.github.toyota32k.utils.android.StyledAttrRetriever
-import io.github.toyota32k.utils.android.lifecycleOwner
 import io.github.toyota32k.utils.lifecycle.asConstantLiveData
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
-import kotlin.sequences.forEach
-import kotlin.use
 
 class EditorControlPanel @JvmOverloads constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0)
     : FrameLayout(context, attrs, defStyleAttr) {
@@ -60,7 +49,7 @@ class EditorControlPanel @JvmOverloads constructor(context: Context, attrs: Attr
                 root.background = panelBackground
                 root.setPadding(paddingStart, paddingTop, paddingEnd, paddingBottom)
                 editorMainButtonPanel.children.forEach { (it as? ImageButton)?.imageTintList = buttonTint }
-                resolutionButtonsPanel.children.forEach { (it as? ImageButton)?.imageTintList = buttonTint }
+                resolutionPanel.children.forEach { (it as? ImageButton)?.imageTintList = buttonTint }
                 cropButtonsPanel.children.forEach { (it as? ImageButton)?.imageTintList = buttonTint }
             }
         }
@@ -77,28 +66,15 @@ class EditorControlPanel @JvmOverloads constructor(context: Context, attrs: Attr
         model.cropHandler.bindView(binder, controls.resolutionSlider, controls.buttonMinus, controls.buttonPlus, mapOf(480 to controls.button480, 720 to controls.button720, 1280 to controls.button1280, 1920 to controls.button1920))
         binder
             .multiVisibilityBinding(arrayOf(controls.makeChapter, controls.makeRegionSkip, controls.undoChapter, controls.redoChapter, controls.makeChapterAndSkip, controls.removeNextChapter, controls.removePrevChapter), model.chapterEditorHandler.chapterEditable, BoolConvert.Straight, VisibilityBinding.HiddenMode.HideByGone)
-            .visibilityBinding(controls.magnifyTimeline, model.supportMagnifyingTimeline.asConstantLiveData(), BoolConvert.Straight, VisibilityBinding.HiddenMode.HideByGone)
             .visibilityBinding(controls.cropVideo, model.cropHandler.croppable, BoolConvert.Straight, VisibilityBinding.HiddenMode.HideByGone)
-            .visibilityBinding(controls.chopVideo, model.splitHandler.splittable, BoolConvert.Straight, VisibilityBinding.HiddenMode.HideByGone)
-            .observe(model.editMode) {
-                when(it) {
-                    MediaEditorModel.EditMode.NONE-> {
-                        controls.editorMainButtonPanel.visibility = View.VISIBLE
-                        controls.cropButtonsPanel.visibility = View.GONE
-                        controls.resolutionButtonsPanel.visibility = View.GONE
-                    }
-                    MediaEditorModel.EditMode.CROPPING-> {
-                        controls.editorMainButtonPanel.visibility = View.GONE
-                        controls.cropButtonsPanel.visibility = View.VISIBLE
-                        controls.resolutionButtonsPanel.visibility = View.GONE
-                    }
-                    MediaEditorModel.EditMode.RESOLUTION_CHANGING-> {
-                        controls.editorMainButtonPanel.visibility = View.GONE
-                        controls.cropButtonsPanel.visibility = View.GONE
-                        controls.resolutionButtonsPanel.visibility = View.VISIBLE
-                    }
-                }
+            .visibilityBinding(controls.chopVideo, model.splitHandler.showSplitButton, BoolConvert.Straight, VisibilityBinding.HiddenMode.HideByGone)
+            .visibilityBinding(controls.saveVideo, model.saveFileHandler.showSaveButton, BoolConvert.Straight, VisibilityBinding.HiddenMode.HideByGone)
+            .multiVisibilityBinding(arrayOf(controls.cropCancelButton, controls.cropCompleteButton), model.cropHandler.showCompleteCancelButton, BoolConvert.Straight, VisibilityBinding.HiddenMode.HideByGone)
+            .combinatorialVisibilityBinding(model.cropHandler.croppingNow) {
+                straightGone(controls.cropButtonsPanel)
+                inverseGone(controls.editorMainButtonPanel)
             }
+            .visibilityBinding(controls.resolutionPanel, model.cropHandler.resolutionChangingNow, BoolConvert.Straight, VisibilityBinding.HiddenMode.HideByGone)
             .enableBinding(controls.undoChapter, model.chapterEditorHandler.canUndo)
             .enableBinding(controls.redoChapter, model.chapterEditorHandler.canRedo)
 
@@ -117,14 +93,17 @@ class EditorControlPanel @JvmOverloads constructor(context: Context, attrs: Attr
             .bindCommand(model.cropHandler.commandSetCropToMemory, controls.cropStoreToMemory)
             .bindCommand(model.cropHandler.commandRestoreCropFromMemory, controls.cropRestoreFromMemory)
 
-            .bindCommand(model.cropHandler.commandStartResolutionChanging, controls.resolutionButton)
-            .bindCommand(model.cropHandler.commandCompleteResolutionChanging, controls.acceptResolutionButton)
-            .bindCommand(model.cropHandler.commandCancelResolutionChanging, controls.cancelResolutionButton)
+            .bindCommand(model.cropHandler.commandToggleResolutionChanging, controls.resolutionButton)
 
             .clickBinding(controls.chopVideo) {
+                model.playerModel.scope.launch {
+                    model.splitVideo()
+                }
             }
             .clickBinding(controls.saveVideo) {
-                model.saveFile()
+                model.playerModel.scope.launch {
+                    model.saveFile()
+                }
             }
 
 

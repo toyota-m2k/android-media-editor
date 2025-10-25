@@ -57,6 +57,7 @@ dependencies {
 
     api(libs.android.media.processor)
     api(libs.android.media.player)
+    implementation(libs.android.dialog)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

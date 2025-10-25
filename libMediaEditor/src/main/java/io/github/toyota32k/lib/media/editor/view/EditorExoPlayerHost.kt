@@ -30,7 +30,6 @@ import io.github.toyota32k.lib.media.editor.databinding.EditorExoPlayerHostBindi
 import io.github.toyota32k.lib.media.editor.model.AmeGlobal
 import io.github.toyota32k.lib.media.editor.model.EditorPlayerViewAttributes
 import io.github.toyota32k.lib.media.editor.model.MediaEditorModel
-import io.github.toyota32k.lib.player.R
 import io.github.toyota32k.lib.player.common.getLayoutHeight
 import io.github.toyota32k.lib.player.common.getLayoutWidth
 import io.github.toyota32k.lib.player.common.setLayoutSize
@@ -97,28 +96,28 @@ class EditorExoPlayerHost  @JvmOverloads constructor(context: Context, attrs: At
 
     fun setPlayerAttributes(epa: EditorPlayerViewAttributes) {
         val sar = epa.sarForPlayer
-        if (sar.sa.getBoolean(R.styleable.ControlPanel_ampAttrsByParent, true)) {
+        if (sar.sa.getBoolean(io.github.toyota32k.lib.player.R.styleable.ControlPanel_ampAttrsByParent, true)) {
             controls.expPlayerRoot.background = sar.getDrawable(
-                R.styleable.ControlPanel_ampPlayerBackground,
+                io.github.toyota32k.lib.player.R.styleable.ControlPanel_ampPlayerBackground,
                 com.google.android.material.R.attr.colorSurface,
                 Color.BLACK
             )
         }
-        if (sar.sa.getBoolean(R.styleable.ControlPanel_ampPlayerCenteringVertically, false)) {
+        if (sar.sa.getBoolean(io.github.toyota32k.lib.player.R.styleable.ControlPanel_ampPlayerCenteringVertically, false)) {
             val params = controls.expPlayerView.layoutParams as FrameLayout.LayoutParams
             params.gravity = Gravity.CENTER_HORIZONTAL or Gravity.CENTER_VERTICAL
             controls.expPlayerContainer.layoutParams = params
         }
 
-        val ringGravity = sar.sa.getInt(R.styleable.ControlPanel_ampPlayerProgressRingGravity, 0)
+        val ringGravity = sar.sa.getInt(io.github.toyota32k.lib.player.R.styleable.ControlPanel_ampPlayerProgressRingGravity, 0)
         if (ringGravity!=0) {
             progressRingGravity = ringGravity
         }
-        val ringSize = sar.sa.getInt(R.styleable.ControlPanel_ampPlayerProgressRingSize, 0)
+        val ringSize = sar.sa.getInt(io.github.toyota32k.lib.player.R.styleable.ControlPanel_ampPlayerProgressRingSize, 0)
         if (ringSize!=0) {
             progressRingSize = ProgressRingSize.fromValue(ringSize)
         }
-        if (sar.sa.getBoolean(R.styleable.ControlPanel_ampAttrsByParent, true)) {
+        if (sar.sa.getBoolean(io.github.toyota32k.lib.player.R.styleable.ControlPanel_ampAttrsByParent, true)) {
             controls.expCropMaskView.setCropMaskViewAttributes(epa.sarForEditor)
         }
     }

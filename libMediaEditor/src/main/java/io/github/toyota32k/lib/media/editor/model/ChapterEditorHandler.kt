@@ -27,12 +27,12 @@ open class ChapterEditorHandler(protected val playerModel: IPlayerModel, support
     init {
         val scope = CoroutineScope(playerModel.scope.coroutineContext + SupervisorJob())
         playerModel.currentSource.onEach {
-            if (it is IMediaSourceWithChapter) {
-                setChapterList(it.getChapterList().chapters)
+            if (it is IMediaSourceWithMutableChapterList) {
+                setChapterList(it.getChapterList())
             }
         }.launchIn(scope)
     }
-    protected var chapterEditor = ChapterEditor(MutableChapterList())
+    protected val chapterEditor = ChapterEditor()
     override val chapterEditable = if(supportChapterEditing) playerModel.currentSource.map { it?.type?.compareTo("mp4", ignoreCase = true) == 0 } else MutableStateFlow(false)
     override val commandAddChapter: IUnitCommand = LiteUnitCommand(::onAddChapter)
     override val commandAddSkippedChapterBefore: IUnitCommand = LiteUnitCommand(::onAddSkippedChapterBefore)
@@ -87,8 +87,8 @@ open class ChapterEditorHandler(protected val playerModel: IPlayerModel, support
 
     // region ChapterEditor の初期化
 
-    fun setChapterList(list: List<IChapter>) {
-        this.chapterEditor.initChapters(list)
+    private fun setChapterList(list: IMutableChapterList) {
+        this.chapterEditor.setTarget(list)
     }
 
     // endregion

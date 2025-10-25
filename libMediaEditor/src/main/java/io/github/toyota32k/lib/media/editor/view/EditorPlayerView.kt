@@ -3,7 +3,6 @@ package io.github.toyota32k.lib.media.editor.view
 import android.content.Context
 import android.util.AttributeSet
 import android.view.LayoutInflater
-import android.view.View
 import android.widget.FrameLayout
 import io.github.toyota32k.binder.Binder
 import io.github.toyota32k.binder.VisibilityBinding
@@ -15,14 +14,8 @@ import io.github.toyota32k.lib.media.editor.databinding.EditorPlayerViewBinding
 import io.github.toyota32k.lib.media.editor.model.AmeGlobal
 import io.github.toyota32k.lib.media.editor.model.EditorPlayerViewAttributes
 import io.github.toyota32k.lib.media.editor.model.MediaEditorModel
-import io.github.toyota32k.lib.player.R
-import io.github.toyota32k.lib.player.model.PlayerControllerModel
-import io.github.toyota32k.utils.android.StyledAttrRetriever
 import io.github.toyota32k.utils.gesture.IUtManipulationTarget
-import io.github.toyota32k.utils.gesture.UtAbstractManipulationTarget
-import io.github.toyota32k.utils.gesture.UtMinimumManipulationTarget
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlin.use
 
 class EditorPlayerView @JvmOverloads constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0)
     : FrameLayout(context, attrs, defStyleAttr) {
@@ -31,7 +24,7 @@ class EditorPlayerView @JvmOverloads constructor(context: Context, attrs: Attrib
 
     private fun setVideoPlayerViewAttributes(context:Context, attrs: AttributeSet?, defStyleAttr:Int) {
         EditorPlayerViewAttributes(context, attrs, defStyleAttr).use { epa->
-            if (epa.sarForPlayer.sa.getBoolean(R.styleable.ControlPanel_ampAttrsByParent, true)) {
+            if (epa.sarForPlayer.sa.getBoolean(io.github.toyota32k.lib.player.R.styleable.ControlPanel_ampAttrsByParent, true)) {
                 controls.player.setPlayerAttributes(epa)
                 controls.controller.setControlPanelAttributes(epa.sarForPlayer)
             }
@@ -49,6 +42,8 @@ class EditorPlayerView @JvmOverloads constructor(context: Context, attrs: Attrib
         controls.player.bindViewModel(model, binder)
         controls.controller.bindViewModel(model.playerControllerModel, binder)
         controls.volumePanel.bindViewModel(model.playerControllerModel, binder)
+        controls.editorController.bindViewModel(model, binder)
+
         val showVolumePanel = MutableStateFlow(false)
         binder
             .visibilityBinding(controls.controller, model.playerControllerModel.showControlPanel, hiddenMode = VisibilityBinding.HiddenMode.HideByGone)

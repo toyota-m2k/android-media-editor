@@ -21,9 +21,6 @@ import io.github.toyota32k.utils.android.dp
 import io.github.toyota32k.utils.android.dp2px
 import io.github.toyota32k.utils.android.getLayoutHeight
 import io.github.toyota32k.utils.android.getLayoutWidth
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
 
 class CropMaskView@JvmOverloads constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0)
     : View(context, attrs, defStyleAttr) {
