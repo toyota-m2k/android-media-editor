@@ -6,9 +6,11 @@ import io.github.toyota32k.media.lib.converter.Converter
 import io.github.toyota32k.utils.IUtPropOwner
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import java.io.Closeable
 
 open class MediaEditorModel(
@@ -22,14 +24,24 @@ open class MediaEditorModel(
     val logger = AmeGlobal.logger
     val playerModel: IPlayerModel = playerControllerModel.playerModel
     val savingNow: StateFlow<Boolean> = MutableStateFlow(false)
-    val isSplittable: Flow<Boolean> by lazy {
-        playerModel.currentSource.map { it?.type?.compareTo("mp4", ignoreCase = true) == 0 }
-    }
     val isDirty: Flow<Boolean> by lazy {
         combine(chapterEditorHandler.chapterListModified, cropHandler.isCropped, cropHandler.isResolutionChanged) { chapter, crop, resolution ->
             chapter || crop || resolution
         }
     }
+
+    enum class EditMode {
+        NORMAL,
+        CROP,
+        RESOLUTION,
+    }
+    val editMode: Flow<EditMode> = combine(cropHandler.croppingNow, cropHandler.resolutionChangingNow) { crop, resolution ->
+        when {
+            resolution -> EditMode.RESOLUTION
+            crop -> EditMode.CROP
+            else -> EditMode.NORMAL
+        }
+    }.stateIn(playerModel.scope, SharingStarted.Lazily, EditMode.NORMAL)
 
     open fun onMagnifyTimeline() {}
 

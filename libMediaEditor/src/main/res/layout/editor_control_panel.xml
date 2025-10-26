@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout
+<LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
     android:id="@+id/editor_control_panel_root"
+    android:orientation="vertical"
     >
     <!-- Main Button Panel -->
     <LinearLayout
@@ -100,145 +101,167 @@
         android:id="@+id/crop_panel"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        >
+        <Button
+            android:id="@+id/aspect_button"
+            android:layout_width="60dp"
+            android:layout_height="@dimen/media_button_height"
+            android:padding="0dp"
+            tools:text="16:9"
+            android:background="?attr/selectableItemBackground"
+            />
+        <ImageButton
+            android:id="@+id/crop_store_to_memory"
+            android:layout_width="@dimen/media_button_width"
+            android:layout_height="@dimen/media_button_height"
+            app:srcCompat="@drawable/ic_memory_plus"
+            android:background="?attr/selectableItemBackground"
+            android:contentDescription="@string/crop_store_to_memory"
+            />
+        <ImageButton
+            android:id="@+id/crop_restore_from_memory"
+            android:layout_width="@dimen/media_button_width"
+            android:layout_height="@dimen/media_button_height"
+            app:srcCompat="@drawable/ic_memory"
+            android:background="?attr/selectableItemBackground"
+            android:contentDescription="@string/crop_restore_from_memory" />
+        <ImageButton
+            android:id="@+id/crop_reset_button"
+            android:layout_width="@dimen/media_button_width"
+            android:layout_height="@dimen/media_button_height"
+            app:srcCompat="@drawable/ic_full"
+            android:background="?attr/selectableItemBackground"
+            android:contentDescription="@string/reset_crop" />
+        <ImageButton
+            android:id="@+id/crop_cancel_button"
+            android:layout_width="@dimen/media_button_width"
+            android:layout_height="@dimen/media_button_height"
+            app:srcCompat="@drawable/ic_close"
+            android:background="?attr/selectableItemBackground"
+            android:contentDescription="@string/resolution_button" />
+        <ImageButton
+            android:id="@+id/crop_complete_button"
+            android:layout_width="@dimen/media_button_width"
+            android:layout_height="@dimen/media_button_height"
+            app:srcCompat="@drawable/ic_check"
+            android:background="?attr/selectableItemBackground"
+            android:contentDescription="@string/resolution_button" />
+    </LinearLayout>
+
+    <!-- Resolution Panel -->
+    <LinearLayout
+        android:id="@+id/resolution_panel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:orientation="vertical"
         android:visibility="gone"
         tools:visibility="visible"
         >
         <LinearLayout
-            android:id="@+id/crop_button_panel"
+            android:id="@+id/resolution_buttons"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
+            android:layout_gravity="end"
             >
-            <Button
-                android:id="@+id/aspect_button"
-                android:layout_width="60dp"
-                android:layout_height="@dimen/media_button_height"
-                android:padding="0dp"
-                tools:text="16:9"
-                android:background="?attr/selectableItemBackground"
-                />
             <ImageButton
-                android:id="@+id/crop_store_to_memory"
-                android:layout_width="@dimen/media_button_width"
-                android:layout_height="@dimen/media_button_height"
-                app:srcCompat="@drawable/ic_memory_plus"
-                android:background="?attr/selectableItemBackground"
-                android:contentDescription="@string/crop_store_to_memory"
-                />
-            <ImageButton
-                android:id="@+id/crop_restore_from_memory"
-                android:layout_width="@dimen/media_button_width"
-                android:layout_height="@dimen/media_button_height"
-                app:srcCompat="@drawable/ic_memory"
-                android:background="?attr/selectableItemBackground"
-                android:contentDescription="@string/crop_restore_from_memory" />
-            <ImageButton
-                android:id="@+id/crop_reset_button"
+                android:id="@+id/resolution_reset_button"
                 android:layout_width="@dimen/media_button_width"
                 android:layout_height="@dimen/media_button_height"
                 app:srcCompat="@drawable/ic_full"
                 android:background="?attr/selectableItemBackground"
-                android:contentDescription="@string/reset_crop" />
-            <ImageButton
-                android:id="@+id/crop_complete_button"
-                android:layout_width="@dimen/media_button_width"
-                android:layout_height="@dimen/media_button_height"
-                app:srcCompat="@drawable/ic_check"
-                android:background="?attr/selectableItemBackground"
                 android:contentDescription="@string/resolution_button" />
             <ImageButton
-                android:id="@+id/crop_cancel_button"
+                android:id="@+id/resolution_cancel_button"
                 android:layout_width="@dimen/media_button_width"
                 android:layout_height="@dimen/media_button_height"
                 app:srcCompat="@drawable/ic_close"
                 android:background="?attr/selectableItemBackground"
                 android:contentDescription="@string/resolution_button" />
+            <ImageButton
+                android:id="@+id/resolution_complete_button"
+                android:layout_width="@dimen/media_button_width"
+                android:layout_height="@dimen/media_button_height"
+                app:srcCompat="@drawable/ic_check"
+                android:background="?attr/selectableItemBackground"
+                android:contentDescription="@string/resolution_button" />
         </LinearLayout>
-        <!-- Resolution Panel -->
+
+        <!-- Resolution Slider -->
         <LinearLayout
-            android:id="@+id/resolution_panel"
+            android:layout_width="300dp"
+            android:layout_height="wrap_content"
+            android:paddingVertical="10dp"
+            android:clickable="true"
+            >
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/button_minus"
+                style="@style/RoundIconButton"
+                app:icon="@drawable/ic_minus"
+                />
+            <com.google.android.material.slider.Slider
+                android:id="@+id/resolution_slider"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:valueFrom="10"
+                android:valueTo="100"
+                android:value="100"
+                android:stepSize="1"
+                />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/button_plus"
+                style="@style/RoundIconButton"
+                app:icon="@drawable/ic_plus"
+                />
+
+        </LinearLayout>
+
+        <!-- Preset Buttons -->
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:visibility="gone"
-            tools:visibility="visible"
+            android:orientation="horizontal"
+            android:layout_gravity="center"
             >
-            <!-- Resolution Slider -->
-            <LinearLayout
-                android:layout_width="300dp"
+            <Button
+                android:id="@+id/button_480"
+                android:layout_width="70dp"
+                android:paddingHorizontal="0dp"
                 android:layout_height="wrap_content"
-                android:paddingVertical="10dp"
-                android:clickable="true"
-                >
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/button_minus"
-                    style="@style/RoundIconButton"
-                    app:icon="@drawable/ic_minus"
-                    />
-                <com.google.android.material.slider.Slider
-                    android:id="@+id/resolution_slider"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:valueFrom="10"
-                    android:valueTo="100"
-                    android:value="100"
-                    android:stepSize="1"
-                    />
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/button_plus"
-                    style="@style/RoundIconButton"
-                    app:icon="@drawable/ic_plus"
-                    />
-
-            </LinearLayout>
-
-            <!-- Preset Buttons -->
-            <LinearLayout
-                android:layout_width="wrap_content"
+                android:text="@string/resolution_480"
+                style="@style/Widget.MaterialComponents.Button"
+                />
+            <Button
+                android:id="@+id/button_720"
+                android:layout_width="70dp"
+                android:paddingHorizontal="0dp"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_gravity="center"
-                >
-                <Button
-                    android:id="@+id/button_480"
-                    android:layout_width="70dp"
-                    android:paddingHorizontal="0dp"
-                    android:layout_height="wrap_content"
-                    android:text="@string/resolution_480"
-                    style="@style/Widget.MaterialComponents.Button"
-                    />
-                <Button
-                    android:id="@+id/button_720"
-                    android:layout_width="70dp"
-                    android:paddingHorizontal="0dp"
-                    android:layout_height="wrap_content"
-                    android:text="@string/resolution_720"
-                    android:layout_marginStart="5dp"
-                    style="@style/Widget.MaterialComponents.Button"
-                    />
-                <Button
-                    android:id="@+id/button_1280"
-                    android:layout_width="70dp"
-                    android:paddingHorizontal="0dp"
-                    android:layout_height="wrap_content"
-                    android:text="@string/resolution_1280"
-                    android:layout_marginStart="5dp"
-                    style="@style/Widget.MaterialComponents.Button"
-                    />
-                <Button
-                    android:id="@+id/button_1920"
-                    android:layout_width="70dp"
-                    android:paddingHorizontal="0dp"
-                    android:layout_height="wrap_content"
-                    android:text="@string/resolution_1920"
-                    android:layout_marginStart="5dp"
-                    style="@style/Widget.MaterialComponents.Button"
-                    />
-            </LinearLayout>
+                android:text="@string/resolution_720"
+                android:layout_marginStart="5dp"
+                style="@style/Widget.MaterialComponents.Button"
+                />
+            <Button
+                android:id="@+id/button_1280"
+                android:layout_width="70dp"
+                android:paddingHorizontal="0dp"
+                android:layout_height="wrap_content"
+                android:text="@string/resolution_1280"
+                android:layout_marginStart="5dp"
+                style="@style/Widget.MaterialComponents.Button"
+                />
+            <Button
+                android:id="@+id/button_1920"
+                android:layout_width="70dp"
+                android:paddingHorizontal="0dp"
+                android:layout_height="wrap_content"
+                android:text="@string/resolution_1920"
+                android:layout_marginStart="5dp"
+                style="@style/Widget.MaterialComponents.Button"
+                />
         </LinearLayout>
     </LinearLayout>
 
 
-</FrameLayout>
+</LinearLayout>

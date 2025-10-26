@@ -69,6 +69,7 @@ class EditorExoPlayerHost  @JvmOverloads constructor(context: Context, attrs: At
     private val playerContainer get() = controls.expPlayerContainer
     private val exoPlayer get() = controls.expPlayerView
     private val photoView get() = controls.expPhotoView
+    private val photoAltView get() = controls.expPhotoAltView
     private val maskView get() = controls.expCropMaskView
 
     enum class ProgressRingSize(val value:Int) {
@@ -168,6 +169,8 @@ class EditorExoPlayerHost  @JvmOverloads constructor(context: Context, attrs: At
             }
             .conditional( model.playerModel.isPhotoViewerEnabled ) {
                 model.playerModel.attachPhotoView(photoView)
+                visibilityBinding(photoAltView, combine(model.cropHandler.cropImageModel.isResolutionChanged, model.playerModel.isCurrentSourcePhoto) {r,p-> r && p })
+                observe(model.cropHandler.cropImageModel.bitmapScaler.bitmap) { bmp-> photoAltView.setImageBitmap(bmp) }
             }
             .observe(model.cropHandler.croppingNow) { cropping->
                 maskView.showHandle(cropping)
@@ -176,10 +179,12 @@ class EditorExoPlayerHost  @JvmOverloads constructor(context: Context, attrs: At
                     maskView.setPadding(padding)
                     exoPlayer.setPadding(padding)
                     photoView.setPadding(padding)
+                    photoAltView.setPadding(padding)
                 } else {
                     maskView.setPadding(0)
                     exoPlayer.setPadding(0)
                     photoView.setPadding(0)
+                    photoAltView.setPadding(0)
                 }
             }
             .bindCommand(model.cropHandler.commandResetCrop) { controls.expCropMaskView.invalidateIfNeed() }

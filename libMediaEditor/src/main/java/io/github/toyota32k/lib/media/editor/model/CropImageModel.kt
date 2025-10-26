@@ -16,14 +16,6 @@ class CropImageModel(val maskViewModel: CropMaskViewModel): IDisposable {
     private val cropFlows: CropMaskViewModel.ICropFlows get() =  maskViewModel.cropFlows
     val isResolutionChanged: Flow<Boolean> get() = bitmapScaler.isResolutionChanged
 
-    val sizeText: Flow<String> by lazy {
-        combine(cropFlows.cropWidth, cropFlows.cropHeight, bitmapScaler.bitmap) { cw, ch, bmp ->
-            if (bmp!=null) {
-                "$cw x $ch (${bmp.width} x ${bmp.height})"
-            } else ""
-        }
-    }
-
     fun setSourceBitmap(sourceBitmap: Bitmap?) {
         bitmapScaler.setSourceBitmap(sourceBitmap)
     }

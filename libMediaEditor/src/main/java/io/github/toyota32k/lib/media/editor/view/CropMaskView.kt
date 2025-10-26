@@ -99,22 +99,6 @@ class CropMaskView@JvmOverloads constructor(context: Context, attrs: AttributeSe
             }
     }
 
-//    fun resetCrop() {
-//        viewModel?.apply {
-//            resetCrop()
-//            clearDirty { invalidate() }
-//        }
-//    }
-//
-//    fun applyCropFromMemory() {
-//        viewModel?.apply {
-//            memory.value?.also {
-//                setParams(it)
-//                clearDirty { invalidate() }
-//            }
-//        }
-//    }
-
     fun invalidateIfNeed() {
         viewModel?.apply {
             clearDirty { invalidate() }

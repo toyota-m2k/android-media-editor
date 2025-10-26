@@ -4,10 +4,13 @@ import android.content.Context
 import android.graphics.Color
 import android.util.AttributeSet
 import android.view.LayoutInflater
+import android.view.View
 import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.ImageButton
+import android.widget.PopupMenu
 import androidx.core.view.children
+import androidx.lifecycle.lifecycleScope
 import io.github.toyota32k.binder.Binder
 import io.github.toyota32k.binder.BoolConvert
 import io.github.toyota32k.binder.VisibilityBinding
@@ -21,10 +24,14 @@ import io.github.toyota32k.binder.visibilityBinding
 import io.github.toyota32k.lib.media.editor.R
 import io.github.toyota32k.lib.media.editor.databinding.EditorControlPanelBinding
 import io.github.toyota32k.lib.media.editor.model.AmeGlobal
+import io.github.toyota32k.lib.media.editor.model.AspectMode
 import io.github.toyota32k.lib.media.editor.model.EditorPlayerViewAttributes
 import io.github.toyota32k.lib.media.editor.model.MediaEditorModel
 import io.github.toyota32k.lib.player.view.ControlPanel.Companion.createButtonColorStateList
-import io.github.toyota32k.utils.lifecycle.asConstantLiveData
+import io.github.toyota32k.utils.android.lifecycleOwner
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
@@ -52,13 +59,13 @@ class EditorControlPanel @JvmOverloads constructor(context: Context, attrs: Attr
                 root.background = panelBackground
                 root.setPadding(paddingStart, paddingTop, paddingEnd, paddingBottom)
                 editorMainButtonPanel.children.forEach { (it as? ImageButton)?.imageTintList = buttonTint }
-                cropButtonPanel.children.forEach {
+                cropPanel.children.forEach {
                     when (it) {
                         is ImageButton -> it.imageTintList = buttonTint
                         is Button -> it.setTextColor(buttonTint)
                     }
                 }
-                resolutionPanel.children.forEach { (it as? ImageButton)?.imageTintList = buttonTint }
+                resolutionButtons.children.forEach { (it as? ImageButton)?.imageTintList = buttonTint }
             }
         }
     }
@@ -75,13 +82,13 @@ class EditorControlPanel @JvmOverloads constructor(context: Context, attrs: Attr
         binder
             .multiVisibilityBinding(arrayOf(controls.makeChapter, controls.makeRegionSkip, controls.undoChapter, controls.redoChapter, controls.makeChapterAndSkip, controls.removeNextChapter, controls.removePrevChapter), model.chapterEditorHandler.chapterEditable, BoolConvert.Straight, VisibilityBinding.HiddenMode.HideByGone)
             .visibilityBinding(controls.cropVideo, model.cropHandler.croppable, BoolConvert.Straight, VisibilityBinding.HiddenMode.HideByGone)
-            .visibilityBinding(controls.chopVideo, model.splitHandler.showSplitButton, BoolConvert.Straight, VisibilityBinding.HiddenMode.HideByGone)
+            .visibilityBinding(controls.chopVideo, combine(model.splitHandler.showSplitButton, model.playerModel.isCurrentSourceVideo) {show,video-> show && video }, BoolConvert.Straight, VisibilityBinding.HiddenMode.HideByGone)
             .visibilityBinding(controls.saveVideo, model.saveFileHandler.showSaveButton, BoolConvert.Straight, VisibilityBinding.HiddenMode.HideByGone)
             .multiVisibilityBinding(arrayOf(controls.cropCancelButton, controls.cropCompleteButton), model.cropHandler.showCompleteCancelButton, BoolConvert.Straight, VisibilityBinding.HiddenMode.HideByGone)
-            .combinatorialVisibilityBinding(model.cropHandler.croppingNow) {
-                straightGone(controls.cropPanel)
-                inverseGone(controls.editorMainButtonPanel)
-            }
+            .visibilityBinding(controls.editorMainButtonPanel, model.editMode.map { it == MediaEditorModel.EditMode.NORMAL})
+            .visibilityBinding(controls.cropPanel, model.editMode.map { it == MediaEditorModel.EditMode.CROP})
+            .visibilityBinding(controls.resolutionPanel, model.editMode.map { it == MediaEditorModel.EditMode.RESOLUTION})
+            .visibilityBinding(controls.resolutionButton, model.playerModel.isCurrentSourcePhoto, BoolConvert.Straight, VisibilityBinding.HiddenMode.HideByGone)
             .visibilityBinding(controls.resolutionPanel, model.cropHandler.resolutionChangingNow, BoolConvert.Straight, VisibilityBinding.HiddenMode.HideByGone)
             .enableBinding(controls.undoChapter, model.chapterEditorHandler.canUndo)
             .enableBinding(controls.redoChapter, model.chapterEditorHandler.canRedo)
@@ -102,7 +109,19 @@ class EditorControlPanel @JvmOverloads constructor(context: Context, attrs: Attr
             .bindCommand(model.cropHandler.commandSetCropToMemory, controls.cropStoreToMemory)
             .bindCommand(model.cropHandler.commandRestoreCropFromMemory, controls.cropRestoreFromMemory)
 
-            .bindCommand(model.cropHandler.commandToggleResolutionChanging, controls.resolutionButton)
+            .bindCommand(model.cropHandler.commandBeginResolutionChanging, controls.resolutionButton)
+            .bindCommand(model.cropHandler.commandCancelResolutionChanging, controls.resolutionCancelButton)
+            .bindCommand(model.cropHandler.commandCompleteResolutionChanging, controls.resolutionCompleteButton)
+            .bindCommand(model.cropHandler.commandResetResolution, controls.resolutionResetButton)
+
+            .clickBinding(controls.aspectButton) {
+                lifecycleOwner()?.lifecycleScope?.launch {
+                    val aspect = popupAspectMenu(context, it)
+                    if(aspect!=null) {
+                        model.cropHandler.maskViewModel.aspectMode.value = aspect
+                    }
+                }
+            }
 
             .clickBinding(controls.chopVideo) {
                 model.playerModel.scope.launch {
@@ -114,17 +133,28 @@ class EditorControlPanel @JvmOverloads constructor(context: Context, attrs: Attr
                     model.saveFile()
                 }
             }
+    }
 
-
-
-
-
-
-
-
-
-
-
-
+    companion object  {
+        suspend fun popupAspectMenu(context: Context, anchor: View): AspectMode? {
+            val selection = MutableStateFlow<Int?>(null)
+            PopupMenu(context, anchor).apply {
+                setOnMenuItemClickListener {
+                    selection.value = it.itemId
+                    true
+                }
+                setOnDismissListener {
+                    selection.value = -1
+                }
+                inflate(R.menu.menu_aspect)
+            }.show()
+            val sel = selection.first { it != null }
+            return when(sel) {
+                R.id.aspect_free -> AspectMode.FREE
+                R.id.aspect_4_3 -> AspectMode.ASPECT_4_3
+                R.id.aspect_16_9 -> AspectMode.ASPECT_16_9
+                else -> null
+            }
+        }
     }
 }

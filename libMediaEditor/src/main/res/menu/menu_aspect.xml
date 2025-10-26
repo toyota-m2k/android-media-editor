@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/aspect_free"
+        android:title="@string/aspect_free"
+        />
+    <item
+        android:id="@+id/aspect_4_3"
+        android:title="@string/aspect_4_3"
+        />
+    <item
+        android:id="@+id/aspect_16_9"
+        android:title="@string/aspect_16_9"
+        />
+</menu>

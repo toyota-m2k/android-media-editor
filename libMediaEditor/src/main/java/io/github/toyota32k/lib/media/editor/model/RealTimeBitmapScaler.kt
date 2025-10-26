@@ -77,8 +77,10 @@ class RealTimeBitmapScaler(val bitmapStore: BitmapStore): IUtPropOwner {
     fun bindView(binder: Binder, slider: Slider, minus: Button, plus: Button, presetButtons:Map<Int, Button>) {
         slider.stepSize = 1f
         val scope = binder.lifecycleOwner?.lifecycleScope ?: CoroutineScope(Dispatchers.Main.immediate + SupervisorJob())
+        slider.valueTo = orgLongSideLength
+        slider.valueFrom = MIN_LENGTH
         binder
-            .sliderBinding(view=slider, data=longSideLength, mode= BindingMode.TwoWay, min= MutableStateFlow<Float>(MIN_LENGTH), max= MutableStateFlow(orgLongSideLength))
+            .sliderBinding(view=slider, data=longSideLength, mode= BindingMode.TwoWay)
             .clickBinding(minus) {
                 val len = ((longSideLength.value.roundToInt()+7)/8)*8 - 8
                 longSideLength.value = len.toFloat().coerceAtLeast(MIN_LENGTH)

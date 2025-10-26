@@ -40,6 +40,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import java.util.concurrent.atomic.AtomicLong
+import kotlin.time.Duration.Companion.seconds
 
 class MainActivity : UtMortalActivity() {
     override val logger = UtLog("Main")
@@ -104,6 +105,7 @@ class MainActivity : UtMortalActivity() {
                 .enableSeekMedium(1000, 3000)
                 .enableSeekLarge(5000, 10000)
                 .enableSliderLock(true)
+                .enablePhotoViewer()
                 .build()
             )
             .supportChapterEditor()

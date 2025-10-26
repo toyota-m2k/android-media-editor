@@ -33,7 +33,7 @@ open class ChapterEditorHandler(protected val playerModel: IPlayerModel, support
         }.launchIn(scope)
     }
     protected val chapterEditor = ChapterEditor()
-    override val chapterEditable = if(supportChapterEditing) playerModel.currentSource.map { it?.type?.compareTo("mp4", ignoreCase = true) == 0 } else MutableStateFlow(false)
+    override val chapterEditable = if(supportChapterEditing) playerModel.isCurrentSourceVideo else MutableStateFlow(false)
     override val commandAddChapter: IUnitCommand = LiteUnitCommand(::onAddChapter)
     override val commandAddSkippedChapterBefore: IUnitCommand = LiteUnitCommand(::onAddSkippedChapterBefore)
     override val commandToggleSkipChapter: IUnitCommand = LiteUnitCommand(::onToggleSkipChapter)

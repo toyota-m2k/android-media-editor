@@ -9,7 +9,6 @@ import io.github.toyota32k.binder.command.IUnitCommand
 import io.github.toyota32k.lib.player.model.IMediaSource
 import io.github.toyota32k.lib.player.model.IMediaSourceWithChapter
 import io.github.toyota32k.lib.player.model.IMutableChapterList
-import io.github.toyota32k.lib.player.model.IPlayerModel
 import io.github.toyota32k.lib.player.model.Range
 import io.github.toyota32k.media.lib.converter.Converter.Factory.RangeMs
 import io.github.toyota32k.utils.IDisposable
@@ -31,6 +30,7 @@ interface ICropHandler : IDisposable {
 
     val croppingNow: Flow<Boolean>
     val resolutionChangingNow: Flow<Boolean>
+
     val canChangeResolution: Flow<Boolean>
     val cropAspectMode: Flow<AspectMode>
     val commandBeginCrop: IUnitCommand
@@ -39,7 +39,11 @@ interface ICropHandler : IDisposable {
     val commandResetCrop: IUnitCommand
     val commandSetCropToMemory: IUnitCommand
     val commandRestoreCropFromMemory: IUnitCommand
-    val commandToggleResolutionChanging: IUnitCommand
+
+    val commandBeginResolutionChanging: IUnitCommand
+    val commandCompleteResolutionChanging: IUnitCommand
+    val commandCancelResolutionChanging: IUnitCommand
+    val commandResetResolution: IUnitCommand
 
     val isCropped: Flow<Boolean>
     val isResolutionChanged: Flow<Boolean>
