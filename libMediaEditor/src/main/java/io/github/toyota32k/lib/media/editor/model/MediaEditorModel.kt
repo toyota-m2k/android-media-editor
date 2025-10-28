@@ -87,10 +87,18 @@ open class MediaEditorModel(
         cropHandler.dispose()
     }
 
-    class Builder(private val saveFileHandler: ISaveFileHandler, private val playerControllerModel: PlayerControllerModel) {
+    class Builder(val playerControllerModel: PlayerControllerModel) {
+        private var saveFileHandler: ISaveFileHandler? = null
         private var mChapterEditorHandler: IChapterEditorHandler? = null
         private var mCropHandler: ICropHandler? = null
         private var mSplitHandler: ISplitHandler? = null
+
+        fun setSaveFileHandler(handler: ISaveFileHandler) :Builder = apply {
+            saveFileHandler = handler
+        }
+        fun setSaveFileHandler(fn:(PlayerControllerModel)-> ISaveFileHandler) :Builder = apply {
+            saveFileHandler = fn(playerControllerModel)
+        }
 
         fun supportChapterEditor(handler: IChapterEditorHandler?=null) :Builder = apply {
             mChapterEditorHandler = handler ?: ChapterEditorHandler(playerControllerModel.playerModel, true)
@@ -102,6 +110,8 @@ open class MediaEditorModel(
             mSplitHandler = handler
         }
         fun build() :MediaEditorModel {
+            val saveFileHandler = this.saveFileHandler
+            if (saveFileHandler == null) throw IllegalStateException("saveFileHandler is not set")
             return MediaEditorModel(
                 playerControllerModel,
                 mChapterEditorHandler ?: ChapterEditorHandler(playerControllerModel.playerModel, false),

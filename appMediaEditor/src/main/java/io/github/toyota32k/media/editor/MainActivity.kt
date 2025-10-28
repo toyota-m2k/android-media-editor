@@ -14,15 +14,20 @@ import io.github.toyota32k.binder.Binder
 import io.github.toyota32k.binder.clickBinding
 import io.github.toyota32k.binder.observe
 import io.github.toyota32k.binder.visibilityBinding
+import io.github.toyota32k.dialog.broker.IUtActivityBrokerStoreProvider
 import io.github.toyota32k.dialog.broker.UtActivityBrokerStore
+import io.github.toyota32k.dialog.broker.pickers.IUtFilePickerStoreProvider
 import io.github.toyota32k.dialog.broker.pickers.UtCreateFilePicker
 import io.github.toyota32k.dialog.broker.pickers.UtOpenFilePicker
 import io.github.toyota32k.dialog.mortal.UtMortalActivity
 import io.github.toyota32k.dialog.task.UtImmortalTask
-import io.github.toyota32k.lib.media.editor.model.AbstractSaveFileHandler
+import io.github.toyota32k.lib.media.editor.output.AbstractSaveFileHandler
 import io.github.toyota32k.lib.media.editor.model.AbstractSplitHandler
 import io.github.toyota32k.lib.media.editor.model.IMediaSourceWithMutableChapterList
 import io.github.toyota32k.lib.media.editor.model.MediaEditorModel
+import io.github.toyota32k.lib.media.editor.output.DefaultAudioStrategySelector
+import io.github.toyota32k.lib.media.editor.output.GenericSaveFileHandler
+import io.github.toyota32k.lib.media.editor.output.SingleVideoStrategySelector
 import io.github.toyota32k.lib.player.model.IMediaSource
 import io.github.toyota32k.lib.player.model.IMutableChapterList
 import io.github.toyota32k.lib.player.model.PlayerControllerModel
@@ -34,19 +39,21 @@ import io.github.toyota32k.media.editor.databinding.ActivityMainBinding
 import io.github.toyota32k.media.lib.converter.AndroidFile
 import io.github.toyota32k.media.lib.converter.Converter
 import io.github.toyota32k.media.lib.converter.toAndroidFile
+import io.github.toyota32k.media.lib.strategy.PresetVideoStrategies
+import io.github.toyota32k.utils.android.CompatBackKeyDispatcher
 import io.github.toyota32k.utils.android.setLayoutWidth
 import io.github.toyota32k.utils.toggle
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import java.util.concurrent.atomic.AtomicLong
-import kotlin.time.Duration.Companion.seconds
 
-class MainActivity : UtMortalActivity() {
+class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
     override val logger = UtLog("Main")
-    private val activityBrokers = UtActivityBrokerStore(this, UtOpenFilePicker(), UtCreateFilePicker())
+    override val activityBrokers = UtActivityBrokerStore(this, UtOpenFilePicker(), UtCreateFilePicker())
     private val binder = Binder()
     private lateinit var controls: ActivityMainBinding
+    private val compatBackKeyDispatcher = CompatBackKeyDispatcher()
 
     class MediaSource private constructor(val file:AndroidFile, override val type:String) : IMediaSourceWithMutableChapterList {
         override val id: String
@@ -83,19 +90,8 @@ class MainActivity : UtMortalActivity() {
             }
 
         }
-        inner class SaveFileHandler: AbstractSaveFileHandler(true) {
-            override suspend fun saveImage(newBitmap: Bitmap): Boolean {
-                TODO("Not yet implemented")
-            }
-
-            override suspend fun saveVideo(trimmingRanges: Array<Converter.Factory.RangeMs>?, rotation: Int, cropRect: Rect?, brightness: Float?): Boolean {
-                TODO("Not yet implemented")
-            }
-
-        }
 
         val editorModel = MediaEditorModel.Builder(
-            SaveFileHandler(),
             PlayerControllerModel.Builder(application, viewModelScope)
                 .supportChapter(false)
                 .supportSnapshot(::snapshot)
@@ -111,6 +107,13 @@ class MainActivity : UtMortalActivity() {
             .supportChapterEditor()
             .supportCrop()
             .supportSplit(SplitHandler())
+            .setSaveFileHandler { controllerModel ->
+                GenericSaveFileHandler.create(true, application,
+                    controllerModel,
+                    SingleVideoStrategySelector(PresetVideoStrategies.AVC720Profile),
+                    DefaultAudioStrategySelector)
+
+            }
             .build()
 
         fun snapshot(pos:Long, bmp: Bitmap) {
@@ -160,6 +163,14 @@ class MainActivity : UtMortalActivity() {
         setContentView(controls.root)
 
         setupWindowInsetsListener(controls.root)
+
+        compatBackKeyDispatcher.register(this) {
+            if (viewModel.targetMediaSource.value != null) {
+                viewModel.targetMediaSource.value = null
+            } else {
+                finish()
+            }
+        }
 
         val AnimDuration = 200L
         binder

@@ -22,4 +22,19 @@
     <string name="aspect_free">Free</string>
     <string name="aspect_4_3">4:3</string>
     <string name="aspect_16_9">16:9</string>
+    <string name="enable_partial_mode">Enable Partial Mode</string>
+    <string name="label_part_span">Span Of A Part</string>
+    <string name="span_1_min">1 min</string>
+    <string name="span_3_min">3 min</string>
+    <string name="span_5_min">5 min</string>
+    <string name="span_10_min">10 min</string>
+    <string name="span_custom">Custom</string>
+    <string name="highest_quality">Highest (No Re-Encoding)</string>
+    <string name="high_quality">High</string>
+    <string name="low_quality">Low</string>
+    <string name="middle_quality">Middle</string>
+    <string name="keep_hdr">Keep HDR</string>
+    <string name="duration_label">Duration</string>
+    <string name="video_quality">Video Quality</string>
+
 </resources>
