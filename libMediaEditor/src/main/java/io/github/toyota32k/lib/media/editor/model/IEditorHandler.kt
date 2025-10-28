@@ -11,7 +11,6 @@ import io.github.toyota32k.lib.player.model.IMediaSourceWithChapter
 import io.github.toyota32k.lib.player.model.IMutableChapterList
 import io.github.toyota32k.lib.player.model.Range
 import io.github.toyota32k.media.lib.converter.Converter.Factory.RangeMs
-import io.github.toyota32k.media.lib.converter.IInputMediaFile
 import io.github.toyota32k.utils.IDisposable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -81,10 +80,20 @@ object NoopSplitHandler : ISplitHandler {
     override suspend fun splitVideoAt(targetSource: IMediaSource, positionMs: Long):Boolean { return false }
 }
 
+interface IVideoSourceInfo {
+    val source: IMediaSource
+    val trimmingRanges:Array<RangeMs>
+    val rotation:Int/*in degree*/
+    val cropRect:Rect?
+    val brightness:Float?
+    val positionMs: Long
+    val durationMs: Long
+}
+
 interface ISaveFileHandler {
     val showSaveButton: Flow<Boolean>   // ダイアログで使用する場合などにfalseにして、保存時には、MediaEditorModel#saveFile() を利用する
     suspend fun saveImage(newBitmap:Bitmap):Boolean
-    suspend fun saveVideo(trimmingRanges:Array<RangeMs>?, rotation:Int/*degree*/, cropRect:Rect?, brightness:Float?):Boolean
+    suspend fun saveVideo(sourceInfo:IVideoSourceInfo):Boolean
 }
 
 interface IMediaSourceWithMutableChapterList : IMediaSourceWithChapter {

@@ -1,5 +1,7 @@
 package io.github.toyota32k.lib.media.editor.model
 
+import android.graphics.Rect
+import io.github.toyota32k.lib.player.model.IMediaSource
 import io.github.toyota32k.lib.player.model.IPlayerModel
 import io.github.toyota32k.lib.player.model.PlayerControllerModel
 import io.github.toyota32k.media.lib.converter.Converter
@@ -9,7 +11,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import java.io.Closeable
 
@@ -45,6 +46,29 @@ open class MediaEditorModel(
 
     open fun onMagnifyTimeline() {}
 
+
+    class VideoSourceInfoImpl(
+        override val source: IMediaSource,
+        override val trimmingRanges: Array<Converter.Factory.RangeMs>,
+        override val rotation: Int,
+        override val cropRect: Rect?,
+        override val brightness: Float?,
+        override val positionMs: Long,
+        override val durationMs: Long) : IVideoSourceInfo {
+        companion object {
+            fun fromModel(model: MediaEditorModel): VideoSourceInfoImpl? {
+                val source = model.playerModel.currentSource.value ?: return null
+                val size = model.playerModel.videoSize.value ?: return null
+                val ranges = model.chapterEditorHandler.getEnabledRangeList().map { Converter.Factory.RangeMs(it.start, it.end) }.toTypedArray()
+                val rotation = model.playerModel.rotation.value
+                val cropRect = if (model.cropHandler.maskViewModel.isCropped.value) model.cropHandler.maskViewModel.cropRect(size.width, size.height).asRect else null
+                val positionMs = model.playerModel.currentPosition
+                val durationMs = model.playerModel.naturalDuration.value
+                return VideoSourceInfoImpl(source, ranges, rotation, cropRect, null/*for future*/, positionMs, durationMs)
+            }
+        }
+    }
+
     open suspend fun saveFile():Boolean {
         val item = playerModel.currentSource.value ?: return false
         savingNow.mutable.value = true
@@ -53,10 +77,12 @@ open class MediaEditorModel(
                 val bitmap = cropHandler.cropImageModel.crop() ?: return false
                 saveFileHandler.saveImage(bitmap)
             } else if (item.type.lowercase() == "mp4") {
-                val size = playerModel.videoSize.value ?: return false
-                val ranges = chapterEditorHandler.getEnabledRangeList().map { Converter.Factory.RangeMs(it.start, it.end) }.toTypedArray()
-                val cropRect = if (cropHandler.maskViewModel.isCropped.value) cropHandler.maskViewModel.cropRect(size.width, size.height).asRect else null
-                saveFileHandler.saveVideo(ranges, playerModel.rotation.value, cropRect, 1f)
+//                val size = playerModel.videoSize.value ?: return false
+//                val ranges = chapterEditorHandler.getEnabledRangeList().map { Converter.Factory.RangeMs(it.start, it.end) }.toTypedArray()
+//                val cropRect = if (cropHandler.maskViewModel.isCropped.value) cropHandler.maskViewModel.cropRect(size.width, size.height).asRect else null
+//                saveFileHandler.saveVideo(ranges, playerModel.rotation.value, cropRect, 1f)
+                val sourceInfo = VideoSourceInfoImpl.fromModel(this) ?: return false
+                saveFileHandler.saveVideo(sourceInfo)
             } else {
                 false
             }

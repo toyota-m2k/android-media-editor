@@ -3,11 +3,10 @@ package io.github.toyota32k.lib.media.editor.output
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Rect
-import android.net.Uri
 import androidx.core.net.toUri
-import io.github.toyota32k.dialog.broker.pickers.UtCreateFilePicker
 import io.github.toyota32k.lib.media.editor.model.AmeGlobal
 import io.github.toyota32k.lib.media.editor.model.ISaveFileHandler
+import io.github.toyota32k.lib.media.editor.model.IVideoSourceInfo
 import io.github.toyota32k.lib.player.common.TpTempFile
 import io.github.toyota32k.lib.player.model.PlayerControllerModel
 import io.github.toyota32k.logger.UtLog
@@ -81,20 +80,24 @@ interface ISaveImageTask: ISaveFileTask {
 }
 
 interface IVideoStrategySelector {
-    suspend fun getVideoStrategy(inputFile: IInputMediaFile, currentPositionMs:Long, trimmingRanges:Array<Converter.Factory.RangeMs>?): IVideoStrategy?
+    suspend fun getVideoStrategy(inputFile: IInputMediaFile, sourceInfo: IVideoSourceInfo): IVideoStrategy?
 }
+interface IVideoStrategyAndHdrSelector : IVideoStrategySelector {
+    val keepHdr: Boolean
+}
+
 interface IAudioStrategySelector {
-    suspend fun getAudioStrategy(inputFile: IInputMediaFile, currentPositionMs:Long, trimmingRanges:Array<Converter.Factory.RangeMs>?): IAudioStrategy?
+    suspend fun getAudioStrategy(inputFile: IInputMediaFile, sourceInfo: IVideoSourceInfo): IAudioStrategy?
 }
 
 object DefaultAudioStrategySelector: IAudioStrategySelector {
-    override suspend fun getAudioStrategy(inputFile: IInputMediaFile, currentPositionMs: Long, trimmingRanges: Array<Converter.Factory.RangeMs>?): IAudioStrategy? {
+    override suspend fun getAudioStrategy(inputFile: IInputMediaFile, sourceInfo: IVideoSourceInfo): IAudioStrategy? {
         return PresetAudioStrategies.AACDefault
     }
 }
 
 class SingleVideoStrategySelector(val strategy:IVideoStrategy): IVideoStrategySelector {
-    suspend override fun getVideoStrategy(inputFile: IInputMediaFile, currentPositionMs:Long, trimmingRanges:Array<Converter.Factory.RangeMs>?): IVideoStrategy? {
+    suspend override fun getVideoStrategy(inputFile: IInputMediaFile, sourceInfo: IVideoSourceInfo): IVideoStrategy? {
         return strategy
     }
 }
@@ -156,36 +159,39 @@ class GenericSaveFileHandler(
         }
     }
 
-    override suspend fun saveVideo(trimmingRanges: Array<Converter.Factory.RangeMs>?, rotation: Int, cropRect: Rect?, brightness: Float?): Boolean {
-        val source = playerControllerModel.playerModel.currentSource.value ?: return false
+    override suspend fun saveVideo(sourceInfo: IVideoSourceInfo): Boolean {
+        val source = sourceInfo.source
         val task = startSaveTask(TaskKind.SAVE_VIDEO) as? ISaveVideoTask ?: return false
-        val position = playerControllerModel.playerModel.currentPosition
         val inputFile = source.uri.toUri().toAndroidFile(applicationContext)
-        val videoStrategy = task.getVideoStrategy(inputFile, position, trimmingRanges) ?: return false
-        val audioStrategy = task.getAudioStrategy(inputFile, position, trimmingRanges) ?: return false
+        val videoStrategy = task.getVideoStrategy(inputFile, sourceInfo) ?: return false
+        val audioStrategy = task.getAudioStrategy(inputFile, sourceInfo) ?: return false
 
         try {
             val outputFile = task.getOutputFile() ?: return false
             if (task.fastStart) {
-                return convertAndOptimize(task, videoStrategy, audioStrategy, inputFile, outputFile, trimmingRanges, rotation, cropRect, brightness)
+                return convertAndOptimize(task, videoStrategy, audioStrategy, inputFile, outputFile, sourceInfo)
             } else {
-                return convertOnly(task, videoStrategy, audioStrategy, outputFile, inputFile, trimmingRanges, rotation, cropRect, brightness)
+                return convertOnly(task, videoStrategy, audioStrategy, outputFile, inputFile, sourceInfo)
             }
         } finally {
             task.onFinished()
         }
     }
 
-    private suspend fun convertOnly(task:ISaveVideoTask, videoStrategy: IVideoStrategy, audioStrategy:IAudioStrategy, outputFile: AndroidFile, inputFile: IInputMediaFile, trimmingRanges: Array<Converter.Factory.RangeMs>?, rotation: Int, cropRect: Rect?, brightness: Float?):Boolean {
+    private suspend fun convertOnly(task:ISaveVideoTask, videoStrategy: IVideoStrategy, audioStrategy:IAudioStrategy, outputFile: AndroidFile, inputFile: IInputMediaFile, sourceInfo: IVideoSourceInfo):Boolean {
         return try {
+            val trimmingRanges = sourceInfo.trimmingRanges
+            val rotation: Int = sourceInfo.rotation
+            val cropRect: Rect? = sourceInfo.cropRect
+            val brightness:Float? = sourceInfo.brightness
             // Trimming and Conversion
             val result = if (cropRect == null && brightness == null && !Converter.checkReEncodingNecessity(inputFile, videoStrategy)) {
-                if (trimmingRanges == null) {
+                if (trimmingRanges.isEmpty()) {
                     logger.warn("maybe no effect")
                 }
-                trimmingWithNoReEncoding(task, inputFile, outputFile, trimmingRanges, rotation)
+                trimmingWithNoReEncoding(task, inputFile, outputFile, sourceInfo)
             } else {
-                trimmingAndConvert(task, videoStrategy, audioStrategy, inputFile, outputFile, trimmingRanges, rotation, cropRect, brightness)
+                trimmingAndConvert(task, videoStrategy, audioStrategy, inputFile, outputFile, sourceInfo)
             }
             task.onEnd(SaveTaskStatus.CONVERTING, result)
             result.succeeded
@@ -197,20 +203,23 @@ class GenericSaveFileHandler(
         }
     }
 
-    private suspend fun convertAndOptimize(task: ISaveFileTask, videoStrategy: IVideoStrategy, audioStrategy:IAudioStrategy, inputFile: IInputMediaFile, outputFile:AndroidFile, trimmingRanges: Array<Converter.Factory.RangeMs>?, rotation: Int, cropRect: Rect?, brightness: Float?):Boolean {
+    private suspend fun convertAndOptimize(task: ISaveFileTask, videoStrategy: IVideoStrategy, audioStrategy:IAudioStrategy, inputFile: IInputMediaFile, outputFile:AndroidFile, sourceInfo: IVideoSourceInfo):Boolean {
         TpTempFile(applicationContext, "ame-", ".mp4").use { tempFile ->
+            val trimmingRanges = sourceInfo.trimmingRanges
+            val rotation: Int = sourceInfo.rotation
+            val cropRect: Rect? = sourceInfo.cropRect
+            val brightness:Float? = sourceInfo.brightness
             var converted:Boolean = false
             val intermediateFile: AndroidFile = tempFile.file.toAndroidFile()
-            val videoTask = task as? ISaveVideoTask
             try {
                 // Trimming and Conversion
                 val result = if (cropRect == null && brightness == null && !Converter.checkReEncodingNecessity(inputFile, videoStrategy)) {
-                    if (trimmingRanges == null) {
+                    if (trimmingRanges.isEmpty()) {
                         logger.warn("maybe no effect")
                     }
-                    trimmingWithNoReEncoding(task, inputFile, intermediateFile, trimmingRanges, rotation)
+                    trimmingWithNoReEncoding(task, inputFile, intermediateFile, sourceInfo)
                 } else {
-                    trimmingAndConvert(task, videoStrategy, audioStrategy, inputFile, intermediateFile, trimmingRanges, rotation, cropRect, brightness)
+                    trimmingAndConvert(task, videoStrategy, audioStrategy, inputFile, intermediateFile, sourceInfo)
                 }
                 task.onEnd(SaveTaskStatus.CONVERTING, result)
                 if (!result.succeeded) {
@@ -233,9 +242,14 @@ class GenericSaveFileHandler(
         }
     }
 
-    private suspend fun trimmingAndConvert(task:ISaveFileTask, videoStrategy: IVideoStrategy, audioStrategy:IAudioStrategy, inputFile: IInputMediaFile, outputFile: IOutputMediaFile, trimmingRanges: Array<Converter.Factory.RangeMs>?, rotation: Int, cropRect: Rect?, brightness: Float?): ISaveVideoTask.SaveVideoResult {
+    private suspend fun trimmingAndConvert(task:ISaveFileTask, videoStrategy: IVideoStrategy, audioStrategy:IAudioStrategy, inputFile: IInputMediaFile, outputFile: IOutputMediaFile, sourceInfo: IVideoSourceInfo): ISaveVideoTask.SaveVideoResult {
         return try {
             val videoTask = task as? ISaveVideoTask
+            val trimmingRanges = sourceInfo.trimmingRanges
+            val rotation: Int = sourceInfo.rotation
+            val cropRect: Rect? = sourceInfo.cropRect
+            val brightness:Float? = sourceInfo.brightness
+
             val converter = Converter.factory
                 .input(inputFile)
                 .output(outputFile)
@@ -243,7 +257,7 @@ class GenericSaveFileHandler(
                 .audioStrategy(audioStrategy)
                 .keepHDR(videoTask?.keepHdr ?: true)
                 .apply {
-                    if(trimmingRanges!=null) {
+                    if(trimmingRanges.isNotEmpty()) {
                         addTrimmingRanges(*trimmingRanges)
                     }
                     if (rotation!=0) {
@@ -272,9 +286,12 @@ class GenericSaveFileHandler(
         }
     }
 
-    private suspend fun trimmingWithNoReEncoding(task:ISaveFileTask, inputFile: IInputMediaFile, outputFile: IOutputMediaFile, trimmingRanges: Array<Converter.Factory.RangeMs>?, rotation: Int): ISaveVideoTask.SaveVideoResult {
+    private suspend fun trimmingWithNoReEncoding(task:ISaveFileTask, inputFile: IInputMediaFile, outputFile: IOutputMediaFile, sourceInfo: IVideoSourceInfo): ISaveVideoTask.SaveVideoResult {
         return try {
-            val videoTask = task as? ISaveVideoTask
+            val trimmingRanges = sourceInfo.trimmingRanges
+            val rotation: Int = sourceInfo.rotation
+//            val cropRect: Rect? = sourceInfo.cropRect
+//            val brightness:Float? = sourceInfo.brightness
             val splitter = Splitter.Factory(inputFile)
                 .apply {
                     if (rotation!=0) {
@@ -288,8 +305,8 @@ class GenericSaveFileHandler(
             task.onStart(SaveTaskStatus.CONVERTING) {
                 splitter.cancel()
             }
-            splitter.trim(outputFile, *(trimmingRanges?:emptyArray())).let { tr->
-                val adjustedRanges = if (trimmingRanges!=null) splitter.adjustedRangeList(trimmingRanges) else null
+            splitter.trim(outputFile, *trimmingRanges).let { tr->
+                val adjustedRanges = if (trimmingRanges.isNotEmpty()) splitter.adjustedRangeList(trimmingRanges) else null
                 ISaveVideoTask.SaveVideoResult(ConvertResult(tr.succeeded, adjustedRanges, report=null, tr.cancelled, null, tr.error))
             }
         } catch(e:Throwable) {

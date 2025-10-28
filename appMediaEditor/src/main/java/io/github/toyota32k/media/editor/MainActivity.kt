@@ -27,6 +27,7 @@ import io.github.toyota32k.lib.media.editor.model.IMediaSourceWithMutableChapter
 import io.github.toyota32k.lib.media.editor.model.MediaEditorModel
 import io.github.toyota32k.lib.media.editor.output.DefaultAudioStrategySelector
 import io.github.toyota32k.lib.media.editor.output.GenericSaveFileHandler
+import io.github.toyota32k.lib.media.editor.output.InteractiveVideoStrategySelector
 import io.github.toyota32k.lib.media.editor.output.SingleVideoStrategySelector
 import io.github.toyota32k.lib.player.model.IMediaSource
 import io.github.toyota32k.lib.player.model.IMutableChapterList
@@ -110,7 +111,7 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
             .setSaveFileHandler { controllerModel ->
                 GenericSaveFileHandler.create(true, application,
                     controllerModel,
-                    SingleVideoStrategySelector(PresetVideoStrategies.AVC720Profile),
+                    InteractiveVideoStrategySelector(),
                     DefaultAudioStrategySelector)
 
             }

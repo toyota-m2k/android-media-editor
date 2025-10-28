@@ -145,7 +145,7 @@ class SelectQualityDialog : UtDialogEx() {
             convertHelper = helper
             val trimmedDuration = convertHelper.trimmedDuration
             estimatedSizes.forEach { (quality, flow) ->
-                flow.value = quality.estimateSize(trimmedDuration) ?: convertHelper.inputFile.getLength() * convertHelper.trimmedDuration / convertHelper.durationMs
+                flow.value = quality.estimateSize(trimmedDuration) ?: (convertHelper.inputFile.getLength() * convertHelper.trimmedDuration / convertHelper.durationMs)
             }
             durationText = TimeSpan(trimmedDuration).formatAuto()
         }

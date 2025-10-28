@@ -76,7 +76,7 @@ class VideoPreviewDialog : UtDialogEx() {
 
     val viewModel by lazy { getViewModel<VideoPreviewViewModel>() }
     lateinit var controls: DialogVideoPreviewBinding
-    private val gestureInterpreter = UtGestureInterpreter(context.applicationContext, enableScaleEvent = true)
+    private val gestureInterpreter by lazy { UtGestureInterpreter(context.applicationContext, enableScaleEvent = true) }
     private val manipulationAgent by lazy { UtManipulationAgent(UtSimpleManipulationTarget(controls.videoViewer, controls.videoViewer.controls.player)) }
 
     override fun createBodyView(savedInstanceState: Bundle?, inflater: IViewInflater): View {

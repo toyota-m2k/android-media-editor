@@ -1,13 +1,10 @@
 package io.github.toyota32k.lib.media.editor.output
 
-import android.content.Context
 import io.github.toyota32k.dialog.broker.IUtActivityBrokerStoreProvider
-import io.github.toyota32k.dialog.broker.pickers.UtCreateFilePicker
 import io.github.toyota32k.dialog.task.UtImmortalTaskManager
 import io.github.toyota32k.lib.media.editor.dialog.ProgressDialog
 import io.github.toyota32k.lib.media.editor.dialog.ProgressDialog.Companion.showProgressDialog
 import io.github.toyota32k.lib.media.editor.model.AmeGlobal
-import io.github.toyota32k.lib.media.editor.output.GenericSaveVideoTask.Companion.getInitialFileName
 import io.github.toyota32k.lib.media.editor.output.GenericSaveVideoTask.Companion.selectFile
 import io.github.toyota32k.logger.UtLog
 import io.github.toyota32k.media.lib.converter.AndroidFile
@@ -18,7 +15,7 @@ import io.github.toyota32k.media.lib.converter.toAndroidFile
 open class GenericSaveVideoTask(
     val videoStrategySelector: IVideoStrategySelector,
     val audioStrategySelector: IAudioStrategySelector,
-    override val keepHdr: Boolean,
+    private val mKeepHdr: Boolean,
     override val fastStart: Boolean,
     private val outputFile: AndroidFile,
 ) : ISaveVideoTask, IProgressSink, IVideoStrategySelector by videoStrategySelector, IAudioStrategySelector by audioStrategySelector {
@@ -26,6 +23,14 @@ open class GenericSaveVideoTask(
     override suspend fun getOutputFile(): AndroidFile? {
         return outputFile
     }
+
+    override val keepHdr: Boolean
+        get() = if (videoStrategySelector is IVideoStrategyAndHdrSelector) {
+                videoStrategySelector.keepHdr
+            } else {
+                mKeepHdr
+            }
+
 
     var progressSink: ProgressDialog.ProgressSink? = null
     override suspend fun onStart(taskStatus: SaveTaskStatus, canceller: ICanceller?) {

@@ -1,0 +1,28 @@
+package io.github.toyota32k.lib.media.editor.output
+
+import io.github.toyota32k.dialog.task.UtImmortalTask
+import io.github.toyota32k.lib.media.editor.dialog.SelectQualityDialog
+import io.github.toyota32k.lib.media.editor.model.ConvertHelper
+import io.github.toyota32k.lib.media.editor.model.IVideoSourceInfo
+import io.github.toyota32k.media.lib.converter.Converter
+import io.github.toyota32k.media.lib.converter.IInputMediaFile
+import io.github.toyota32k.media.lib.converter.Rotation
+import io.github.toyota32k.media.lib.strategy.IVideoStrategy
+import java.lang.IllegalStateException
+
+class InteractiveVideoStrategySelector() : IVideoStrategyAndHdrSelector {
+    private var mKeepHdr:Boolean? = null
+    override val keepHdr: Boolean
+        get() = mKeepHdr ?: throw IllegalStateException("call getVideoStrategy first")
+
+    override suspend fun getVideoStrategy(inputFile: IInputMediaFile, sourceInfo: IVideoSourceInfo): IVideoStrategy? {
+        return UtImmortalTask.awaitTaskResult("SelectVideoStrategy") {
+            val helper = ConvertHelper(inputFile, null, true, Rotation(sourceInfo.rotation, true), sourceInfo.trimmingRanges, sourceInfo.durationMs)
+            SelectQualityDialog.show(true, helper, sourceInfo.positionMs)?.run {
+                mKeepHdr = keepHdr
+                quality.strategy
+            }
+        }
+    }
+
+}
