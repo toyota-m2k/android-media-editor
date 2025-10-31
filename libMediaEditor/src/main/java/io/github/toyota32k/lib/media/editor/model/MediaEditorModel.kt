@@ -1,5 +1,6 @@
 package io.github.toyota32k.lib.media.editor.model
 
+import android.graphics.Bitmap
 import android.graphics.Rect
 import io.github.toyota32k.lib.player.model.IMediaSource
 import io.github.toyota32k.lib.player.model.IPlayerModel
@@ -47,6 +48,11 @@ open class MediaEditorModel(
     open fun onMagnifyTimeline() {}
 
 
+    class ImageSourceInfoImpl(
+        override val source: IMediaSource,
+        override val editedBitmap: Bitmap
+    ) : IImageSourceInfo
+
     class VideoSourceInfoImpl(
         override val source: IMediaSource,
         override val trimmingRanges: Array<Converter.Factory.RangeMs>,
@@ -75,7 +81,8 @@ open class MediaEditorModel(
         return try {
             if (item.isPhoto) {
                 val bitmap = cropHandler.cropImageModel.crop() ?: return false
-                saveFileHandler.saveImage(bitmap)
+                val sourceInfo = ImageSourceInfoImpl(item, bitmap)
+                saveFileHandler.saveImage(sourceInfo)
             } else if (item.type.lowercase() == "mp4") {
 //                val size = playerModel.videoSize.value ?: return false
 //                val ranges = chapterEditorHandler.getEnabledRangeList().map { Converter.Factory.RangeMs(it.start, it.end) }.toTypedArray()

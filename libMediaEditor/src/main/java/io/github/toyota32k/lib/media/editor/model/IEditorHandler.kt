@@ -80,8 +80,11 @@ object NoopSplitHandler : ISplitHandler {
     override suspend fun splitVideoAt(targetSource: IMediaSource, positionMs: Long):Boolean { return false }
 }
 
-interface IVideoSourceInfo {
+interface ISourceInfo {
     val source: IMediaSource
+}
+
+interface IVideoSourceInfo: ISourceInfo {
     val trimmingRanges:Array<RangeMs>
     val rotation:Int/*in degree*/
     val cropRect:Rect?
@@ -90,9 +93,14 @@ interface IVideoSourceInfo {
     val durationMs: Long
 }
 
+interface IImageSourceInfo : ISourceInfo {
+    val editedBitmap: Bitmap
+}
+
 interface ISaveFileHandler {
     val showSaveButton: Flow<Boolean>   // ダイアログで使用する場合などにfalseにして、保存時には、MediaEditorModel#saveFile() を利用する
-    suspend fun saveImage(newBitmap:Bitmap):Boolean
+    var overwrite: Boolean
+    suspend fun saveImage(sourceInfo: IImageSourceInfo):Boolean
     suspend fun saveVideo(sourceInfo:IVideoSourceInfo):Boolean
 }
 
