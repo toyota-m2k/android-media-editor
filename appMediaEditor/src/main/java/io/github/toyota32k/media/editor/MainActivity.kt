@@ -15,6 +15,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewModelScope
 import io.github.toyota32k.binder.Binder
 import io.github.toyota32k.binder.clickBinding
+import io.github.toyota32k.binder.command.bindCommand
 import io.github.toyota32k.binder.observe
 import io.github.toyota32k.binder.visibilityBinding
 import io.github.toyota32k.dialog.broker.IUtActivityBrokerStoreProvider
@@ -36,6 +37,7 @@ import io.github.toyota32k.lib.media.editor.output.SingleVideoStrategySelector
 import io.github.toyota32k.lib.player.model.IMediaSource
 import io.github.toyota32k.lib.player.model.IMutableChapterList
 import io.github.toyota32k.lib.player.model.PlayerControllerModel
+import io.github.toyota32k.lib.player.model.PlayerControllerModel.WindowMode
 import io.github.toyota32k.lib.player.model.Range
 import io.github.toyota32k.lib.player.model.chapter.MutableChapterList
 import io.github.toyota32k.logger.UtLog
@@ -48,6 +50,8 @@ import io.github.toyota32k.media.lib.strategy.PresetVideoStrategies
 import io.github.toyota32k.utils.android.CompatBackKeyDispatcher
 import io.github.toyota32k.utils.android.setLayoutWidth
 import io.github.toyota32k.utils.asCloseable
+import io.github.toyota32k.utils.gesture.Direction
+import io.github.toyota32k.utils.gesture.UtScaleGestureManager
 import io.github.toyota32k.utils.toggle
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
@@ -210,6 +214,7 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
     }
 
     private val viewModel by viewModels<MainViewModel>()
+    private lateinit var gestureManager: UtScaleGestureManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -227,6 +232,23 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
                 finish()
             }
         }
+
+        // Gesture / Scaling
+        gestureManager = UtScaleGestureManager(this.applicationContext, enableDoubleTap = true, controls.editorPlayerView.manipulationTarget, minScale = 1f)
+            .setup(this) {
+                onTap {
+                    viewModel.editorModel.playerModel.togglePlay()
+                }
+                onDoubleTap {
+                    gestureManager.agent.resetScrollAndScale()
+                }
+                onFlickHorizontal { event->
+                    when(event.direction) {
+                        Direction.Start -> viewModel.requestShowPanel.value = false
+                        Direction.End -> viewModel.requestShowPanel.value = true
+                    }
+                }
+            }
 
         val AnimDuration = 200L
         binder
@@ -277,11 +299,26 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
                 viewModel.localData.editingUri = null
                 viewModel.targetMediaSource.value = null
             }
+            .observe(viewModel.editorModel.cropHandler.croppingNow) {
+                if (it) {
+                    gestureManager.agent.resetScrollAndScale()
+                }
+                enableGestureManager(!it)
+            }
         controls.editorPlayerView.bindViewModel(viewModel.editorModel, binder)
         window.addFlags(
             WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON  // スリープしない
         )
         viewModel.restoreFromLocalData()
+    }
+
+    private fun enableGestureManager(sw:Boolean) {
+        val view = gestureManager.manipulationTarget.parentView
+        if (sw) {
+            gestureManager.gestureInterpreter.attachView(view)
+        } else {
+            gestureManager.gestureInterpreter.detachView(view)
+        }
     }
 
     private fun openMediaFile() {
