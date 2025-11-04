@@ -132,7 +132,6 @@ class ConvertHelper(
             vm.message.value = "Trimming Now..."
             val trimFile = File(applicationContext.cacheDir ?: throw IllegalStateException("no cacheDir"), trimFileName)
             val splitter = Splitter.Factory()
-                .input(inputFile)
                 .rotate(rotation)
                 .setProgressHandler {
                     vm.progress.value = it.percentage
@@ -144,7 +143,7 @@ class ConvertHelper(
 
             withContext(Dispatchers.IO) {
                 try {
-                    val r = splitter.trim(trimFile.toAndroidFile(), *ranges)
+                    val r = splitter.trim(inputFile, trimFile.toAndroidFile(), *ranges)
                     if (!r.succeeded) {
                         throw r.error ?: IllegalStateException("unknown error")
                     }

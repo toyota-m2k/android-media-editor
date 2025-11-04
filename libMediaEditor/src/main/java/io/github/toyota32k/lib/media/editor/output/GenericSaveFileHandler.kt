@@ -4,11 +4,11 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Rect
 import androidx.core.net.toUri
+import io.github.toyota32k.lib.media.editor.dialog.NoReEncodeStrategy
 import io.github.toyota32k.lib.media.editor.model.AmeGlobal
 import io.github.toyota32k.lib.media.editor.model.IImageSourceInfo
 import io.github.toyota32k.lib.media.editor.model.ISaveFileHandler
 import io.github.toyota32k.lib.media.editor.model.IVideoSourceInfo
-import io.github.toyota32k.lib.player.common.TpTempFile
 import io.github.toyota32k.lib.player.model.PlayerControllerModel
 import io.github.toyota32k.logger.UtLog
 import io.github.toyota32k.media.lib.converter.AndroidFile
@@ -169,6 +169,8 @@ class GenericSaveFileHandler(
         val inputFile = source.uri.toUri().toAndroidFile(applicationContext)
         val videoStrategy = task.getVideoStrategy(inputFile, sourceInfo) ?: return false
         val audioStrategy = task.getAudioStrategy(inputFile, sourceInfo) ?: return false
+        val noReEncoding = videoStrategy== NoReEncodeStrategy || (sourceInfo.cropRect == null && sourceInfo.brightness == null && !Converter.checkReEncodingNecessity(inputFile, videoStrategy))
+
         return WorkFileMediator(applicationContext, inputFile, overwrite, task.fastStart, task.outputFile).use { mediator ->
             try {
                 // コンバート前に出力ファイルを選択しておく。
@@ -180,11 +182,8 @@ class GenericSaveFileHandler(
                 // stage1: Convert/Trimming
                 val stage1 = mediator.firstStage { inFile, outFile ->
                     val trimmingRanges = sourceInfo.trimmingRanges
-                    val rotation: Int = sourceInfo.rotation
-                    val cropRect: Rect? = sourceInfo.cropRect
-                    val brightness: Float? = sourceInfo.brightness
                     // Trimming and Conversion
-                    val result = if (cropRect == null && brightness == null && !Converter.checkReEncodingNecessity(inputFile, videoStrategy)) {
+                    val result = if (noReEncoding) {
                         if (trimmingRanges.isEmpty()) {
                             logger.warn("maybe no effect")
                         }
@@ -269,7 +268,7 @@ class GenericSaveFileHandler(
             val rotation: Int = sourceInfo.rotation
 //            val cropRect: Rect? = sourceInfo.cropRect
 //            val brightness:Float? = sourceInfo.brightness
-            val splitter = Splitter.Factory(inputFile)
+            val splitter = Splitter.Factory()
                 .apply {
                     if (rotation!=0) {
                         rotate(Rotation(rotation, true))
@@ -282,7 +281,7 @@ class GenericSaveFileHandler(
             task.onStart(SaveTaskStatus.CONVERTING) {
                 splitter.cancel()
             }
-            splitter.trim(outputFile, *trimmingRanges).let { tr->
+            splitter.trim(inputFile,outputFile, *trimmingRanges).let { tr->
                 val adjustedRanges = if (trimmingRanges.isNotEmpty()) splitter.adjustedRangeList(trimmingRanges) else null
                 ISaveVideoTask.SaveVideoResult(ConvertResult(tr.succeeded, adjustedRanges, report=null, tr.cancelled, null, tr.error))
             }

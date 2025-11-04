@@ -84,7 +84,8 @@ interface ISourceInfo {
     val source: IMediaSource
 }
 
-interface IVideoSourceInfo: ISourceInfo {
+interface IVideoSourceInfo {
+    val source: IMediaSource
     val trimmingRanges:Array<RangeMs>
     val rotation:Int/*in degree*/
     val cropRect:Rect?

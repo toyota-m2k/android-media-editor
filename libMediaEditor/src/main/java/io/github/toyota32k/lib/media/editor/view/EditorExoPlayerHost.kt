@@ -168,7 +168,7 @@ class EditorExoPlayerHost  @JvmOverloads constructor(context: Context, attrs: At
                 inverseInvisible(exoPlayer)
             }
             .conditional( model.playerModel.isPhotoViewerEnabled ) {
-                model.playerModel.attachPhotoView(photoView)
+                add(model.playerModel.attachPhotoView(photoView))
                 visibilityBinding(photoAltView, combine(model.cropHandler.cropImageModel.isResolutionChanged, model.playerModel.isCurrentSourcePhoto) {r,p-> r && p })
                 observe(model.cropHandler.cropImageModel.bitmapScaler.bitmap) { bmp-> photoAltView.setImageBitmap(bmp) }
             }

@@ -6,6 +6,7 @@ import io.github.toyota32k.logger.UtLog
 import io.github.toyota32k.lib.media.editor.view.CropMaskView
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import org.json.JSONObject
 import kotlin.math.roundToInt
 
 /**
@@ -30,9 +31,27 @@ data class MaskCoreParams(
             )
         }
         val IDENTITY:MaskCoreParams = MaskCoreParams(0f, 0f, 1f, 1f)
+        fun fromJson(json:String?):MaskCoreParams {
+            if (json==null) return IDENTITY
+            val obj = JSONObject(json)
+            return MaskCoreParams(
+                obj.getDouble("rsx").toFloat(),
+                obj.getDouble("rsy").toFloat(),
+                obj.getDouble("rex").toFloat(),
+                obj.getDouble("rey").toFloat(),
+            )
+        }
     }
     val isIdentity:Boolean get() {
         return rsx==0f && rsy==0f && rex==1f && rey==1f
+    }
+    fun serialize():String {
+        return JSONObject().apply {
+            put("rsx", rsx)
+            put("rsy", rsy)
+            put("rex", rex)
+            put("rey", rey)
+        }.toString()
     }
 }
 

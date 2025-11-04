@@ -3,12 +3,15 @@ package io.github.toyota32k.media.editor
 import android.app.Application
 import android.graphics.Bitmap
 import android.graphics.Rect
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.ViewGroup
+import android.view.WindowManager
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewModelScope
 import io.github.toyota32k.binder.Binder
 import io.github.toyota32k.binder.clickBinding
@@ -24,6 +27,7 @@ import io.github.toyota32k.dialog.task.UtImmortalTask
 import io.github.toyota32k.lib.media.editor.output.AbstractSaveFileHandler
 import io.github.toyota32k.lib.media.editor.model.AbstractSplitHandler
 import io.github.toyota32k.lib.media.editor.model.IMediaSourceWithMutableChapterList
+import io.github.toyota32k.lib.media.editor.model.MaskCoreParams
 import io.github.toyota32k.lib.media.editor.model.MediaEditorModel
 import io.github.toyota32k.lib.media.editor.output.DefaultAudioStrategySelector
 import io.github.toyota32k.lib.media.editor.output.GenericSaveFileHandler
@@ -43,10 +47,13 @@ import io.github.toyota32k.media.lib.converter.toAndroidFile
 import io.github.toyota32k.media.lib.strategy.PresetVideoStrategies
 import io.github.toyota32k.utils.android.CompatBackKeyDispatcher
 import io.github.toyota32k.utils.android.setLayoutWidth
+import io.github.toyota32k.utils.asCloseable
 import io.github.toyota32k.utils.toggle
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicLong
 
 class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
@@ -85,12 +92,15 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
     }
 
     class MainViewModel(application: Application): AndroidViewModel(application) {
-        inner class SplitHandler : AbstractSplitHandler(true) {
+        class SplitHandler : AbstractSplitHandler(true) {
             override suspend fun splitVideoAt(targetSource: IMediaSource, positionMs: Long): Boolean {
                 TODO("Not yet implemented")
             }
 
         }
+
+        val localData = LocalData(application)
+
 
         val editorModel = MediaEditorModel.Builder(
             PlayerControllerModel.Builder(application, viewModelScope)
@@ -113,7 +123,6 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
                     controllerModel,
                     InteractiveVideoStrategySelector(),
                     DefaultAudioStrategySelector)
-
             }
             .build()
 
@@ -151,7 +160,53 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
                 requestShowPanel-> ViewState.HALF
                 else-> ViewState.NONE
             }
+        }.stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.Eagerly, ViewState.FULL)
+
+
+        fun openMediaFile(file: Uri, serializedChapters:String? = null, serializedCropParams:String? = null):MediaSource? {
+            val orgSource = targetMediaSource.value
+            if (orgSource?.file?.uri == file) return orgSource
+            val source = MediaSource.fromFile(file.toAndroidFile(getApplication()))?.apply {
+                if (!isPhoto) {
+                    chapterList.deserialize(serializedChapters)
+                }
+            } ?: return null
+            localData.editingUri = file
+            targetMediaSource.value = source
+            editorModel.playerModel.setSource(source)
+            requestShowPanel.value = false
+            if (serializedCropParams!=null) {
+                editorModel.cropHandler.maskViewModel.setParams(MaskCoreParams.fromJson(serializedCropParams))
+            }
+            return source
         }
+
+        fun storeToLocalData() {
+            localData.apply {
+                val source = targetMediaSource.value
+                serializedChapters = source?.chapterList?.serialize()
+                serializedCropParams = editorModel.cropHandler.maskViewModel.getParams().serialize()
+                if (source!=null && !source.isPhoto) {
+                    playPosition = editorModel.playerModel.currentPosition
+                    isPlaying = editorModel.playerModel.isPlaying.value
+                } else {
+                    playPosition = 0
+                    isPlaying = false
+                }
+            }
+        }
+
+        fun restoreFromLocalData() {
+            localData.editingUri?.also { file ->
+                val source = openMediaFile(file, localData.serializedChapters, localData.serializedCropParams) ?: return@also
+                if (source.isPhoto) return
+                editorModel.playerModel.seekTo(localData.playPosition)
+                if (localData.isPlaying) {
+                    editorModel.playerControllerModel.commandPlay.invoke()
+                }
+            }
+        }
+
     }
 
     private val viewModel by viewModels<MainViewModel>()
@@ -211,22 +266,37 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
             .clickBinding(controls.buttonOpen) {
                 openMediaFile()
             }
+            .clickBinding(controls.buttonSave) {
+                lifecycleScope.launch {
+                    viewModel.editorModel.playerControllerModel.commandPause.invoke()
+                    viewModel.storeToLocalData()
+                    (viewModel.editorModel.saveFileHandler as GenericSaveFileHandler).overwrite = true
+                    viewModel.editorModel.saveFile()
+                    (viewModel.editorModel.saveFileHandler as GenericSaveFileHandler).overwrite = false
+                }
+            }
             .clickBinding(controls.buttonClose) {
+                viewModel.localData.editingUri = null
                 viewModel.targetMediaSource.value = null
             }
         controls.editorPlayerView.bindViewModel(viewModel.editorModel, binder)
+        window.addFlags(
+            WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON  // スリープしない
+        )
+        viewModel.restoreFromLocalData()
     }
-
 
     private fun openMediaFile() {
         UtImmortalTask.launchTask {
             val file = activityBrokers.openFilePicker.selectFile(arrayOf("video/*", "image/*"))
             if (file != null) {
-                val source = MediaSource.fromFile(file.toAndroidFile(applicationContext)) ?: return@launchTask
-                viewModel.targetMediaSource.value = source
-                viewModel.editorModel.playerModel.setSource(source)
-                viewModel.requestShowPanel.value = false
+                viewModel.openMediaFile(file)
             }
         }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        viewModel.storeToLocalData()
     }
 }

@@ -65,7 +65,9 @@ class WorkFileMediator(val applicationContext: Context, val inFile: AndroidFile,
      * @throws CancellationException
      */
     suspend fun setupOutputFile() {
-        ensureOutputFile()
+        if (!overwrite) {
+            ensureOutputFile()
+        }
     }
 
 
