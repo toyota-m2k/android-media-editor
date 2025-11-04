@@ -24,7 +24,7 @@ class LocalData(val application: Application) {
                 contentResolver.releasePersistableUriPermission(oldValue.toUri(),Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
             }
             if (value!=null) {
-                contentResolver.takePersistableUriPermission(value, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent . FLAG_GRANT_WRITE_URI_PERMISSION)
+                contentResolver.takePersistableUriPermission(value, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
             }
             persistedEditingUri = value?.toString()
         }

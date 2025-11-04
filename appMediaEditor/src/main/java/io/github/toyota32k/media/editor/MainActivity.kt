@@ -1,9 +1,11 @@
 package io.github.toyota32k.media.editor
 
+import android.Manifest
 import android.app.Application
 import android.graphics.Bitmap
 import android.graphics.Rect
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.ViewGroup
@@ -20,11 +22,14 @@ import io.github.toyota32k.binder.observe
 import io.github.toyota32k.binder.visibilityBinding
 import io.github.toyota32k.dialog.broker.IUtActivityBrokerStoreProvider
 import io.github.toyota32k.dialog.broker.UtActivityBrokerStore
+import io.github.toyota32k.dialog.broker.UtMultiPermissionsBroker
 import io.github.toyota32k.dialog.broker.pickers.IUtFilePickerStoreProvider
 import io.github.toyota32k.dialog.broker.pickers.UtCreateFilePicker
+import io.github.toyota32k.dialog.broker.pickers.UtMediaFilePicker
 import io.github.toyota32k.dialog.broker.pickers.UtOpenFilePicker
 import io.github.toyota32k.dialog.mortal.UtMortalActivity
 import io.github.toyota32k.dialog.task.UtImmortalTask
+import io.github.toyota32k.dialog.task.UtImmortalTaskManager
 import io.github.toyota32k.lib.media.editor.output.AbstractSaveFileHandler
 import io.github.toyota32k.lib.media.editor.model.AbstractSplitHandler
 import io.github.toyota32k.lib.media.editor.model.IMediaSourceWithMutableChapterList
@@ -48,6 +53,7 @@ import io.github.toyota32k.media.lib.converter.Converter
 import io.github.toyota32k.media.lib.converter.toAndroidFile
 import io.github.toyota32k.media.lib.strategy.PresetVideoStrategies
 import io.github.toyota32k.utils.android.CompatBackKeyDispatcher
+import io.github.toyota32k.utils.android.px2dp
 import io.github.toyota32k.utils.android.setLayoutWidth
 import io.github.toyota32k.utils.asCloseable
 import io.github.toyota32k.utils.gesture.Direction
@@ -62,7 +68,7 @@ import java.util.concurrent.atomic.AtomicLong
 
 class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
     override val logger = UtLog("Main")
-    override val activityBrokers = UtActivityBrokerStore(this, UtOpenFilePicker(), UtCreateFilePicker())
+    override val activityBrokers = UtActivityBrokerStore(this, UtOpenFilePicker(), UtCreateFilePicker(), UtMultiPermissionsBroker(), UtMediaFilePicker())
     private val binder = Binder()
     private lateinit var controls: ActivityMainBinding
     private val compatBackKeyDispatcher = CompatBackKeyDispatcher()
@@ -219,6 +225,7 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         UtLogConfig.logLevel = Log.VERBOSE
+
         enableEdgeToEdge()
         controls = ActivityMainBinding.inflate(layoutInflater)
         setContentView(controls.root)
@@ -257,17 +264,33 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
                 when (vs) {
                     MainViewModel.ViewState.FULL -> {
                         controls.buttonPane.setLayoutWidth(ViewGroup.LayoutParams.MATCH_PARENT)
+//                        controls.buttonPane.x = controls.root.paddingStart.toFloat()
+//                        logger.debug("INSET(STATE): left=${controls.root.paddingStart}px (${px2dp(controls.root.paddingStart)} dp)")
                         controls.buttonPane.animate()
-                            .x(0f)
+                            .x(controls.root.paddingStart.toFloat())
                             .setDuration(AnimDuration)
+                            .withEndAction {
+                                // padding+アニメーションの気持ちの悪い動作に対応
+                                // setupWindowInsetsListener() で、CUTOUTなどを避けるためにpaddingStartが設定されることがあるが、
+                                // paddingが設定されるタイミングで子ビューのx座標が更新される（paddingの値が加算される）。
+                                // （子ビューの座標系は padding を含んだ値を取るので、paddingが変化すると、それに合わせて座標値が変化する。）
+                                // そのため、子ビューの原点は (0,0) ではなく、(paddingStart, paddingTop) となる。
+                                // ところが、アニメーションによって子ビューの座標を変更していると、アニメーション中に paddingが変化してしまうことがある。
+                                // これによる位置ずれを回避するため、アニメーション終了時に、座標を再設定しておく。
+                                // 謎の隙間が生じる現象があって、原因特定に結構苦労したのでメモしておく。
+                                controls.buttonPane.x = controls.root.paddingStart.toFloat()
+                            }
                             .start()
                     }
 
                     MainViewModel.ViewState.HALF -> {
                         controls.buttonPane.setLayoutWidth(ViewGroup.LayoutParams.WRAP_CONTENT)
                         controls.buttonPane.animate()
-                            .x(0f)
+                            .x(controls.root.paddingStart.toFloat())
                             .setDuration(AnimDuration)
+                            .withEndAction {
+                                controls.buttonPane.x = controls.root.paddingStart.toFloat()
+                            }
                             .start()
                     }
 
@@ -279,6 +302,12 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
                     }
                 }
             }
+//            .add(addRootViewInsetsListener(this){
+//                if (viewModel.viewState.value!= MainViewModel.ViewState.NONE) {
+////                    logger.debug("INSET: left=${it.left}px (${px2dp(it.left)} dp)")
+////                    controls.buttonPane.x = it.left.toFloat()
+//                }
+//            })
             .visibilityBinding(controls.menuButton, combine(viewModel.isEditing, viewModel.editorModel.cropHandler.croppingNow) { isEditing, cropping ->
                 isEditing && !cropping
             })
@@ -310,6 +339,12 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
             WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON  // スリープしない
         )
         viewModel.restoreFromLocalData()
+
+        UtImmortalTaskManager.immortalTaskScope.launch {
+            activityBrokers.multiPermissionBroker.Request()
+                .addIf(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                .execute()
+        }
     }
 
     private fun enableGestureManager(sw:Boolean) {
