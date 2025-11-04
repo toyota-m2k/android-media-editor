@@ -12,7 +12,7 @@ constraintlayout = "2.2.1"
 media3ExoplayerVersion = "1.8.0"
 androidMediaProcessor = "LOCAL"
 androidMediaPlayer = "LOCAL"
-androidDialog = "6.2.0"
+androidDialog = "LOCAL"
 slidingpanelayout = "1.2.0"
 
 [libraries]

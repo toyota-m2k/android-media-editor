@@ -28,7 +28,7 @@
     <!-- button-pane: 上に重ねて表示 -->
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/button_pane"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:minWidth="200dp"
         android:background="?attr/colorSecondaryContainer"
