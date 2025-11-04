@@ -130,7 +130,7 @@ class EditorControlPanel @JvmOverloads constructor(context: Context, attrs: Attr
             }
             .clickBinding(controls.saveVideo) {
                 model.playerModel.scope.launch {
-                    model.saveFile()
+                    model.saveFile(false)
                 }
             }
     }

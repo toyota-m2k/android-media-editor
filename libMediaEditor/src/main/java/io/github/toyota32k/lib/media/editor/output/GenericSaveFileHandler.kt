@@ -30,7 +30,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 
 abstract class AbstractSaveFileHandler(showSaveButton:Boolean) : ISaveFileHandler {
     override val showSaveButton = MutableStateFlow(showSaveButton)
-    override var overwrite: Boolean = false
 }
 
 fun interface ICanceller {
@@ -141,16 +140,16 @@ class GenericSaveFileHandler(
         SAVE_VIDEO,
     }
 
-    override suspend fun saveImage(sourceInfo: IImageSourceInfo): Boolean {
+    override suspend fun saveImage(sourceInfo: IImageSourceInfo, overwrite: Boolean): Boolean {
         val task = startSaveTask(TaskKind.SAVE_IMAGE) ?: return false
         val inputFile = sourceInfo.source.uri.toUri().toAndroidFile(applicationContext)
-        val file = task.outputFile ?: WorkFileMediator.selectFile("image/*", inputFile) ?: return false
+        val outputFile = if (overwrite)  inputFile else task.outputFile ?: WorkFileMediator.selectFile("image/*", inputFile) ?: return false
         try {
             task.onStart(SaveTaskStatus.FINALIZING, null)  // image does not support cancellation
             val (imageFormat, quality) = if (task is ISaveImageTask) {
                 task.imageFormat to task.quality
             } else (Bitmap.CompressFormat.JPEG to 100)
-            file.fileOutputStream { outputStream ->
+            outputFile.fileOutputStream { outputStream ->
                 sourceInfo.editedBitmap.compress(imageFormat, quality, outputStream)
                 outputStream.flush()
             }
@@ -163,7 +162,7 @@ class GenericSaveFileHandler(
         }
     }
 
-    override suspend fun saveVideo(sourceInfo: IVideoSourceInfo): Boolean {
+    override suspend fun saveVideo(sourceInfo: IVideoSourceInfo, overwrite: Boolean): Boolean {
         val source = sourceInfo.source
         val task = startSaveTask(TaskKind.SAVE_VIDEO) as? ISaveVideoTask ?: return false
         val inputFile = source.uri.toUri().toAndroidFile(applicationContext)

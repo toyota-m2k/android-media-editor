@@ -75,21 +75,21 @@ open class MediaEditorModel(
         }
     }
 
-    open suspend fun saveFile():Boolean {
+    open suspend fun saveFile(overwrite:Boolean):Boolean {
         val item = playerModel.currentSource.value ?: return false
         savingNow.mutable.value = true
         return try {
             if (item.isPhoto) {
                 val bitmap = cropHandler.cropImageModel.crop() ?: return false
                 val sourceInfo = ImageSourceInfoImpl(item, bitmap)
-                saveFileHandler.saveImage(sourceInfo)
+                saveFileHandler.saveImage(sourceInfo, overwrite)
             } else if (item.type.lowercase() == "mp4") {
 //                val size = playerModel.videoSize.value ?: return false
 //                val ranges = chapterEditorHandler.getEnabledRangeList().map { Converter.Factory.RangeMs(it.start, it.end) }.toTypedArray()
 //                val cropRect = if (cropHandler.maskViewModel.isCropped.value) cropHandler.maskViewModel.cropRect(size.width, size.height).asRect else null
 //                saveFileHandler.saveVideo(ranges, playerModel.rotation.value, cropRect, 1f)
                 val sourceInfo = VideoSourceInfoImpl.fromModel(this) ?: return false
-                saveFileHandler.saveVideo(sourceInfo)
+                saveFileHandler.saveVideo(sourceInfo, overwrite)
             } else {
                 false
             }

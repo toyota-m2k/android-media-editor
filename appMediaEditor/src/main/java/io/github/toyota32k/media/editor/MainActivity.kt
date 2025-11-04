@@ -270,9 +270,7 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
                 lifecycleScope.launch {
                     viewModel.editorModel.playerControllerModel.commandPause.invoke()
                     viewModel.storeToLocalData()
-                    (viewModel.editorModel.saveFileHandler as GenericSaveFileHandler).overwrite = true
-                    viewModel.editorModel.saveFile()
-                    (viewModel.editorModel.saveFileHandler as GenericSaveFileHandler).overwrite = false
+                    viewModel.editorModel.saveFile(true)
                 }
             }
             .clickBinding(controls.buttonClose) {

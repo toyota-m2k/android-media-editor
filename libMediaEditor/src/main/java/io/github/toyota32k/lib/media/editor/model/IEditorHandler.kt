@@ -100,9 +100,8 @@ interface IImageSourceInfo : ISourceInfo {
 
 interface ISaveFileHandler {
     val showSaveButton: Flow<Boolean>   // ダイアログで使用する場合などにfalseにして、保存時には、MediaEditorModel#saveFile() を利用する
-    var overwrite: Boolean
-    suspend fun saveImage(sourceInfo: IImageSourceInfo):Boolean
-    suspend fun saveVideo(sourceInfo:IVideoSourceInfo):Boolean
+    suspend fun saveImage(sourceInfo: IImageSourceInfo, overwrite:Boolean):Boolean
+    suspend fun saveVideo(sourceInfo:IVideoSourceInfo, overwrite:Boolean):Boolean
 }
 
 interface IMediaSourceWithMutableChapterList : IMediaSourceWithChapter {
