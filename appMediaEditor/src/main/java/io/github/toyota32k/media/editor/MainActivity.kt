@@ -3,7 +3,6 @@ package io.github.toyota32k.media.editor
 import android.Manifest
 import android.app.Application
 import android.graphics.Bitmap
-import android.graphics.Rect
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -17,45 +16,38 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewModelScope
 import io.github.toyota32k.binder.Binder
 import io.github.toyota32k.binder.clickBinding
-import io.github.toyota32k.binder.command.bindCommand
 import io.github.toyota32k.binder.observe
 import io.github.toyota32k.binder.visibilityBinding
 import io.github.toyota32k.dialog.broker.IUtActivityBrokerStoreProvider
 import io.github.toyota32k.dialog.broker.UtActivityBrokerStore
 import io.github.toyota32k.dialog.broker.UtMultiPermissionsBroker
-import io.github.toyota32k.dialog.broker.pickers.IUtFilePickerStoreProvider
 import io.github.toyota32k.dialog.broker.pickers.UtCreateFilePicker
 import io.github.toyota32k.dialog.broker.pickers.UtMediaFilePicker
 import io.github.toyota32k.dialog.broker.pickers.UtOpenFilePicker
 import io.github.toyota32k.dialog.mortal.UtMortalActivity
 import io.github.toyota32k.dialog.task.UtImmortalTask
 import io.github.toyota32k.dialog.task.UtImmortalTaskManager
-import io.github.toyota32k.lib.media.editor.output.AbstractSaveFileHandler
 import io.github.toyota32k.lib.media.editor.model.AbstractSplitHandler
 import io.github.toyota32k.lib.media.editor.model.IMediaSourceWithMutableChapterList
 import io.github.toyota32k.lib.media.editor.model.MaskCoreParams
 import io.github.toyota32k.lib.media.editor.model.MediaEditorModel
 import io.github.toyota32k.lib.media.editor.output.DefaultAudioStrategySelector
 import io.github.toyota32k.lib.media.editor.output.GenericSaveFileHandler
+import io.github.toyota32k.lib.media.editor.output.InteractiveOutputFileProvider
 import io.github.toyota32k.lib.media.editor.output.InteractiveVideoStrategySelector
-import io.github.toyota32k.lib.media.editor.output.SingleVideoStrategySelector
+import io.github.toyota32k.lib.media.editor.output.OverwriteFileProvider
 import io.github.toyota32k.lib.player.model.IMediaSource
 import io.github.toyota32k.lib.player.model.IMutableChapterList
 import io.github.toyota32k.lib.player.model.PlayerControllerModel
-import io.github.toyota32k.lib.player.model.PlayerControllerModel.WindowMode
 import io.github.toyota32k.lib.player.model.Range
 import io.github.toyota32k.lib.player.model.chapter.MutableChapterList
 import io.github.toyota32k.logger.UtLog
 import io.github.toyota32k.logger.UtLogConfig
 import io.github.toyota32k.media.editor.databinding.ActivityMainBinding
 import io.github.toyota32k.media.lib.converter.AndroidFile
-import io.github.toyota32k.media.lib.converter.Converter
 import io.github.toyota32k.media.lib.converter.toAndroidFile
-import io.github.toyota32k.media.lib.strategy.PresetVideoStrategies
 import io.github.toyota32k.utils.android.CompatBackKeyDispatcher
-import io.github.toyota32k.utils.android.px2dp
 import io.github.toyota32k.utils.android.setLayoutWidth
-import io.github.toyota32k.utils.asCloseable
 import io.github.toyota32k.utils.gesture.Direction
 import io.github.toyota32k.utils.gesture.UtScaleGestureManager
 import io.github.toyota32k.utils.toggle
@@ -321,7 +313,7 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
                 lifecycleScope.launch {
                     viewModel.editorModel.playerControllerModel.commandPause.invoke()
                     viewModel.storeToLocalData()
-                    viewModel.editorModel.saveFile(true)
+                    viewModel.editorModel.saveFile(InteractiveOutputFileProvider("", null))
                 }
             }
             .clickBinding(controls.buttonClose) {

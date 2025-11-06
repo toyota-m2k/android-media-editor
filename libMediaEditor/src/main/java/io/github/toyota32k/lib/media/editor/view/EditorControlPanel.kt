@@ -15,7 +15,6 @@ import io.github.toyota32k.binder.Binder
 import io.github.toyota32k.binder.BoolConvert
 import io.github.toyota32k.binder.VisibilityBinding
 import io.github.toyota32k.binder.clickBinding
-import io.github.toyota32k.binder.combinatorialVisibilityBinding
 import io.github.toyota32k.binder.command.bindCommand
 import io.github.toyota32k.binder.enableBinding
 import io.github.toyota32k.binder.multiVisibilityBinding
@@ -27,6 +26,7 @@ import io.github.toyota32k.lib.media.editor.model.AmeGlobal
 import io.github.toyota32k.lib.media.editor.model.AspectMode
 import io.github.toyota32k.lib.media.editor.model.EditorPlayerViewAttributes
 import io.github.toyota32k.lib.media.editor.model.MediaEditorModel
+import io.github.toyota32k.lib.media.editor.output.ExportFileProvider
 import io.github.toyota32k.lib.player.view.ControlPanel.Companion.createButtonColorStateList
 import io.github.toyota32k.utils.android.lifecycleOwner
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -130,7 +130,7 @@ class EditorControlPanel @JvmOverloads constructor(context: Context, attrs: Attr
             }
             .clickBinding(controls.saveVideo) {
                 model.playerModel.scope.launch {
-                    model.saveFile(false)
+                    model.saveFile(ExportFileProvider("-(edited)"))
                 }
             }
     }

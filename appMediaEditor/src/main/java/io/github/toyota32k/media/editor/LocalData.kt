@@ -5,6 +5,7 @@ import android.content.ContentResolver
 import android.content.Intent
 import android.net.Uri
 import androidx.core.net.toUri
+import io.github.toyota32k.lib.media.editor.model.AmeGlobal
 import io.github.toyota32k.utils.android.SharedPreferenceDelegate
 
 class LocalData(val application: Application) {
@@ -19,9 +20,12 @@ class LocalData(val application: Application) {
         set(value) {
             val oldValue = persistedEditingUri
             if (oldValue == value?.toString()) return
-            persistedEditingUri = value?.toString()
             if (oldValue!=null) {
-                contentResolver.releasePersistableUriPermission(oldValue.toUri(),Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                try {
+                    contentResolver.releasePersistableUriPermission(oldValue.toUri(), Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                } catch (e:Throwable) {
+                    AmeGlobal.logger.error(e)
+                }
             }
             if (value!=null) {
                 contentResolver.takePersistableUriPermission(value, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)

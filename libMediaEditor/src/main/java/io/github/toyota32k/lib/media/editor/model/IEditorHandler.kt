@@ -10,6 +10,7 @@ import io.github.toyota32k.lib.player.model.IMediaSource
 import io.github.toyota32k.lib.player.model.IMediaSourceWithChapter
 import io.github.toyota32k.lib.player.model.IMutableChapterList
 import io.github.toyota32k.lib.player.model.Range
+import io.github.toyota32k.media.lib.converter.AndroidFile
 import io.github.toyota32k.media.lib.converter.Converter.Factory.RangeMs
 import io.github.toyota32k.utils.IDisposable
 import kotlinx.coroutines.flow.Flow
@@ -100,10 +101,14 @@ interface IImageSourceInfo : ISourceInfo {
 
 interface ISaveFileHandler {
     val showSaveButton: Flow<Boolean>   // ダイアログで使用する場合などにfalseにして、保存時には、MediaEditorModel#saveFile() を利用する
-    suspend fun saveImage(sourceInfo: IImageSourceInfo, overwrite:Boolean):Boolean
-    suspend fun saveVideo(sourceInfo:IVideoSourceInfo, overwrite:Boolean):Boolean
+    suspend fun saveImage(sourceInfo: IImageSourceInfo, outputFileProvider: IOutputFileProvider):Boolean
+    suspend fun saveVideo(sourceInfo:IVideoSourceInfo, outputFileProvider: IOutputFileProvider):Boolean
 }
 
 interface IMediaSourceWithMutableChapterList : IMediaSourceWithChapter {
     override suspend fun getChapterList(): IMutableChapterList
+}
+
+interface IOutputFileProvider {
+    suspend fun getOutputFile(mimeType:String, inputFile:AndroidFile): AndroidFile?
 }

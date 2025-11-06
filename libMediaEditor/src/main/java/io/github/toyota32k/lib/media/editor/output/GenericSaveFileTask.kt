@@ -4,7 +4,6 @@ import io.github.toyota32k.lib.media.editor.dialog.ProgressDialog
 import io.github.toyota32k.lib.media.editor.dialog.ProgressDialog.Companion.showProgressDialog
 import io.github.toyota32k.lib.media.editor.model.AmeGlobal
 import io.github.toyota32k.logger.UtLog
-import io.github.toyota32k.media.lib.converter.AndroidFile
 import io.github.toyota32k.media.lib.converter.IProgress
 import io.github.toyota32k.media.lib.converter.format
 
@@ -13,7 +12,6 @@ open class GenericSaveVideoTask(
     val audioStrategySelector: IAudioStrategySelector,
     private val mKeepHdr: Boolean,
     override val fastStart: Boolean,
-    override val outputFile: AndroidFile? = null
 ) : ISaveVideoTask, IProgressSink, IVideoStrategySelector by videoStrategySelector, IAudioStrategySelector by audioStrategySelector {
     val logger = UtLog("SaveVideoTask", AmeGlobal.logger)
 
@@ -54,15 +52,14 @@ open class GenericSaveVideoTask(
             audioStrategySelector: IAudioStrategySelector,
             keepHdr: Boolean = true,
             fastStart: Boolean = true,
-            outputFile: AndroidFile? = null
         ): ISaveVideoTask {
 //            val outputFile = selectFile("video/mp4", baseName, ".mp4") ?: return null
-            return GenericSaveVideoTask(videoStrategySelector, audioStrategySelector, keepHdr, fastStart, outputFile)
+            return GenericSaveVideoTask(videoStrategySelector, audioStrategySelector, keepHdr, fastStart)
         }
     }
 }
 
-class GenericSaveImageTask(override val outputFile: AndroidFile?=null) : ISaveImageTask {
+class GenericSaveImageTask : ISaveImageTask {
     override suspend fun onStart(taskStatus: SaveTaskStatus, canceller: ICanceller?) {
     }
 
@@ -72,8 +69,8 @@ class GenericSaveImageTask(override val outputFile: AndroidFile?=null) : ISaveIm
     override suspend fun onFinished() {
     }
     companion object {
-        fun defaultTask(outputFile: AndroidFile?=null): ISaveImageTask {
-            return GenericSaveImageTask(outputFile)
+        fun defaultTask(): ISaveImageTask {
+            return GenericSaveImageTask()
         }
     }
 }

@@ -2,6 +2,7 @@ package io.github.toyota32k.lib.media.editor.model
 
 import android.graphics.Bitmap
 import android.graphics.Rect
+import io.github.toyota32k.lib.media.editor.output.ExportFileProvider
 import io.github.toyota32k.lib.player.model.IMediaSource
 import io.github.toyota32k.lib.player.model.IPlayerModel
 import io.github.toyota32k.lib.player.model.PlayerControllerModel
@@ -75,21 +76,21 @@ open class MediaEditorModel(
         }
     }
 
-    open suspend fun saveFile(overwrite:Boolean):Boolean {
+    open suspend fun saveFile(outputFileProvider:IOutputFileProvider):Boolean {
         val item = playerModel.currentSource.value ?: return false
         savingNow.mutable.value = true
         return try {
             if (item.isPhoto) {
                 val bitmap = cropHandler.cropImageModel.crop() ?: return false
                 val sourceInfo = ImageSourceInfoImpl(item, bitmap)
-                saveFileHandler.saveImage(sourceInfo, overwrite)
+                saveFileHandler.saveImage(sourceInfo, outputFileProvider)
             } else if (item.type.lowercase() == "mp4") {
 //                val size = playerModel.videoSize.value ?: return false
 //                val ranges = chapterEditorHandler.getEnabledRangeList().map { Converter.Factory.RangeMs(it.start, it.end) }.toTypedArray()
 //                val cropRect = if (cropHandler.maskViewModel.isCropped.value) cropHandler.maskViewModel.cropRect(size.width, size.height).asRect else null
 //                saveFileHandler.saveVideo(ranges, playerModel.rotation.value, cropRect, 1f)
                 val sourceInfo = VideoSourceInfoImpl.fromModel(this) ?: return false
-                saveFileHandler.saveVideo(sourceInfo, overwrite)
+                saveFileHandler.saveVideo(sourceInfo, outputFileProvider)
             } else {
                 false
             }
