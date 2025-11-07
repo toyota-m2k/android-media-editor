@@ -335,7 +335,14 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
                 viewModel.requestShowPanel.toggle()
             }
             .clickBinding(controls.buttonOpen) {
-                openMediaFile()
+                UtImmortalTask.launchTask("closeEditingFile") {
+                    if (viewModel.editorModel.isDirty) {
+                        if (!showYesNoMessageBox("Open File", "Are you sure to abort your changes?")) {
+                            return@launchTask
+                        }
+                    }
+                    openMediaFile()
+                }
             }
             .clickBinding(controls.buttonSave) {
                 lifecycleScope.launch {
@@ -347,7 +354,7 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
             .clickBinding(controls.buttonClose) {
                 UtImmortalTask.launchTask("closeEditingFile") {
                     if (viewModel.editorModel.isDirty) {
-                        if (!showYesNoMessageBox("Close File", "Are you sure to abort?")) {
+                        if (!showYesNoMessageBox("Close File", "Are you sure to abort your changes?")) {
                             return@launchTask
                         }
                     }
