@@ -50,6 +50,7 @@ interface ICropHandler : IDisposable {
 
     val isCropped: Flow<Boolean>
     val isResolutionChanged: Flow<Boolean>
+    val isDirty:Boolean
 
     fun bindView(binder: Binder, slider: Slider, minus: Button, plus: Button, presetButtons: Map<Int, Button>)
 }
@@ -66,6 +67,7 @@ interface IChapterEditorHandler {
     val chapterListModified: Flow<Boolean>
     val canUndo: Flow<Boolean>
     val canRedo: Flow<Boolean>
+    val isDirty:Boolean
     fun getEnabledRangeList(): List<Range>
 }
 

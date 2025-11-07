@@ -41,6 +41,7 @@ class RealTimeBitmapScaler(val bitmapStore: BitmapStore): IUtPropOwner {
     var orgLongSideLength:Float = 0f // = max(sourceBitmap.width, sourceBitmap.height).toFloat()
     val longSideLength = MutableStateFlow(0f)
     val isResolutionChanged = longSideLength.map { it != orgLongSideLength }
+    val isDirty:Boolean get() = longSideLength.value != orgLongSideLength
     var tryAgain = false
 
     private var sourceBitmap:Bitmap? = null

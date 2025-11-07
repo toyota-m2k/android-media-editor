@@ -15,6 +15,7 @@ class CropImageModel(val maskViewModel: CropMaskViewModel): IDisposable {
 //    val targetBitmap:Flow<Bitmap?> get() = bitmapScaler.bitmap
     private val cropFlows: CropMaskViewModel.ICropFlows get() =  maskViewModel.cropFlows
     val isResolutionChanged: Flow<Boolean> get() = bitmapScaler.isResolutionChanged
+    val isDirty:Boolean get() = bitmapScaler.isDirty
 
     fun setSourceBitmap(sourceBitmap: Bitmap?) {
         bitmapScaler.setSourceBitmap(sourceBitmap)

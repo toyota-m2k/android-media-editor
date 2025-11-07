@@ -42,6 +42,7 @@ open class ChapterEditorHandler(protected val playerModel: IPlayerModel, support
     override val commandUndoChapter: IUnitCommand = LiteUnitCommand(::onUndoChapter)
     override val commandRedoChapter: IUnitCommand = LiteUnitCommand(::onRedoChapter)
     override val chapterListModified: Flow<Boolean> = combine(chapterEditable, chapterEditor.canUndo) {editable, _-> editable && chapterEditor.isDirty}
+    override val isDirty:Boolean get() = chapterEditable.value && chapterEditor.isDirty
 
     open fun onAddChapter() {
         chapterEditor.addChapter(playerModel.currentPosition, "", null)

@@ -19,7 +19,6 @@ import io.github.toyota32k.binder.Binder
 import io.github.toyota32k.binder.BoolConvert
 import io.github.toyota32k.binder.clickBinding
 import io.github.toyota32k.binder.observe
-import io.github.toyota32k.binder.onLayoutChanged
 import io.github.toyota32k.binder.visibilityBinding
 import io.github.toyota32k.dialog.broker.IUtActivityBrokerStoreProvider
 import io.github.toyota32k.dialog.broker.UtActivityBrokerStore
@@ -30,6 +29,7 @@ import io.github.toyota32k.dialog.broker.pickers.UtOpenFilePicker
 import io.github.toyota32k.dialog.mortal.UtMortalActivity
 import io.github.toyota32k.dialog.task.UtImmortalTask
 import io.github.toyota32k.dialog.task.UtImmortalTaskManager
+import io.github.toyota32k.dialog.task.showYesNoMessageBox
 import io.github.toyota32k.lib.media.editor.model.AbstractSplitHandler
 import io.github.toyota32k.lib.media.editor.model.IMediaSourceWithMutableChapterList
 import io.github.toyota32k.lib.media.editor.model.MaskCoreParams
@@ -227,10 +227,12 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
         setupWindowInsetsListener(controls.root)
 
         compatBackKeyDispatcher.register(this) {
-            if (viewModel.targetMediaSource.value != null) {
-                viewModel.targetMediaSource.value = null
-            } else {
-                finish()
+            UtImmortalTask.launchTask {
+                if (showYesNoMessageBox("Exit", "Are you sure to exit?")) {
+                    withOwner {
+                        it.asActivity()?.finish()
+                    }
+                }
             }
         }
 
@@ -251,7 +253,8 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
                 }
             }
 
-        var currentViewState: MainViewModel.ViewState? = null
+        // ビューのレイアウトが完了したときに１度だけ実行するコールバックを設定する
+        // 汎用的なので、どこかのライブラリに入れたい。
         fun onInitialLayout(callback:()->Unit) {
             val listener: ViewTreeObserver.OnGlobalLayoutListener
                 = object: ViewTreeObserver.OnGlobalLayoutListener {
@@ -262,6 +265,8 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
                 }
             controls.root.viewTreeObserver.addOnGlobalLayoutListener(listener)
         }
+
+        var currentViewState: MainViewModel.ViewState? = null
         onInitialLayout {
             currentViewState = updateButtonPanel()
         }
@@ -340,8 +345,15 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
                 }
             }
             .clickBinding(controls.buttonClose) {
-                viewModel.localData.editingUri = null
-                viewModel.targetMediaSource.value = null
+                UtImmortalTask.launchTask("closeEditingFile") {
+                    if (viewModel.editorModel.isDirty) {
+                        if (!showYesNoMessageBox("Close File", "Are you sure to abort?")) {
+                            return@launchTask
+                        }
+                    }
+                    viewModel.localData.editingUri = null
+                    viewModel.targetMediaSource.value = null
+                }
             }
             .observe(viewModel.editorModel.cropHandler.croppingNow) {
                 if (it) {

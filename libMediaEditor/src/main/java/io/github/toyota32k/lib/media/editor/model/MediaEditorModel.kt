@@ -27,11 +27,7 @@ open class MediaEditorModel(
     val logger = AmeGlobal.logger
     val playerModel: IPlayerModel = playerControllerModel.playerModel
     val savingNow: StateFlow<Boolean> = MutableStateFlow(false)
-    val isDirty: Flow<Boolean> by lazy {
-        combine(chapterEditorHandler.chapterListModified, cropHandler.isCropped, cropHandler.isResolutionChanged) { chapter, crop, resolution ->
-            chapter || crop || resolution
-        }
-    }
+    val isDirty: Boolean get() = chapterEditorHandler.isDirty || cropHandler.isDirty
 
     enum class EditMode {
         NORMAL,

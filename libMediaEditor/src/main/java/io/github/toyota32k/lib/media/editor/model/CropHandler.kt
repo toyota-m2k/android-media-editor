@@ -50,6 +50,7 @@ open class CropHandler(val playerModel: IPlayerModel, croppable: Boolean, showCo
 
     override val isCropped: Flow<Boolean> get() = maskViewModel.isCropped
     override val isResolutionChanged: Flow<Boolean> = combine(canChangeResolution, cropImageModel.isResolutionChanged) { canChange, isChanged -> canChange && isChanged }
+    override val isDirty: Boolean get() = maskViewModel.isCropped.value || (canChangeResolution.value && cropImageModel.isDirty)
 
     override fun bindView(binder: Binder, slider: Slider, minus: Button, plus: Button, presetButtons:Map<Int, Button>) {
         binder
