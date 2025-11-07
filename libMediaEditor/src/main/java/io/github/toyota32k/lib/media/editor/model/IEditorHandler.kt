@@ -16,10 +16,12 @@ import io.github.toyota32k.utils.IDisposable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 
-enum class AspectMode(val label:String, val longSide:Float, val shortSide:Float) {
+enum class AspectMode(val label:String, val horizontal:Float, val vertical:Float) {
     FREE("Free", 0f, 0f),
     ASPECT_4_3("4:3", 4f, 3f),
-    ASPECT_16_9("16:9", 16f, 9f)
+    ASPECT_16_9("16:9", 16f, 9f),
+    ASPECT_4_3_PORTRAIT("4:3 (P)", 3f,  vertical = 4f),
+    ASPECT_16_9_PORTRAIT("16:9 (P)", 9f, vertical = 16f),
 }
 
 interface ICropHandler : IDisposable {

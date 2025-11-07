@@ -215,7 +215,7 @@ class CropMaskViewModel {
         if (aspectMode.value == AspectMode.FREE) return newHeight
 
         // 幅を基準に高さを調整する
-        val corrHeight = newWidth * aspect.shortSide / aspect.longSide
+        val corrHeight = newWidth * aspect.vertical / aspect.horizontal
         logger.debug("${cropFlows.height} -- ${(maxY-minY)/(maxX-minX)*(cropFlows.width)}")
         return corrHeight
 
@@ -238,7 +238,7 @@ class CropMaskViewModel {
         if (aspectMode.value == AspectMode.FREE) return newWidth
 
         // 高さを基準に調整
-        val corrWidth = newHeight * aspect.longSide / aspect.shortSide
+        val corrWidth = newHeight * aspect.horizontal / aspect.vertical
         return corrWidth
     }
 

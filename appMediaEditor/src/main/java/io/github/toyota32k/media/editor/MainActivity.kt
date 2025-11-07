@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.ViewGroup
+import android.view.ViewTreeObserver
 import android.view.WindowManager
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -15,8 +16,10 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewModelScope
 import io.github.toyota32k.binder.Binder
+import io.github.toyota32k.binder.BoolConvert
 import io.github.toyota32k.binder.clickBinding
 import io.github.toyota32k.binder.observe
+import io.github.toyota32k.binder.onLayoutChanged
 import io.github.toyota32k.binder.visibilityBinding
 import io.github.toyota32k.dialog.broker.IUtActivityBrokerStoreProvider
 import io.github.toyota32k.dialog.broker.UtActivityBrokerStore
@@ -35,7 +38,6 @@ import io.github.toyota32k.lib.media.editor.output.DefaultAudioStrategySelector
 import io.github.toyota32k.lib.media.editor.output.GenericSaveFileHandler
 import io.github.toyota32k.lib.media.editor.output.InteractiveOutputFileProvider
 import io.github.toyota32k.lib.media.editor.output.InteractiveVideoStrategySelector
-import io.github.toyota32k.lib.media.editor.output.OverwriteFileProvider
 import io.github.toyota32k.lib.player.model.IMediaSource
 import io.github.toyota32k.lib.player.model.IMutableChapterList
 import io.github.toyota32k.lib.player.model.PlayerControllerModel
@@ -249,10 +251,26 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
                 }
             }
 
+        var currentViewState: MainViewModel.ViewState? = null
+        fun onInitialLayout(callback:()->Unit) {
+            val listener: ViewTreeObserver.OnGlobalLayoutListener
+                = object: ViewTreeObserver.OnGlobalLayoutListener {
+                    override fun onGlobalLayout() {
+                        callback()
+                        controls.root.viewTreeObserver.removeOnGlobalLayoutListener(this)
+                    }
+                }
+            controls.root.viewTreeObserver.addOnGlobalLayoutListener(listener)
+        }
+        onInitialLayout {
+            currentViewState = updateButtonPanel()
+        }
+
         val AnimDuration = 200L
         binder
             .owner(this)
             .observe(viewModel.viewState) { vs ->
+                if (currentViewState==null || vs == currentViewState) return@observe
                 when (vs) {
                     MainViewModel.ViewState.FULL -> {
                         controls.buttonPane.setLayoutWidth(ViewGroup.LayoutParams.MATCH_PARENT)
@@ -270,7 +288,7 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
                                 // ところが、アニメーションによって子ビューの座標を変更していると、アニメーション中に paddingが変化してしまうことがある。
                                 // これによる位置ずれを回避するため、アニメーション終了時に、座標を再設定しておく。
                                 // 謎の隙間が生じる現象があって、原因特定に結構苦労したのでメモしておく。
-                                controls.buttonPane.x = controls.root.paddingStart.toFloat()
+                                currentViewState = updateButtonPanel()
                             }
                             .start()
                     }
@@ -281,15 +299,19 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
                             .x(controls.root.paddingStart.toFloat())
                             .setDuration(AnimDuration)
                             .withEndAction {
-                                controls.buttonPane.x = controls.root.paddingStart.toFloat()
+                                currentViewState = updateButtonPanel()
                             }
                             .start()
                     }
 
                     MainViewModel.ViewState.NONE -> {
+                        controls.buttonPane.setLayoutWidth(ViewGroup.LayoutParams.WRAP_CONTENT)
                         controls.buttonPane.animate()
                             .x(-controls.buttonPane.width.toFloat())
                             .setDuration(AnimDuration)
+                            .withEndAction {
+                                currentViewState = updateButtonPanel()
+                            }
                             .start()
                     }
                 }
@@ -303,6 +325,7 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
             .visibilityBinding(controls.menuButton, combine(viewModel.isEditing, viewModel.editorModel.cropHandler.croppingNow) { isEditing, cropping ->
                 isEditing && !cropping
             })
+            .visibilityBinding(controls.buttonPane, viewModel.editorModel.cropHandler.croppingNow, BoolConvert.Inverse)
             .clickBinding(controls.menuButton) {
                 viewModel.requestShowPanel.toggle()
             }
@@ -338,6 +361,28 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
                 .execute()
         }
     }
+
+    private fun updateButtonPanel(): MainViewModel.ViewState {
+        logger.debug("paddingStart=${controls.root.paddingStart}, paneWidth=${controls.buttonPane.width}")
+        return viewModel.viewState.value.apply {
+            when (this) {
+                MainViewModel.ViewState.FULL -> {
+                    controls.buttonPane.setLayoutWidth(ViewGroup.LayoutParams.MATCH_PARENT)
+                    controls.buttonPane.x = controls.root.paddingStart.toFloat()
+                }
+                MainViewModel.ViewState.HALF -> {
+                    controls.buttonPane.setLayoutWidth(ViewGroup.LayoutParams.WRAP_CONTENT)
+                    controls.buttonPane.x = controls.root.paddingStart.toFloat()
+                }
+                MainViewModel.ViewState.NONE -> {
+                    controls.buttonPane.setLayoutWidth(ViewGroup.LayoutParams.WRAP_CONTENT)
+                    controls.buttonPane.x = -controls.buttonPane.width.toFloat()
+                }
+
+            }
+        }
+    }
+
 
     private fun enableGestureManager(sw:Boolean) {
         val view = gestureManager.manipulationTarget.parentView

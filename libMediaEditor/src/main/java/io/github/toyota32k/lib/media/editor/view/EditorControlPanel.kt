@@ -153,6 +153,8 @@ class EditorControlPanel @JvmOverloads constructor(context: Context, attrs: Attr
                 R.id.aspect_free -> AspectMode.FREE
                 R.id.aspect_4_3 -> AspectMode.ASPECT_4_3
                 R.id.aspect_16_9 -> AspectMode.ASPECT_16_9
+                R.id.aspect_4_3_portrait -> AspectMode.ASPECT_4_3_PORTRAIT
+                R.id.aspect_16_9_portrait -> AspectMode.ASPECT_16_9_PORTRAIT
                 else -> null
             }
         }

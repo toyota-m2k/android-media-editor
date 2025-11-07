@@ -41,5 +41,7 @@
     <string name="radio_overwrite">Overwrite</string>
     <string name="radio_save_as">Save as</string>
     <string name="file_name_label">Filename</string>
+    <string name="aspect_4_3_portrait">4:3 (Portrait)</string>
+    <string name="aspect_16_9_portrait">16:9 (Portrait)</string>
 
 </resources>
