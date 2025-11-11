@@ -1,4 +1,4 @@
-package io.github.toyota32k.lib.media.editor.output
+package io.github.toyota32k.lib.media.editor.handler
 
 import io.github.toyota32k.lib.media.editor.dialog.ProgressDialog
 import io.github.toyota32k.lib.media.editor.dialog.ProgressDialog.Companion.showProgressDialog

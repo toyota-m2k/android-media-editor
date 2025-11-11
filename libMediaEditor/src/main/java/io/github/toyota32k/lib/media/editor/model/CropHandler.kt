@@ -37,12 +37,12 @@ open class CropHandler(val playerModel: IPlayerModel, croppable: Boolean, showCo
     override val maskViewModel: CropMaskViewModel = CropMaskViewModel()
     override var cropImageModel: CropImageModel = CropImageModel(maskViewModel)
 
-    val sizeText: Flow<String?> = combine(playerModel.isCurrentSourcePhoto, playerModel.videoSize, maskViewModel.cropFlows.cropWidth, maskViewModel.cropFlows.cropHeight, cropImageModel.bitmapScaler.bitmap) { isPhoto, videoSize, width, height, bmp ->
+    override val sizeText: Flow<String> = combine(playerModel.isCurrentSourcePhoto, playerModel.videoSize, maskViewModel.cropFlows.cropWidth, maskViewModel.cropFlows.cropHeight, cropImageModel.bitmapScaler.bitmap) { isPhoto, videoSize, width, height, bmp ->
         if (isPhoto && bmp !=null) {
             "$width x $height (${bmp.width} x ${bmp.height})"
         } else if (videoSize!=null){
             "$width x $height (${videoSize.width} x ${videoSize.height})"
-        } else null
+        } else ""
     }
 
     val storedCropParams = MutableStateFlow<MaskCoreParams?>(null)
@@ -57,8 +57,11 @@ open class CropHandler(val playerModel: IPlayerModel, croppable: Boolean, showCo
             .observe(playerModel.shownBitmap) { bmp->
                 canChangeResolution.value = bmp!=null
                 cropImageModel.setSourceBitmap(bmp)
-                cropImageModel.bindView(binder, slider, minus, plus, presetButtons)
             }
+            .observe(playerModel.videoSize) { size ->
+                maskViewModel.updateCropFlow(size)
+            }
+        cropImageModel.bindView(binder, slider, minus, plus, presetButtons)
     }
 
     fun setAspectMode(mode: AspectMode) {

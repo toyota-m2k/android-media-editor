@@ -16,6 +16,9 @@ import io.github.toyota32k.utils.IDisposable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 
+/**
+ * 切り抜き編集用 Aspect定義
+ */
 enum class AspectMode(val label:String, val horizontal:Float, val vertical:Float) {
     FREE("Free", 0f, 0f),
     ASPECT_4_3("4:3", 4f, 3f),
@@ -24,6 +27,9 @@ enum class AspectMode(val label:String, val horizontal:Float, val vertical:Float
     ASPECT_16_9_PORTRAIT("16:9 (P)", 9f, vertical = 16f),
 }
 
+/**
+ * 切り抜き操作用ハンドラーi/f
+ */
 interface ICropHandler : IDisposable {
     val croppable: Flow<Boolean>                // Cropをサポートするか？
     val showCompleteCancelButton: Flow<Boolean>  // ダイアログで表示する場合などに false にして、モードの切り替えコマンドを自力で呼ぶ
@@ -33,6 +39,7 @@ interface ICropHandler : IDisposable {
 
     val croppingNow: Flow<Boolean>
     val resolutionChangingNow: Flow<Boolean>
+    val sizeText: Flow<String>
 
     val canChangeResolution: Flow<Boolean>
     val cropAspectMode: Flow<AspectMode>
@@ -55,6 +62,9 @@ interface ICropHandler : IDisposable {
     fun bindView(binder: Binder, slider: Slider, minus: Button, plus: Button, presetButtons: Map<Int, Button>)
 }
 
+/**
+ * チャプター編集用ハンドラーi/f
+ */
 interface IChapterEditorHandler {
     val chapterEditable: Flow<Boolean>
     val commandAddChapter: IUnitCommand
@@ -71,24 +81,26 @@ interface IChapterEditorHandler {
     fun getEnabledRangeList(): List<Range>
 }
 
+/**
+ * 動画分割用ハンドラーi/f
+ */
 interface ISplitHandler {
     val showSplitButton: Flow<Boolean>
-    suspend fun splitVideoAt(targetSource: IMediaSource, positionMs:Long):Boolean
+    suspend fun splitVideo(sourceInfo:IVideoSourceInfo):Boolean
 }
 
-abstract class AbstractSplitHandler(supportSplitting:Boolean) : ISplitHandler {
-    override val showSplitButton = MutableStateFlow(supportSplitting)
-}
+// region Media Source i/f
 
-object NoopSplitHandler : ISplitHandler {
-    override val showSplitButton: Flow<Boolean> = MutableStateFlow(false)
-    override suspend fun splitVideoAt(targetSource: IMediaSource, positionMs: Long):Boolean { return false }
-}
-
+/**
+ * メディアソース情報基底i/f
+ */
 interface ISourceInfo {
     val source: IMediaSource
 }
 
+/**
+ * 動画用メディアソース情報 i/f
+ */
 interface IVideoSourceInfo {
     val source: IMediaSource
     val trimmingRanges:Array<RangeMs>
@@ -99,20 +111,37 @@ interface IVideoSourceInfo {
     val durationMs: Long
 }
 
+/**
+ * 画像用メディアソース情報 i/f
+ */
 interface IImageSourceInfo : ISourceInfo {
     val editedBitmap: Bitmap
 }
+// endregion
 
+/**
+ * メディアファイル保存用 i/f
+ */
 interface ISaveFileHandler {
     val showSaveButton: Flow<Boolean>   // ダイアログで使用する場合などにfalseにして、保存時には、MediaEditorModel#saveFile() を利用する
     suspend fun saveImage(sourceInfo: IImageSourceInfo, outputFileProvider: IOutputFileProvider):Boolean
     suspend fun saveVideo(sourceInfo:IVideoSourceInfo, outputFileProvider: IOutputFileProvider):Boolean
 }
 
+/**
+ * 編集可能なチャプターリストを返す IMediaSource の拡張i/f
+ */
 interface IMediaSourceWithMutableChapterList : IMediaSourceWithChapter {
     override suspend fun getChapterList(): IMutableChapterList
 }
 
+/**
+ * 保存先ファイル（書き込み可能なファイルのUri）を取得するための i/f
+ */
 interface IOutputFileProvider {
     suspend fun getOutputFile(mimeType:String, inputFile:AndroidFile): AndroidFile?
+}
+
+interface ISplitOutputFileProvider {
+    suspend fun getOutputFile(index:Int, mimeType:String, inputFile:AndroidFile): AndroidFile?
 }

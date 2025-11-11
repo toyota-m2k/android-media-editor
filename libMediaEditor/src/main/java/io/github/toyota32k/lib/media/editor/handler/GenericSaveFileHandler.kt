@@ -1,4 +1,4 @@
-package io.github.toyota32k.lib.media.editor.output
+package io.github.toyota32k.lib.media.editor.handler
 
 import android.content.Context
 import android.graphics.Bitmap

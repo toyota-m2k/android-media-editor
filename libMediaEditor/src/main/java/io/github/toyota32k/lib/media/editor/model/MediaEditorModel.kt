@@ -2,7 +2,7 @@ package io.github.toyota32k.lib.media.editor.model
 
 import android.graphics.Bitmap
 import android.graphics.Rect
-import io.github.toyota32k.lib.media.editor.output.ExportFileProvider
+import io.github.toyota32k.lib.media.editor.handler.split.NoopSplitHandler
 import io.github.toyota32k.lib.player.model.IMediaSource
 import io.github.toyota32k.lib.player.model.IPlayerModel
 import io.github.toyota32k.lib.player.model.PlayerControllerModel
@@ -103,7 +103,8 @@ open class MediaEditorModel(
         if (pos < 1000 || playerModel.naturalDuration.value-1000 < pos) return false // 1sec未満の分割は禁止
         savingNow.mutable.value = true
         return try {
-            splitHandler.splitVideoAt(item, pos)
+            false
+//            splitHandler.splitVideoAt(item, pos)
         } catch (e:Throwable) {
             logger.error(e)
             false

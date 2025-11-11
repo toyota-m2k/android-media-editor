@@ -1,4 +1,4 @@
-package io.github.toyota32k.lib.media.editor.output
+package io.github.toyota32k.lib.media.editor.handler
 
 import io.github.toyota32k.dialog.broker.IUtActivityBrokerStoreProvider
 import io.github.toyota32k.dialog.task.UtImmortalTaskManager
@@ -8,12 +8,14 @@ import io.github.toyota32k.lib.media.editor.model.AmeGlobal
 import io.github.toyota32k.lib.media.editor.model.IOutputFileProvider
 import io.github.toyota32k.media.lib.converter.AndroidFile
 import io.github.toyota32k.media.lib.converter.toAndroidFile
-import io.github.toyota32k.media.lib.format.Media
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 object FileUtil {
+    /**
+     * コンテントタイプから拡張子を求める
+     */
     fun contentType2Ext(contentType: String): String {
         return when (val ct = contentType.lowercase()) {
             "image/png"->".png"
@@ -31,16 +33,26 @@ object FileUtil {
             }
         }
     }
+
+    /**
+     * ファイルの拡張子を取得
+     */
     fun getExtension(file:AndroidFile):String {
         return contentType2Ext(file.getContentType()?:"")
     }
 
+    /**
+     * 保存ファイル名の初期値を作成
+     */
     fun createInitialFileName(originalName: String, suffix:String, ext: String): String {
         val dotIndex = originalName.lastIndexOf('.')
         val baseName = if (dotIndex > 0) originalName.take(dotIndex) else originalName
         return "${baseName}${suffix}$ext"
     }
 
+    /**
+     * ピッカーを表示して保存ファイルを選択
+     */
     suspend fun selectFile(type: String, initialFileName: String): AndroidFile? {
         val owner = UtImmortalTaskManager.mortalInstanceSource.getOwner()
         val pickerProvider = owner.lifecycleOwner as? IUtActivityBrokerStoreProvider ?: owner.asActivity() as? IUtActivityBrokerStoreProvider ?: return null
@@ -64,6 +76,9 @@ abstract class NamedFileProvider(val outputFileSuffix:String) : IOutputFileProvi
     }
 }
 
+/**
+ * ファイルピッカーを表示して保存先ファイルを選択する FileProvider
+ */
 open class ExportFileProvider(outputFileSuffix:String) : NamedFileProvider(outputFileSuffix) {
     override suspend fun getOutputFile(mimeType:String, inputFile: AndroidFile): AndroidFile? {
         val name = initialFileName(mimeType, inputFile) ?: return null
@@ -71,6 +86,9 @@ open class ExportFileProvider(outputFileSuffix:String) : NamedFileProvider(outpu
     }
 }
 
+/**
+ * 名前を付けて MediaStore にファイルを保存するための FileProvider
+ */
 open class MediaFileProvider(outputFileSuffix: String, val subFolder:String?=null) : NamedFileProvider(outputFileSuffix) {
     override suspend fun getOutputFile(mimeType: String, inputFile: AndroidFile): AndroidFile? {
         val name = initialFileName(mimeType, inputFile) ?: return null
@@ -86,6 +104,9 @@ open class MediaFileProvider(outputFileSuffix: String, val subFolder:String?=nul
     }
 }
 
+/**
+ * 保存先選択ダイアログを表示して、保存先ファイルを取得。
+ */
 open class InteractiveMediaFileProvider(subFolder:String?=null): MediaFileProvider("", subFolder) {
     override suspend fun initialFileName(mimeType: String, inputFile: AndroidFile): String? {
         val initialName = FileUtil.createInitialFileName(inputFile.getFileName() ?: "unnamed", outputFileSuffix, FileUtil.contentType2Ext(mimeType))
@@ -93,12 +114,18 @@ open class InteractiveMediaFileProvider(subFolder:String?=null): MediaFileProvid
     }
 }
 
+/**
+ * 名前を指定して Media Store に保存する FileProvider
+ */
 open class NamedMediaFileProvider(val name:String, subFolder:String?=null): MediaFileProvider("", subFolder) {
     override suspend fun initialFileName(mimeType: String, inputFile: AndroidFile): String? {
         return name
     }
 }
 
+/**
+ * 編集中ファイルを上書きする FileProvider
+ */
 object OverwriteFileProvider : IOutputFileProvider {
     override suspend fun getOutputFile(mimeType:String, inputFile: AndroidFile): AndroidFile? {
         if (!inputFile.canWrite()) {

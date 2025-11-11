@@ -13,7 +13,7 @@ class CropImageModel(val maskViewModel: CropMaskViewModel): IDisposable {
     val bitmapStore = BitmapStore()
     val bitmapScaler = RealTimeBitmapScaler(bitmapStore)
 //    val targetBitmap:Flow<Bitmap?> get() = bitmapScaler.bitmap
-    private val cropFlows: CropMaskViewModel.ICropFlows get() =  maskViewModel.cropFlows
+//    private val cropFlows: CropMaskViewModel.ICropFlows get() =  maskViewModel.cropFlows
     val isResolutionChanged: Flow<Boolean> get() = bitmapScaler.isResolutionChanged
     val isDirty:Boolean get() = bitmapScaler.isDirty
 
@@ -28,11 +28,11 @@ class CropImageModel(val maskViewModel: CropMaskViewModel): IDisposable {
 
     fun bindView(binder: Binder, slider: Slider, minus: Button, plus: Button, presetButtons:Map<Int, Button>) {
         bitmapScaler.bindView(binder, slider, minus, plus, presetButtons)
-        binder.observe(bitmapScaler.bitmap) {
-            if (it!=null) {
-                maskViewModel.startCropFlow(it.width, it.height)
-            }
-        }
+//        binder.observe(bitmapScaler.bitmap) {
+//            if (it!=null) {
+//                maskViewModel.startCropFlow(it.width, it.height)
+//            }
+//        }
     }
 
     override fun dispose() {

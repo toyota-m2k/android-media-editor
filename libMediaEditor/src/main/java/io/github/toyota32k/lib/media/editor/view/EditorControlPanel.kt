@@ -26,7 +26,7 @@ import io.github.toyota32k.lib.media.editor.model.AmeGlobal
 import io.github.toyota32k.lib.media.editor.model.AspectMode
 import io.github.toyota32k.lib.media.editor.model.EditorPlayerViewAttributes
 import io.github.toyota32k.lib.media.editor.model.MediaEditorModel
-import io.github.toyota32k.lib.media.editor.output.ExportFileProvider
+import io.github.toyota32k.lib.media.editor.handler.ExportFileProvider
 import io.github.toyota32k.lib.player.view.ControlPanel.Companion.createButtonColorStateList
 import io.github.toyota32k.utils.android.lifecycleOwner
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -92,6 +92,7 @@ class EditorControlPanel @JvmOverloads constructor(context: Context, attrs: Attr
             .visibilityBinding(controls.resolutionPanel, model.cropHandler.resolutionChangingNow, BoolConvert.Straight, VisibilityBinding.HiddenMode.HideByGone)
             .enableBinding(controls.undoChapter, model.chapterEditorHandler.canUndo)
             .enableBinding(controls.redoChapter, model.chapterEditorHandler.canRedo)
+            .textBinding(controls.cropText, model.cropHandler.sizeText)
 
             .bindCommand(model.chapterEditorHandler.commandAddChapter, controls.makeChapter)
             .bindCommand(model.chapterEditorHandler.commandAddSkippedChapterBefore, controls.makeChapterAndSkip)

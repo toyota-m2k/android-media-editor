@@ -1,11 +1,10 @@
-package io.github.toyota32k.lib.media.editor.output
+package io.github.toyota32k.lib.media.editor.handler
 
 import android.content.Context
 import io.github.toyota32k.lib.media.editor.model.AmeGlobal
 import io.github.toyota32k.lib.media.editor.model.IOutputFileProvider
 import io.github.toyota32k.media.lib.converter.AndroidFile
 import io.github.toyota32k.media.lib.converter.toAndroidFile
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File

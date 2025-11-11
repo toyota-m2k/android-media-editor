@@ -1,10 +1,9 @@
-package io.github.toyota32k.lib.media.editor.output
+package io.github.toyota32k.lib.media.editor.handler
 
 import io.github.toyota32k.dialog.task.UtImmortalTask
 import io.github.toyota32k.lib.media.editor.dialog.SelectQualityDialog
 import io.github.toyota32k.lib.media.editor.model.ConvertHelper
 import io.github.toyota32k.lib.media.editor.model.IVideoSourceInfo
-import io.github.toyota32k.media.lib.converter.Converter
 import io.github.toyota32k.media.lib.converter.IInputMediaFile
 import io.github.toyota32k.media.lib.converter.Rotation
 import io.github.toyota32k.media.lib.strategy.IVideoStrategy

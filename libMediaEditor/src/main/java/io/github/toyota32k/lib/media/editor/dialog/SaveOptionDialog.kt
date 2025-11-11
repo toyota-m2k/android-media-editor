@@ -15,9 +15,9 @@ import io.github.toyota32k.lib.media.editor.R
 import io.github.toyota32k.lib.media.editor.databinding.DialogSaveOptionBinding
 import io.github.toyota32k.lib.media.editor.dialog.SaveOptionDialog.SaveOptionViewModel.TargetType
 import io.github.toyota32k.lib.media.editor.model.IOutputFileProvider
-import io.github.toyota32k.lib.media.editor.output.ExportFileProvider
-import io.github.toyota32k.lib.media.editor.output.NamedMediaFileProvider
-import io.github.toyota32k.lib.media.editor.output.OverwriteFileProvider
+import io.github.toyota32k.lib.media.editor.handler.ExportFileProvider
+import io.github.toyota32k.lib.media.editor.handler.NamedMediaFileProvider
+import io.github.toyota32k.lib.media.editor.handler.OverwriteFileProvider
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map

@@ -1,9 +1,8 @@
-package io.github.toyota32k.lib.media.editor.output
+package io.github.toyota32k.lib.media.editor.handler
 
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
@@ -11,7 +10,6 @@ import androidx.core.net.toUri
 import io.github.toyota32k.lib.media.editor.model.AmeGlobal
 import io.github.toyota32k.media.lib.converter.AndroidFile
 import java.io.File
-import java.io.OutputStream
 
 object AndroidMediaFile {
     val logger = AmeGlobal.logger

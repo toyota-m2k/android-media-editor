@@ -13,8 +13,8 @@ import io.github.toyota32k.dialog.task.UtImmortalTask
 import io.github.toyota32k.dialog.task.createViewModel
 import io.github.toyota32k.dialog.task.getViewModel
 import io.github.toyota32k.lib.media.editor.databinding.DialogProgressBinding
-import io.github.toyota32k.lib.media.editor.output.ICanceller
-import io.github.toyota32k.lib.media.editor.output.SaveTaskStatus
+import io.github.toyota32k.lib.media.editor.handler.ICanceller
+import io.github.toyota32k.lib.media.editor.handler.SaveTaskStatus
 import io.github.toyota32k.media.lib.converter.IProgress
 import io.github.toyota32k.media.lib.converter.format
 import kotlinx.coroutines.Dispatchers

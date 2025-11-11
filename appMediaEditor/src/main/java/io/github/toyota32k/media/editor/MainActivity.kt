@@ -30,14 +30,13 @@ import io.github.toyota32k.dialog.mortal.UtMortalActivity
 import io.github.toyota32k.dialog.task.UtImmortalTask
 import io.github.toyota32k.dialog.task.UtImmortalTaskManager
 import io.github.toyota32k.dialog.task.showYesNoMessageBox
-import io.github.toyota32k.lib.media.editor.model.AbstractSplitHandler
 import io.github.toyota32k.lib.media.editor.model.IMediaSourceWithMutableChapterList
 import io.github.toyota32k.lib.media.editor.model.MaskCoreParams
 import io.github.toyota32k.lib.media.editor.model.MediaEditorModel
-import io.github.toyota32k.lib.media.editor.output.DefaultAudioStrategySelector
-import io.github.toyota32k.lib.media.editor.output.GenericSaveFileHandler
-import io.github.toyota32k.lib.media.editor.output.InteractiveOutputFileProvider
-import io.github.toyota32k.lib.media.editor.output.InteractiveVideoStrategySelector
+import io.github.toyota32k.lib.media.editor.handler.DefaultAudioStrategySelector
+import io.github.toyota32k.lib.media.editor.handler.GenericSaveFileHandler
+import io.github.toyota32k.lib.media.editor.handler.InteractiveOutputFileProvider
+import io.github.toyota32k.lib.media.editor.handler.InteractiveVideoStrategySelector
 import io.github.toyota32k.lib.player.model.IMediaSource
 import io.github.toyota32k.lib.player.model.IMutableChapterList
 import io.github.toyota32k.lib.player.model.PlayerControllerModel
@@ -96,13 +95,13 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
     }
 
     class MainViewModel(application: Application): AndroidViewModel(application) {
-        class SplitHandler : AbstractSplitHandler(true) {
-            override suspend fun splitVideoAt(targetSource: IMediaSource, positionMs: Long): Boolean {
-                TODO("Not yet implemented")
-            }
-
-        }
-
+//        class SplitHandler : AbstractSplitHandler(true) {
+//            override suspend fun splitVideoAt(targetSource: IMediaSource, positionMs: Long): Boolean {
+//                TODO("Not yet implemented")
+//            }
+//
+//        }
+//
         val localData = LocalData(application)
 
 
@@ -121,7 +120,7 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
             )
             .supportChapterEditor()
             .supportCrop()
-            .supportSplit(SplitHandler())
+//            .supportSplit(SplitHandler())
             .setSaveFileHandler { controllerModel ->
                 GenericSaveFileHandler.create(true, application,
                     controllerModel,

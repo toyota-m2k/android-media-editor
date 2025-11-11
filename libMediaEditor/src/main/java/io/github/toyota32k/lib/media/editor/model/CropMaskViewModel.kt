@@ -2,6 +2,7 @@ package io.github.toyota32k.lib.media.editor.model
 
 import android.graphics.Bitmap
 import android.graphics.Rect
+import android.util.Size
 import io.github.toyota32k.logger.UtLog
 import io.github.toyota32k.lib.media.editor.view.CropMaskView
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -399,12 +400,19 @@ class CropMaskViewModel {
         }
     }
     val cropFlows :CropFlows = CropFlows()
-    fun startCropFlow(width:Int, height:Int):ICropFlows {
-        return cropFlows.setSize(width.toFloat(), height.toFloat())
+    fun updateCropFlow(size: Size?) {
+        if (size!=null) {
+            cropFlows.setSize(size.width.toFloat(), size.height.toFloat())
+        } else {
+            cropFlows.setSize(0f, 0f)
+        }
     }
-    fun stopCropFlow():ICropFlows {
-        return cropFlows.setSize(0f, 0f)
-    }
+//    fun startCropFlow(width:Int, height:Int):ICropFlows {
+//        return cropFlows.setSize(width.toFloat(), height.toFloat())
+//    }
+//    fun stopCropFlow():ICropFlows {
+//        return cropFlows.setSize(0f, 0f)
+//    }
 
     data class CropRect(val sx:Int, val sy:Int, val width:Int, val height:Int) {
         val asRect: Rect get() = Rect(sx, sy, sx+width, sy+height)
