@@ -11,10 +11,10 @@ import io.github.toyota32k.lib.player.model.IMediaSourceWithChapter
 import io.github.toyota32k.lib.player.model.IMutableChapterList
 import io.github.toyota32k.lib.player.model.Range
 import io.github.toyota32k.media.lib.converter.AndroidFile
-import io.github.toyota32k.media.lib.converter.Converter.Factory.RangeMs
+import io.github.toyota32k.media.lib.converter.IMultiSplitResult
+import io.github.toyota32k.media.lib.converter.RangeMs
 import io.github.toyota32k.utils.IDisposable
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 
 /**
  * 切り抜き編集用 Aspect定義
@@ -86,7 +86,8 @@ interface IChapterEditorHandler {
  */
 interface ISplitHandler {
     val showSplitButton: Flow<Boolean>
-    suspend fun splitVideo(sourceInfo:IVideoSourceInfo):Boolean
+    suspend fun splitAtCurrentPosition(sourceInfo:IVideoSourceInfo): IMultiSplitResult?
+    suspend fun splitByChapters(sourceInfo:IVideoSourceInfo): IMultiSplitResult?
 }
 
 // region Media Source i/f
@@ -103,12 +104,14 @@ interface ISourceInfo {
  */
 interface IVideoSourceInfo {
     val source: IMediaSource
-    val trimmingRanges:Array<RangeMs>
+    val trimmingRanges:List<RangeMs>
     val rotation:Int/*in degree*/
     val cropRect:Rect?
     val brightness:Float?
     val positionMs: Long
     val durationMs: Long
+
+    val needsReEncoding get() = cropRect != null && brightness != null
 }
 
 /**
@@ -140,8 +143,4 @@ interface IMediaSourceWithMutableChapterList : IMediaSourceWithChapter {
  */
 interface IOutputFileProvider {
     suspend fun getOutputFile(mimeType:String, inputFile:AndroidFile): AndroidFile?
-}
-
-interface ISplitOutputFileProvider {
-    suspend fun getOutputFile(index:Int, mimeType:String, inputFile:AndroidFile): AndroidFile?
 }

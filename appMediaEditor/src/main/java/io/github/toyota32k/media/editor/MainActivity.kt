@@ -33,11 +33,10 @@ import io.github.toyota32k.dialog.task.showYesNoMessageBox
 import io.github.toyota32k.lib.media.editor.model.IMediaSourceWithMutableChapterList
 import io.github.toyota32k.lib.media.editor.model.MaskCoreParams
 import io.github.toyota32k.lib.media.editor.model.MediaEditorModel
-import io.github.toyota32k.lib.media.editor.handler.DefaultAudioStrategySelector
-import io.github.toyota32k.lib.media.editor.handler.GenericSaveFileHandler
+import io.github.toyota32k.lib.media.editor.handler.save.DefaultAudioStrategySelector
+import io.github.toyota32k.lib.media.editor.handler.save.GenericSaveFileHandler
 import io.github.toyota32k.lib.media.editor.handler.InteractiveOutputFileProvider
-import io.github.toyota32k.lib.media.editor.handler.InteractiveVideoStrategySelector
-import io.github.toyota32k.lib.player.model.IMediaSource
+import io.github.toyota32k.lib.media.editor.handler.save.InteractiveVideoStrategySelector
 import io.github.toyota32k.lib.player.model.IMutableChapterList
 import io.github.toyota32k.lib.player.model.PlayerControllerModel
 import io.github.toyota32k.lib.player.model.Range
@@ -121,9 +120,8 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
             .supportChapterEditor()
             .supportCrop()
 //            .supportSplit(SplitHandler())
-            .setSaveFileHandler { controllerModel ->
+            .setSaveFileHandler { _ ->
                 GenericSaveFileHandler.create(true, application,
-                    controllerModel,
                     InteractiveVideoStrategySelector(),
                     DefaultAudioStrategySelector)
             }

@@ -24,6 +24,7 @@ import io.github.toyota32k.dialog.task.launchSubTask
 import io.github.toyota32k.lib.media.editor.R
 import io.github.toyota32k.lib.media.editor.databinding.DialogSelectQualityBinding
 import io.github.toyota32k.lib.media.editor.model.ConvertHelper
+import io.github.toyota32k.media.lib.converter.ConvertResult
 import io.github.toyota32k.media.lib.format.BitRateMode
 import io.github.toyota32k.media.lib.format.Codec
 import io.github.toyota32k.media.lib.format.ColorFormat
@@ -226,7 +227,7 @@ class SelectQualityDialog : UtDialogEx() {
             convertHelper.videoStrategy = quality.value.strategy
             return convertHelper.tryConvert(getApplication(), convertFrom)?.apply {
                 trialCache.put(quality.value, keepHdr.value, this)
-                val report = convertHelper.result.report
+                val report = (convertHelper.result as? ConvertResult)?.report
                 if (convertHelper.result.succeeded && report!=null) {
                     var bitRate = report.output.videoSummary?.bitRate
                     if (bitRate!=null && bitRate > 0) {
@@ -303,7 +304,7 @@ class SelectQualityDialog : UtDialogEx() {
     companion object {
         data class Result(val quality: VideoQuality, val keepHdr: Boolean)
         suspend fun show(hdr:Boolean, helper:ConvertHelper, pos:Long):Result? {
-            return UtImmortalTask.awaitTaskResult<Result?>(this::class.java.name) {
+            return UtImmortalTask.awaitTaskResult(this::class.java.name) {
                 val vm = createAndroidViewModel<QualityViewModel>().apply {
                     setConvertHelper(helper)
                     sourceHdr.value = hdr

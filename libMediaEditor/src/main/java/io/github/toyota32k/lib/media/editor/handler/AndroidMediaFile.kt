@@ -11,6 +11,9 @@ import io.github.toyota32k.lib.media.editor.model.AmeGlobal
 import io.github.toyota32k.media.lib.converter.AndroidFile
 import java.io.File
 
+/**
+ * MediaStore (API29+) または、External Storage (API28-) へのメディアファイル保存用ヘルパークラス
+ */
 object AndroidMediaFile {
     val logger = AmeGlobal.logger
 

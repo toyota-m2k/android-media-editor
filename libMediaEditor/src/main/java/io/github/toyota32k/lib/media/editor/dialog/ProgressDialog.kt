@@ -2,6 +2,7 @@ package io.github.toyota32k.lib.media.editor.dialog
 
 import android.os.Bundle
 import android.view.View
+import androidx.lifecycle.viewModelScope
 import io.github.toyota32k.binder.command.LiteUnitCommand
 import io.github.toyota32k.binder.command.ReliableCommand
 import io.github.toyota32k.binder.command.bindCommand
@@ -13,21 +14,22 @@ import io.github.toyota32k.dialog.task.UtImmortalTask
 import io.github.toyota32k.dialog.task.createViewModel
 import io.github.toyota32k.dialog.task.getViewModel
 import io.github.toyota32k.lib.media.editor.databinding.DialogProgressBinding
-import io.github.toyota32k.lib.media.editor.handler.ICanceller
-import io.github.toyota32k.lib.media.editor.handler.SaveTaskStatus
+import io.github.toyota32k.lib.media.editor.handler.save.ICanceller
+import io.github.toyota32k.lib.media.editor.handler.save.IProgressSink
+import io.github.toyota32k.lib.media.editor.handler.save.SaveTaskStatus
 import io.github.toyota32k.media.lib.converter.IProgress
 import io.github.toyota32k.media.lib.converter.format
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
 import java.util.Locale
 import kotlin.also
 import kotlin.ranges.coerceIn
 
 class ProgressDialog : UtDialogEx() {
-    class ProgressSink(val viewModel: ProgressViewModel, canceller:ICanceller?) {
+    class ProgressSink(val viewModel: ProgressViewModel, canceller:ICanceller?) : IProgressSink {
         init {
             if (canceller!=null) {
                 viewModel.cancelCommand.bindForever { canceller.cancel() }
@@ -39,14 +41,14 @@ class ProgressDialog : UtDialogEx() {
             }
         }
 
-        fun onProgress(status: SaveTaskStatus, progress: IProgress) {
+        override fun onProgress(status: SaveTaskStatus, progress: IProgress) {
             viewModel.message.update(status.message)
             viewModel.progress.update(progress.percentage)
             viewModel.progressText.update(progress.format())
         }
 
-        suspend fun close() {
-            withContext(Dispatchers.Main) {
+        override fun complete() {
+            viewModel.viewModelScope.launch(Dispatchers.Main) {
                 viewModel.closeCommand.invoke(true)
             }
         }

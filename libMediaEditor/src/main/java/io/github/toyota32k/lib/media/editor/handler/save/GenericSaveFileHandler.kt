@@ -1,16 +1,16 @@
-package io.github.toyota32k.lib.media.editor.handler
+package io.github.toyota32k.lib.media.editor.handler.save
 
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Rect
 import androidx.core.net.toUri
 import io.github.toyota32k.lib.media.editor.dialog.NoReEncodeStrategy
+import io.github.toyota32k.lib.media.editor.handler.WorkFileMediator
 import io.github.toyota32k.lib.media.editor.model.AmeGlobal
 import io.github.toyota32k.lib.media.editor.model.IImageSourceInfo
 import io.github.toyota32k.lib.media.editor.model.IOutputFileProvider
 import io.github.toyota32k.lib.media.editor.model.ISaveFileHandler
 import io.github.toyota32k.lib.media.editor.model.IVideoSourceInfo
-import io.github.toyota32k.lib.player.model.PlayerControllerModel
 import io.github.toyota32k.logger.UtLog
 import io.github.toyota32k.media.lib.converter.ConvertResult
 import io.github.toyota32k.media.lib.converter.Converter
@@ -27,15 +27,19 @@ import io.github.toyota32k.media.lib.strategy.IVideoStrategy
 import io.github.toyota32k.media.lib.strategy.PresetAudioStrategies
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlin.collections.isEmpty
+import kotlin.collections.isNotEmpty
 
-abstract class AbstractSaveFileHandler(showSaveButton:Boolean) : ISaveFileHandler {
-    override val showSaveButton = MutableStateFlow(showSaveButton)
-}
-
+/**
+ * cancel i/f
+ */
 fun interface ICanceller {
     fun cancel()
 }
 
+/**
+ * 保存タスクのステータス
+ */
 enum class SaveTaskStatus(val message:String){
     CONVERTING("Converting"),
     FAST_STARTING("Optimizing"),
@@ -44,8 +48,12 @@ enum class SaveTaskStatus(val message:String){
 
 interface IProgressSink {
     fun onProgress(status:SaveTaskStatus, progress:IProgress)
+    fun complete()
 }
 
+/**
+ * 保存結果を返す i/f
+ */
 interface ISaveResult {
     enum class Status {
         SUCCESS,
@@ -61,6 +69,9 @@ interface ISaveResult {
     val failed:Boolean get() = status == Status.ERROR
 }
 
+/**
+ * 画像保存結果
+ */
 class ImageSaveResult(override val status:ISaveResult.Status, override val error:Throwable?, override val errorMessage:String?): ISaveResult {
     companion object {
         val succeeded:ImageSaveResult = ImageSaveResult(ISaveResult.Status.SUCCESS, null, null)
@@ -69,43 +80,94 @@ class ImageSaveResult(override val status:ISaveResult.Status, override val error
     }
 }
 
+/**
+ * ファイル保存処理の基本タスク i/f
+ */
 interface ISaveFileTask {
     suspend fun onStart(taskStatus: SaveTaskStatus, canceller:ICanceller?)
     suspend fun onEnd(taskStatus: SaveTaskStatus, result: ISaveResult)
     suspend fun onFinished()
 }
 
+/**
+ * 画像保存処理のタスク i/f
+ */
 interface ISaveImageTask: ISaveFileTask {
     val imageFormat get() = Bitmap.CompressFormat.JPEG
     val quality get() = 100
 }
 
+/**
+ * IVideoStrategy 選択用 i/f
+ */
 interface IVideoStrategySelector {
     suspend fun getVideoStrategy(inputFile: IInputMediaFile, sourceInfo: IVideoSourceInfo): IVideoStrategy?
 }
+/**
+ * IVideoStrategy + keepHdrフラグ選択用 i/f
+ */
 interface IVideoStrategyAndHdrSelector : IVideoStrategySelector {
     val keepHdr: Boolean
 }
 
+/**
+ * IAudioStrategy 選択用 i/f
+ */
 interface IAudioStrategySelector {
     suspend fun getAudioStrategy(inputFile: IInputMediaFile, sourceInfo: IVideoSourceInfo): IAudioStrategy?
 }
 
+/**
+ * AAC専用 IAudioStrategySelector
+ * ...どのみち AACくらいしかサポートしていない。
+ */
 object DefaultAudioStrategySelector: IAudioStrategySelector {
-    override suspend fun getAudioStrategy(inputFile: IInputMediaFile, sourceInfo: IVideoSourceInfo): IAudioStrategy? {
+    override suspend fun getAudioStrategy(inputFile: IInputMediaFile, sourceInfo: IVideoSourceInfo): IAudioStrategy {
         return PresetAudioStrategies.AACDefault
     }
 }
 
+/**
+ * 単一 IVideoStrategy を使用する IVideoStrategySelector
+ */
 class SingleVideoStrategySelector(val strategy:IVideoStrategy): IVideoStrategySelector {
-    override suspend fun getVideoStrategy(inputFile: IInputMediaFile, sourceInfo: IVideoSourceInfo): IVideoStrategy? {
+    override suspend fun getVideoStrategy(inputFile: IInputMediaFile, sourceInfo: IVideoSourceInfo): IVideoStrategy {
         return strategy
     }
 }
 
-interface ISaveVideoTask: ISaveFileTask, IProgressSink, IVideoStrategySelector, IAudioStrategySelector {
+interface IProgressSinkProvider {
+    val progressSink: IProgressSink?
+}
+
+/**
+ * 動画のエンコード処理に必要なパラメータ（コーデック、keepHdr）を保持・供給し、
+ * プログレス表示を担当するタスクの i/f
+ */
+interface ISaveVideoTask: ISaveFileTask, IProgressSinkProvider, IVideoStrategySelector, IAudioStrategySelector {
     val keepHdr: Boolean
     val fastStart: Boolean
+}
+
+/**
+ * ISaveFileHandlerの汎用実装クラス
+ * 
+ * Image/Video共通
+ * ISaveFileTask を返すデリゲート（startSaveTask）を引数として渡す。
+ * このデリゲートが返す ISaveFileTask を実装することにより、詳細な動作をカスタマイズ。
+ */
+class GenericSaveFileHandler(
+    showSaveButton:Boolean,
+    val applicationContext: Context,
+    val startSaveTask:suspend (taskKind:TaskKind)-> ISaveFileTask?
+) : ISaveFileHandler {
+    val logger = UtLog("SaveFileHandler", AmeGlobal.logger)
+    override val showSaveButton = MutableStateFlow(showSaveButton)
+    enum class TaskKind {
+        SAVE_IMAGE,
+        SAVE_VIDEO,
+    }
+
     class SaveVideoResult(val convertResult: ConvertResult): ISaveResult {
         override val status: ISaveResult.Status
             get() = when {
@@ -125,20 +187,10 @@ interface ISaveVideoTask: ISaveFileTask, IProgressSink, IVideoStrategySelector, 
             fun fatal(error:Throwable, message:String? = null) = SaveVideoResult(ConvertResult.error(error, message))
         }
     }
-}
 
-class GenericSaveFileHandler(
-    showSaveButton:Boolean,
-    val applicationContext: Context,
-    val playerControllerModel: PlayerControllerModel,
-    val startSaveTask:suspend (taskKind:TaskKind)-> ISaveFileTask?
-) : AbstractSaveFileHandler(showSaveButton) {
-    val logger = UtLog("SaveFileHandler", AmeGlobal.logger)
-    enum class TaskKind {
-        SAVE_IMAGE,
-        SAVE_VIDEO,
-    }
-
+    /**
+     * 画像ファイルを保存する
+     */
     override suspend fun saveImage(sourceInfo: IImageSourceInfo, outputFileProvider: IOutputFileProvider): Boolean {
         val task = startSaveTask(TaskKind.SAVE_IMAGE) ?: return false
         val (imageFormat, quality) = if (task is ISaveImageTask) {
@@ -166,6 +218,9 @@ class GenericSaveFileHandler(
         }
     }
 
+    /**
+     * 動画ファイルを保存する
+     */
     override suspend fun saveVideo(sourceInfo: IVideoSourceInfo, outputFileProvider: IOutputFileProvider): Boolean {
         val source = sourceInfo.source
         val task = startSaveTask(TaskKind.SAVE_VIDEO) as? ISaveVideoTask ?: return false
@@ -197,7 +252,7 @@ class GenericSaveFileHandler(
                     val stage2 = mediator.lastStage { inFile, outFile ->
                         task.onStart(SaveTaskStatus.FAST_STARTING, null)
                         FastStart.process(inFile, outFile, true) { progress ->
-                            (task as? IProgressSink)?.onProgress(SaveTaskStatus.FAST_STARTING, progress)
+                            task.progressSink?.onProgress(SaveTaskStatus.FAST_STARTING, progress)
                         }
                     }
                     if (!stage2) return false
@@ -215,23 +270,25 @@ class GenericSaveFileHandler(
         }
     }
 
-    private suspend fun trimmingAndConvert(task:ISaveFileTask, videoStrategy: IVideoStrategy, audioStrategy:IAudioStrategy, inputFile: IInputMediaFile, outputFile: IOutputMediaFile, sourceInfo: IVideoSourceInfo): ISaveVideoTask.SaveVideoResult {
+    /**
+     * trimming + convert（再エンコード）
+     */
+    private suspend fun trimmingAndConvert(task:ISaveVideoTask, videoStrategy: IVideoStrategy, audioStrategy:IAudioStrategy, inputFile: IInputMediaFile, outputFile: IOutputMediaFile, sourceInfo: IVideoSourceInfo): SaveVideoResult {
         return try {
-            val videoTask = task as? ISaveVideoTask
             val trimmingRanges = sourceInfo.trimmingRanges
             val rotation: Int = sourceInfo.rotation
             val cropRect: Rect? = sourceInfo.cropRect
             val brightness:Float? = sourceInfo.brightness
 
-            val converter = Converter.factory
+            val converter = Converter.builder
                 .input(inputFile)
                 .output(outputFile)
                 .videoStrategy(videoStrategy)
                 .audioStrategy(audioStrategy)
-                .keepHDR(videoTask?.keepHdr ?: true)
+                .keepHDR(task.keepHdr)
                 .apply {
                     if(trimmingRanges.isNotEmpty()) {
-                        addTrimmingRanges(*trimmingRanges)
+                        addTrimmingRange(trimmingRanges)
                     }
                     if (rotation!=0) {
                         rotate(Rotation(rotation, true))
@@ -244,59 +301,70 @@ class GenericSaveFileHandler(
                     }
                 }
                 .setProgressHandler { progress->
-                    (task as? IProgressSink)?.onProgress(SaveTaskStatus.CONVERTING, progress)
+                    task.progressSink?.onProgress(SaveTaskStatus.CONVERTING, progress)
                 }
                 .build()
             task.onStart(SaveTaskStatus.CONVERTING) {
                 converter.cancel()
             }
             converter.execute().let { cr->
-                ISaveVideoTask.SaveVideoResult(cr)
+                SaveVideoResult(cr)
             }
         } catch(e:Throwable) {
             logger.error(e)
-            ISaveVideoTask.SaveVideoResult.fatal(e)
+            SaveVideoResult.fatal(e)
         }
     }
 
-    private suspend fun trimmingWithNoReEncoding(task:ISaveFileTask, inputFile: IInputMediaFile, outputFile: IOutputMediaFile, sourceInfo: IVideoSourceInfo): ISaveVideoTask.SaveVideoResult {
+    /**
+     * trimmingのみ（再エンコードなし）
+     */
+    private suspend fun trimmingWithNoReEncoding(task:ISaveVideoTask, inputFile: IInputMediaFile, outputFile: IOutputMediaFile, sourceInfo: IVideoSourceInfo): SaveVideoResult {
         return try {
             val trimmingRanges = sourceInfo.trimmingRanges
             val rotation: Int = sourceInfo.rotation
 //            val cropRect: Rect? = sourceInfo.cropRect
 //            val brightness:Float? = sourceInfo.brightness
-            val splitter = Splitter.Factory()
+            val splitter = Splitter.builder
                 .apply {
                     if (rotation!=0) {
                         rotate(Rotation(rotation, true))
                     }
                 }
                 .setProgressHandler { progress->
-                    (task as? IProgressSink)?.onProgress(SaveTaskStatus.CONVERTING, progress)
+                    task.progressSink?.onProgress(SaveTaskStatus.CONVERTING, progress)
                 }
                 .build()
             task.onStart(SaveTaskStatus.CONVERTING) {
                 splitter.cancel()
             }
-            splitter.trim(inputFile,outputFile, *trimmingRanges).let { tr->
+            splitter.trim(inputFile,outputFile, trimmingRanges).let { tr->
                 val adjustedRanges = if (trimmingRanges.isNotEmpty()) splitter.adjustedRangeList(trimmingRanges) else null
-                ISaveVideoTask.SaveVideoResult(ConvertResult(tr.succeeded, adjustedRanges, report=null, tr.cancelled, null, tr.error))
+                SaveVideoResult(ConvertResult(tr.succeeded, outputFile, tr.requestedRangeMs,adjustedRanges, report=null, tr.cancelled, tr.errorMessage, tr.exception))
             }
         } catch(e:Throwable) {
             logger.error(e)
-            ISaveVideoTask.SaveVideoResult.fatal(e)
+            SaveVideoResult.fatal(e)
         }
     }
 
     companion object {
+        /**
+         * GenericSaveFileHandler インスタンスを作成
+         *
+         * @param showSaveButton 編集ツールバーに保存ボタンを表示するかどうか
+         * @param applicationContext アプリケーションコンテキスト
+         * @param playerControllerModel プレイヤーコントローラー
+         * @param videoStrategySelector IVideoStrategy選択用 i/f
+         * @param audioStrategySelector IAudioStrategy選択用 i/f
+         */
         fun create(
             showSaveButton:Boolean,
             applicationContext: Context,
-            playerControllerModel: PlayerControllerModel,
             videoStrategySelector: IVideoStrategySelector,
             audioStrategySelector: IAudioStrategySelector = DefaultAudioStrategySelector,
             ): GenericSaveFileHandler {
-            return GenericSaveFileHandler(showSaveButton, applicationContext, playerControllerModel) { taskKind ->
+            return GenericSaveFileHandler(showSaveButton, applicationContext) { taskKind ->
                 when (taskKind) {
                     TaskKind.SAVE_IMAGE -> GenericSaveImageTask.defaultTask()
                     TaskKind.SAVE_VIDEO -> GenericSaveVideoTask.defaultTask(videoStrategySelector, audioStrategySelector)

@@ -6,7 +6,7 @@ import io.github.toyota32k.lib.media.editor.handler.split.NoopSplitHandler
 import io.github.toyota32k.lib.player.model.IMediaSource
 import io.github.toyota32k.lib.player.model.IPlayerModel
 import io.github.toyota32k.lib.player.model.PlayerControllerModel
-import io.github.toyota32k.media.lib.converter.Converter
+import io.github.toyota32k.media.lib.converter.RangeMs
 import io.github.toyota32k.utils.IUtPropOwner
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -52,7 +52,7 @@ open class MediaEditorModel(
 
     class VideoSourceInfoImpl(
         override val source: IMediaSource,
-        override val trimmingRanges: Array<Converter.Factory.RangeMs>,
+        override val trimmingRanges: List<RangeMs>,
         override val rotation: Int,
         override val cropRect: Rect?,
         override val brightness: Float?,
@@ -62,7 +62,7 @@ open class MediaEditorModel(
             fun fromModel(model: MediaEditorModel): VideoSourceInfoImpl? {
                 val source = model.playerModel.currentSource.value ?: return null
                 val size = model.playerModel.videoSize.value ?: return null
-                val ranges = model.chapterEditorHandler.getEnabledRangeList().map { Converter.Factory.RangeMs(it.start, it.end) }.toTypedArray()
+                val ranges = model.chapterEditorHandler.getEnabledRangeList().map { RangeMs(it.start, it.end) }
                 val rotation = model.playerModel.rotation.value
                 val cropRect = if (model.cropHandler.maskViewModel.isCropped.value) model.cropHandler.maskViewModel.cropRect(size.width, size.height).asRect else null
                 val positionMs = model.playerModel.currentPosition
