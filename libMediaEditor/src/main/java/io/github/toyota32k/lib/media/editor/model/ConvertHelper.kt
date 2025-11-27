@@ -89,7 +89,9 @@ class ConvertHelper(
                 .videoStrategy(videoStrategy)
                 .keepHDR(keepHdr)
                 .rotate(rotation)
-                .addTrimmingRange(ranges ?: trimmingRanges)
+                .trimming {
+                    addRangesMs(ranges ?: trimmingRanges)
+                }
                 .limitDuration(limitDuration)
                 .setProgressHandler {
                     vm.progress.value = it.percentage

@@ -76,7 +76,9 @@ class GenericSplitHandler(showSplitButton: Boolean, val applicationContext: Cont
                 ConvertSplitter
                     .builder
                     .setProgressHandler(::onProgress)
-                    .addTrimmingRange(sourceInfo.trimmingRanges)
+                    .trimming {
+                        addRangesMs(sourceInfo.trimmingRanges)
+                    }
                     .apply {
                         if (sourceInfo.cropRect!=null) {
                             crop(sourceInfo.cropRect!!)
@@ -91,7 +93,9 @@ class GenericSplitHandler(showSplitButton: Boolean, val applicationContext: Cont
                 TrimSplitter
                     .builder
                     .setProgressHandler(::onProgress)
-                    .addTrimmingRange(sourceInfo.trimmingRanges)
+                    .trimming {
+                        addRangesMs(sourceInfo.trimmingRanges)
+                    }
                     .build()
             }
             else -> {
@@ -125,7 +129,9 @@ class GenericSplitHandler(showSplitButton: Boolean, val applicationContext: Cont
                 ConvertSplitter
                     .builder
                     .setProgressHandler(::onProgress)
-                    .addTrimmingRange(sourceInfo.trimmingRanges)
+                    .trimming {
+                        addRangesMs(sourceInfo.trimmingRanges)
+                    }
                     .apply {
                         if (sourceInfo.cropRect!=null) {
                             crop(sourceInfo.cropRect!!)
@@ -140,7 +146,9 @@ class GenericSplitHandler(showSplitButton: Boolean, val applicationContext: Cont
                 TrimSplitter
                     .builder
                     .setProgressHandler(::onProgress)
-                    .addTrimmingRange(sourceInfo.trimmingRanges)
+                    .trimming {
+                        addRangesMs(sourceInfo.trimmingRanges)
+                    }
                     .build()
             }
             else -> {

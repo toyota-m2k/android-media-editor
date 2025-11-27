@@ -286,10 +286,10 @@ class GenericSaveFileHandler(
                 .videoStrategy(videoStrategy)
                 .audioStrategy(audioStrategy)
                 .keepHDR(task.keepHdr)
+                .trimming {
+                    addRangesMs(trimmingRanges)
+                }
                 .apply {
-                    if(trimmingRanges.isNotEmpty()) {
-                        addTrimmingRange(trimmingRanges)
-                    }
                     if (rotation!=0) {
                         rotate(Rotation(rotation, true))
                     }
