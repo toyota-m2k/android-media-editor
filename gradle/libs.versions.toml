@@ -15,6 +15,7 @@ androidMediaPlayer = "LOCAL"
 androidDialog = "LOCAL"
 androidBinding = "LOCAL"
 slidingpanelayout = "1.2.0"
+documentfile = "1.1.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -33,6 +34,7 @@ android-media-player = { module = "com.github.toyota-m2k:android-media-player", 
 android-media-processor = { module = "com.github.toyota-m2k:android-media-processor", version.ref = "androidMediaProcessor" }
 android-dialog = { module = "com.github.toyota-m2k:android-dialog", version.ref = "androidDialog" }
 android-binding = { module = "com.github.toyota-m2k:android-binding", version.ref = "androidBinding" }
+androidx-documentfile = { group = "androidx.documentfile", name = "documentfile", version.ref = "documentfile" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

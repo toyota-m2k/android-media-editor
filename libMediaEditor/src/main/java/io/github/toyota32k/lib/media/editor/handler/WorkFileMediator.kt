@@ -16,7 +16,7 @@ class WorkFileMediator(val applicationContext: Context, val outputFileProvider: 
     private var outFile: AndroidFile? = null
 
     private fun ensureWorkFile():AndroidFile {
-        return workFile ?: File.createTempFile("ame", ".tmp", applicationContext.cacheDir).toAndroidFile().apply {
+        return workFile ?: FileUtil.createWorkFile().apply {
             workFile = this
         }
     }

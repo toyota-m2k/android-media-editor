@@ -1,8 +1,6 @@
 package io.github.toyota32k.lib.media.editor.dialog
 
 import android.app.Application
-import android.media.MediaCodec
-import android.media.MediaFormat
 import android.os.Bundle
 import android.view.View
 import androidx.annotation.IdRes
@@ -25,81 +23,71 @@ import io.github.toyota32k.lib.media.editor.R
 import io.github.toyota32k.lib.media.editor.databinding.DialogSelectQualityBinding
 import io.github.toyota32k.lib.media.editor.model.ConvertHelper
 import io.github.toyota32k.media.lib.converter.ConvertResult
-import io.github.toyota32k.media.lib.format.BitRateMode
-import io.github.toyota32k.media.lib.format.Codec
-import io.github.toyota32k.media.lib.format.ColorFormat
-import io.github.toyota32k.media.lib.format.Level
-import io.github.toyota32k.media.lib.format.MetaData
-import io.github.toyota32k.media.lib.format.Profile
 import io.github.toyota32k.media.lib.strategy.IVideoStrategy
-import io.github.toyota32k.media.lib.strategy.MaxDefault
-import io.github.toyota32k.media.lib.strategy.MinDefault
 import io.github.toyota32k.media.lib.strategy.PresetAudioStrategies
 import io.github.toyota32k.media.lib.strategy.PresetVideoStrategies
-import io.github.toyota32k.media.lib.strategy.ProfileLv
-import io.github.toyota32k.media.lib.strategy.VideoStrategy
-import io.github.toyota32k.media.lib.surface.RenderOption
+import io.github.toyota32k.media.lib.strategy.PresetVideoStrategies.isValid
 import io.github.toyota32k.utils.TimeSpan
 import io.github.toyota32k.utils.lifecycle.ConstantLiveData
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 import java.io.File
 
-object NoReEncodeStrategy : IVideoStrategy {
-    override val sizeCriteria: VideoStrategy.SizeCriteria
-        get() = throw UnsupportedOperationException("empty implementation")
-    override val bitRate: MaxDefault
-        get() = throw UnsupportedOperationException("empty implementation")
-    override val frameRate: MaxDefault
-        get() = throw UnsupportedOperationException("empty implementation")
-    override val iFrameInterval: MinDefault
-        get() = throw UnsupportedOperationException("empty implementation")
-    override val colorFormat: ColorFormat
-        get() = throw UnsupportedOperationException("empty implementation")
-    override val bitRateMode: BitRateMode
-        get() = throw UnsupportedOperationException("empty implementation")
-    override val encoderType: VideoStrategy.EncoderType
-        get() = throw UnsupportedOperationException("empty implementation")
-
-    override fun createOutputFormat(inputFormat: MediaFormat, metaData: MetaData, encoder: MediaCodec, renderOption: RenderOption): MediaFormat {
-        throw UnsupportedOperationException("empty implementation")
-    }
-
-    override fun derived(
-        codec: Codec,
-        profile: Profile,
-        level: Level?,
-        fallbackProfiles: Array<ProfileLv>?,
-        sizeCriteria: VideoStrategy.SizeCriteria,
-        bitRate: MaxDefault,
-        frameRate: MaxDefault,
-        iFrameInterval: MinDefault,
-        colorFormat: ColorFormat?,
-        bitRateMode: BitRateMode?,
-        encoderType: VideoStrategy.EncoderType
-    ): IVideoStrategy {
-        throw UnsupportedOperationException("empty implementation")
-    }
-
-    override val name: String
-        get() = throw UnsupportedOperationException("empty implementation")
-    override val codec: Codec
-        get() = throw UnsupportedOperationException("empty implementation")
-    override val profile: Profile
-        get() = throw UnsupportedOperationException("empty implementation")
-    override val maxLevel: Level
-        get() = throw UnsupportedOperationException("empty implementation")
-    override val fallbackProfiles: Array<ProfileLv>
-        get() = throw UnsupportedOperationException("empty implementation")
-
-    override fun createEncoder(): MediaCodec {
-        throw UnsupportedOperationException("empty implementation")
-    }
-}
+//object NoReEncodeStrategy : IVideoStrategy {
+//    override val sizeCriteria: VideoStrategy.SizeCriteria
+//        get() = throw UnsupportedOperationException("empty implementation")
+//    override val bitRate: MaxDefault
+//        get() = throw UnsupportedOperationException("empty implementation")
+//    override val frameRate: MaxDefault
+//        get() = throw UnsupportedOperationException("empty implementation")
+//    override val iFrameInterval: MinDefault
+//        get() = throw UnsupportedOperationException("empty implementation")
+//    override val colorFormat: ColorFormat
+//        get() = throw UnsupportedOperationException("empty implementation")
+//    override val bitRateMode: BitRateMode
+//        get() = throw UnsupportedOperationException("empty implementation")
+//    override val encoderType: VideoStrategy.EncoderType
+//        get() = throw UnsupportedOperationException("empty implementation")
+//
+//    override fun createOutputFormat(inputFormat: MediaFormat, metaData: MetaData, encoder: MediaCodec, renderOption: RenderOption): MediaFormat {
+//        throw UnsupportedOperationException("empty implementation")
+//    }
+//
+//    override fun derived(
+//        codec: Codec,
+//        profile: Profile,
+//        level: Level?,
+//        fallbackProfiles: Array<ProfileLv>?,
+//        sizeCriteria: VideoStrategy.SizeCriteria,
+//        bitRate: MaxDefault,
+//        frameRate: MaxDefault,
+//        iFrameInterval: MinDefault,
+//        colorFormat: ColorFormat?,
+//        bitRateMode: BitRateMode?,
+//        encoderType: VideoStrategy.EncoderType
+//    ): IVideoStrategy {
+//        throw UnsupportedOperationException("empty implementation")
+//    }
+//
+//    override val name: String
+//        get() = throw UnsupportedOperationException("empty implementation")
+//    override val codec: Codec
+//        get() = throw UnsupportedOperationException("empty implementation")
+//    override val profile: Profile
+//        get() = throw UnsupportedOperationException("empty implementation")
+//    override val maxLevel: Level
+//        get() = throw UnsupportedOperationException("empty implementation")
+//    override val fallbackProfiles: Array<ProfileLv>
+//        get() = throw UnsupportedOperationException("empty implementation")
+//
+//    override fun createEncoder(): MediaCodec {
+//        throw UnsupportedOperationException("empty implementation")
+//    }
+//}
 
 class SelectQualityDialog : UtDialogEx() {
     enum class VideoQuality(@param:IdRes val id: Int, @param:StringRes val strId:Int, val strategy: IVideoStrategy) {
-        Highest(R.id.radio_highest, R.string.highest_quality, NoReEncodeStrategy),
+        Highest(R.id.radio_highest, R.string.highest_quality, PresetVideoStrategies.InvalidStrategy),
         High(R.id.radio_high, R.string.high_quality, PresetVideoStrategies.HEVC1080LowProfile),
         Middle(R.id.radio_middle, R.string.middle_quality,PresetVideoStrategies.HEVC720Profile),
         Low(R.id.radio_low, R.string.low_quality,PresetVideoStrategies.HEVC720LowProfile);
@@ -115,7 +103,7 @@ class SelectQualityDialog : UtDialogEx() {
         }
 
         fun estimateSize(duration:Long):Long? {
-            return if (strategy!=NoReEncodeStrategy ) (strategy.bitRate.max + PresetAudioStrategies.AACDefault.bitRatePerChannel.max) * duration / 8000 else null // bytes
+            return if (strategy.isValid) (strategy.bitRate.max + PresetAudioStrategies.AACDefault.bitRatePerChannel.max) * duration / 8000 else null // bytes
         }
     }
 
@@ -242,7 +230,7 @@ class SelectQualityDialog : UtDialogEx() {
         }
 
         val testCommand = LiteUnitCommand {
-            if (quality.value.strategy==NoReEncodeStrategy) return@LiteUnitCommand
+            if (!quality.value.strategy.isValid) return@LiteUnitCommand
             immortalTaskContext.launchSubTask {
                 val workFile:File? = tryConvert()
                 if (workFile!=null) {
@@ -297,7 +285,7 @@ class SelectQualityDialog : UtDialogEx() {
                 .textBinding(controls.radioMiddle, viewModel.estimatedSizes[VideoQuality.Middle]!!.map {"${getString(VideoQuality.Middle.strId)}       ${caFormatSize(it)}"})
                 .textBinding(controls.radioLow, viewModel.estimatedSizes[VideoQuality.Low]!!.map {"${getString(VideoQuality.Low.strId)}       ${caFormatSize(it)}"})
                 .dialogOptionButtonCommand(viewModel.testCommand)
-                .dialogOptionButtonEnable(viewModel.quality.map { it.strategy!=NoReEncodeStrategy})
+                .dialogOptionButtonEnable(viewModel.quality.map { it.strategy.isValid })
         }
     }
 

@@ -88,7 +88,7 @@ class SaveOptionDialog : UtDialogEx() {
                     when (vm.targetType.value) {
                         SaveOptionViewModel.TargetType.EXPORT_FILE-> ExportFileProvider(suffix)
                         SaveOptionViewModel.TargetType.SAVE_MEDIA_FILE_AS-> NamedMediaFileProvider(vm.targetName.value, subFolder)
-                        SaveOptionViewModel.TargetType.OVERWRITE-> OverwriteFileProvider
+                        SaveOptionViewModel.TargetType.OVERWRITE-> OverwriteFileProvider()
                     }
                 } else null
             }

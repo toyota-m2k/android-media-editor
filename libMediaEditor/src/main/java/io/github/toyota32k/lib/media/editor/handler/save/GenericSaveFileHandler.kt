@@ -2,10 +2,7 @@ package io.github.toyota32k.lib.media.editor.handler.save
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.Rect
 import androidx.core.net.toUri
-import io.github.toyota32k.lib.media.editor.dialog.NoReEncodeStrategy
-import io.github.toyota32k.lib.media.editor.handler.WorkFileMediator
 import io.github.toyota32k.lib.media.editor.model.AmeGlobal
 import io.github.toyota32k.lib.media.editor.model.IImageSourceInfo
 import io.github.toyota32k.lib.media.editor.model.IOutputFileProvider
@@ -13,41 +10,45 @@ import io.github.toyota32k.lib.media.editor.model.ISaveFileHandler
 import io.github.toyota32k.lib.media.editor.model.IVideoSourceInfo
 import io.github.toyota32k.logger.UtLog
 import io.github.toyota32k.media.lib.converter.ConvertResult
-import io.github.toyota32k.media.lib.converter.Converter
-import io.github.toyota32k.media.lib.converter.FastStart
+import io.github.toyota32k.media.lib.converter.ICancellable
+import io.github.toyota32k.media.lib.converter.IConvertResult
 import io.github.toyota32k.media.lib.converter.IInputMediaFile
+import io.github.toyota32k.media.lib.converter.IMultiPhaseProgress
 import io.github.toyota32k.media.lib.converter.IOutputMediaFile
-import io.github.toyota32k.media.lib.converter.IProgress
 import io.github.toyota32k.media.lib.converter.Rotation
-import io.github.toyota32k.media.lib.converter.Splitter
+import io.github.toyota32k.media.lib.converter.TrimOptimizer
 import io.github.toyota32k.media.lib.converter.toAndroidFile
 import io.github.toyota32k.media.lib.report.Report
 import io.github.toyota32k.media.lib.strategy.IAudioStrategy
 import io.github.toyota32k.media.lib.strategy.IVideoStrategy
 import io.github.toyota32k.media.lib.strategy.PresetAudioStrategies
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlin.collections.isEmpty
-import kotlin.collections.isNotEmpty
 
 /**
  * cancel i/f
  */
-fun interface ICanceller {
-    fun cancel()
-}
+//fun interface ICanceller {
+//    fun cancel()
+//}
 
-/**
- * 保存タスクのステータス
- */
-enum class SaveTaskStatus(val message:String){
-    CONVERTING("Converting"),
-    FAST_STARTING("Optimizing"),
-    FINALIZING("Finalizing"),
-}
+///**
+// * 保存タスクのステータス
+// */
+//enum class SaveTaskStatus(val message:String, val phase: IMultiPhaseProgress.Phase?){
+//    CONVERTING("Converting", IMultiPhaseProgress.Phase.CONVERTING),
+//    EXTRACTING("Extracting", IMultiPhaseProgress.Phase.OPTIMIZING),
+//    OPTIMIZING("Optimizing", IMultiPhaseProgress.Phase.OPTIMIZING),
+//    FINALIZING("Finalizing", null),
+//    ;
+//    companion object {
+//        fun fromPhase(phase: IMultiPhaseProgress.Phase?): SaveTaskStatus {
+//            return entries.firstOrNull { it.phase == phase  } ?: CONVERTING
+//        }
+//    }
+//}
 
 interface IProgressSink {
-    fun onProgress(status:SaveTaskStatus, progress:IProgress)
+    fun onProgress(progress: IMultiPhaseProgress)
     fun complete()
 }
 
@@ -67,16 +68,18 @@ interface ISaveResult {
     val succeeded:Boolean get() = status == Status.SUCCESS
     val cancelled:Boolean get() = status == Status.CANCELLED
     val failed:Boolean get() = status == Status.ERROR
+
+    val outputFile: IOutputMediaFile?
 }
 
 /**
  * 画像保存結果
  */
-class ImageSaveResult(override val status:ISaveResult.Status, override val error:Throwable?, override val errorMessage:String?): ISaveResult {
+class ImageSaveResult(override val outputFile: IOutputMediaFile?, override val status:ISaveResult.Status, override val error:Throwable?, override val errorMessage:String?): ISaveResult {
     companion object {
-        val succeeded:ImageSaveResult = ImageSaveResult(ISaveResult.Status.SUCCESS, null, null)
-        val cancelled: ImageSaveResult = ImageSaveResult(ISaveResult.Status.CANCELLED, null, null)
-        fun error(error:Throwable, message:String? = null) = ImageSaveResult(ISaveResult.Status.ERROR, error, message)
+        fun succeeded(outputFile: IOutputMediaFile):ImageSaveResult = ImageSaveResult(outputFile,ISaveResult.Status.SUCCESS, null, null)
+        val cancelled: ImageSaveResult = ImageSaveResult(null, ISaveResult.Status.CANCELLED, null, null)
+        fun error(error:Throwable, message:String? = null) = ImageSaveResult(null,ISaveResult.Status.ERROR, error, message)
     }
 }
 
@@ -84,9 +87,9 @@ class ImageSaveResult(override val status:ISaveResult.Status, override val error
  * ファイル保存処理の基本タスク i/f
  */
 interface ISaveFileTask {
-    suspend fun onStart(taskStatus: SaveTaskStatus, canceller:ICanceller?)
-    suspend fun onEnd(taskStatus: SaveTaskStatus, result: ISaveResult)
-    suspend fun onFinished()
+    suspend fun onStart(canceller: ICancellable?)
+    suspend fun onEnd()
+//    suspend fun onFinished()
 }
 
 /**
@@ -157,18 +160,20 @@ interface ISaveVideoTask: ISaveFileTask, IProgressSinkProvider, IVideoStrategySe
  * このデリゲートが返す ISaveFileTask を実装することにより、詳細な動作をカスタマイズ。
  */
 class GenericSaveFileHandler(
+    context: Context,
     showSaveButton:Boolean,
-    val applicationContext: Context,
     val startSaveTask:suspend (taskKind:TaskKind)-> ISaveFileTask?
 ) : ISaveFileHandler {
     val logger = UtLog("SaveFileHandler", AmeGlobal.logger)
+    val applicationContext = context.applicationContext ?: throw IllegalStateException("applicationContext is null")
     override val showSaveButton = MutableStateFlow(showSaveButton)
+    override val listener = SavedListenerImpl<ISaveResult>()
     enum class TaskKind {
         SAVE_IMAGE,
         SAVE_VIDEO,
     }
 
-    class SaveVideoResult(val convertResult: ConvertResult): ISaveResult {
+    class SaveVideoResult private constructor (val convertResult: IConvertResult): ISaveResult {
         override val status: ISaveResult.Status
             get() = when {
                 convertResult.succeeded -> ISaveResult.Status.SUCCESS
@@ -183,8 +188,13 @@ class GenericSaveFileHandler(
         val report:Report?
             get() = convertResult.report
 
+        override val outputFile: IOutputMediaFile?
+            get() = convertResult.outputFile
+
         companion object {
-            fun fatal(error:Throwable, message:String? = null) = SaveVideoResult(ConvertResult.error(error, message))
+//            fun error(error:Throwable, message:String? = null) = SaveVideoResult( null, ConvertResult.error(error, message))
+            fun cancel() = SaveVideoResult(ConvertResult.cancelled)
+            fun fromResult(result: IConvertResult) = SaveVideoResult(result)
         }
     }
 
@@ -203,19 +213,21 @@ class GenericSaveFileHandler(
         }
         val inputFile = sourceInfo.source.uri.toUri().toAndroidFile(applicationContext)
         val outputFile = outputFileProvider.getOutputFile(mimeType, inputFile) ?: return false
-        try {
-            task.onStart(SaveTaskStatus.FINALIZING, null)  // image does not support cancellation
+        val result = try {
+            task.onStart(null)  // image does not support cancellation
             outputFile.fileOutputStream { outputStream ->
                 sourceInfo.editedBitmap.compress(imageFormat, quality, outputStream)
                 outputStream.flush()
             }
-            task.onEnd(SaveTaskStatus.FINALIZING, ImageSaveResult.succeeded)
-            return true
+            ImageSaveResult.succeeded(outputFile)
         } catch(e:Throwable) {
             logger.error(e)
-            task.onEnd(SaveTaskStatus.FINALIZING, ImageSaveResult.error(e))
-            return false
+            ImageSaveResult.error(e)
         }
+        outputFileProvider.finalize(result.succeeded, inputFile, outputFile)
+        task.onEnd()
+        listener.onSaveTaskCompleted(result)
+        return result.succeeded
     }
 
     /**
@@ -227,125 +239,35 @@ class GenericSaveFileHandler(
         val inputFile = source.uri.toUri().toAndroidFile(applicationContext)
         val videoStrategy = task.getVideoStrategy(inputFile, sourceInfo) ?: return false
         val audioStrategy = task.getAudioStrategy(inputFile, sourceInfo) ?: return false
-        val noReEncoding = videoStrategy== NoReEncodeStrategy || (sourceInfo.cropRect == null && sourceInfo.brightness == null && !Converter.checkReEncodingNecessity(inputFile, videoStrategy))
+        val inFile = source.uri.toUri().toAndroidFile(applicationContext)
+        val outFile = outputFileProvider.getOutputFile("video/mp4", inFile) ?: return false
 
-        return WorkFileMediator(applicationContext, outputFileProvider, inputFile).use { mediator ->
-            try {
-                // stage1: Convert/Trimming
-                val stage1 = mediator.firstStage { inFile, outFile ->
-                    val trimmingRanges = sourceInfo.trimmingRanges
-                    // Trimming and Conversion
-                    val result = if (noReEncoding) {
-                        if (trimmingRanges.isEmpty()) {
-                            logger.warn("maybe no effect")
-                        }
-                        trimmingWithNoReEncoding(task, inFile, outFile, sourceInfo)
-                    } else {
-                        trimmingAndConvert(task, videoStrategy, audioStrategy, inFile, outFile, sourceInfo)
-                    }
-                    task.onEnd(SaveTaskStatus.CONVERTING, result)
-                    result.succeeded
-                }
-                if (!stage1) return false
-                if (task.fastStart) {
-                    // stage2: fast start
-                    val stage2 = mediator.lastStage { inFile, outFile ->
-                        task.onStart(SaveTaskStatus.FAST_STARTING, null)
-                        FastStart.process(inFile, outFile, true) { progress ->
-                            task.progressSink?.onProgress(SaveTaskStatus.FAST_STARTING, progress)
-                        }
-                    }
-                    if (!stage2) return false
-                }
-                mediator.finalize()
-                return true
-            } catch(e:Throwable) {
-                if (e !is CancellationException) {
-                    logger.error(e)
-                }
-                false
-            } finally {
-                task.onFinished()
+        val trimOptimizer = TrimOptimizer.Builder(applicationContext)
+            .input(inFile)
+            .output(outFile)
+            .deleteOutputOnError(true)
+            .videoStrategy(videoStrategy)
+            .audioStrategy(audioStrategy)
+            .keepHDR(task.keepHdr)
+            .fastStart(true)
+            .removeFreeOnFastStart(true)
+            .trimming {
+                addRangesMs(sourceInfo.trimmingRanges)
             }
-        }
-    }
+            .rotate(Rotation.relative(sourceInfo.rotation))
+            .crop(sourceInfo.cropRect)
+            .brightness(sourceInfo.brightness)
+            .setProgressHandler { progress->
+                task.progressSink?.onProgress(progress)
+            }
+            .build()
 
-    /**
-     * trimming + convert（再エンコード）
-     */
-    private suspend fun trimmingAndConvert(task:ISaveVideoTask, videoStrategy: IVideoStrategy, audioStrategy:IAudioStrategy, inputFile: IInputMediaFile, outputFile: IOutputMediaFile, sourceInfo: IVideoSourceInfo): SaveVideoResult {
-        return try {
-            val trimmingRanges = sourceInfo.trimmingRanges
-            val rotation: Int = sourceInfo.rotation
-            val cropRect: Rect? = sourceInfo.cropRect
-            val brightness:Float? = sourceInfo.brightness
-
-            val converter = Converter.builder
-                .input(inputFile)
-                .output(outputFile)
-                .videoStrategy(videoStrategy)
-                .audioStrategy(audioStrategy)
-                .keepHDR(task.keepHdr)
-                .trimming {
-                    addRangesMs(trimmingRanges)
-                }
-                .apply {
-                    if (rotation!=0) {
-                        rotate(Rotation(rotation, true))
-                    }
-                    if (cropRect!=null) {
-                        crop(cropRect)
-                    }
-                    if (brightness!=null) {
-                        this.brightness(brightness)
-                    }
-                }
-                .setProgressHandler { progress->
-                    task.progressSink?.onProgress(SaveTaskStatus.CONVERTING, progress)
-                }
-                .build()
-            task.onStart(SaveTaskStatus.CONVERTING) {
-                converter.cancel()
-            }
-            converter.execute().let { cr->
-                SaveVideoResult(cr)
-            }
-        } catch(e:Throwable) {
-            logger.error(e)
-            SaveVideoResult.fatal(e)
-        }
-    }
-
-    /**
-     * trimmingのみ（再エンコードなし）
-     */
-    private suspend fun trimmingWithNoReEncoding(task:ISaveVideoTask, inputFile: IInputMediaFile, outputFile: IOutputMediaFile, sourceInfo: IVideoSourceInfo): SaveVideoResult {
-        return try {
-            val trimmingRanges = sourceInfo.trimmingRanges
-            val rotation: Int = sourceInfo.rotation
-//            val cropRect: Rect? = sourceInfo.cropRect
-//            val brightness:Float? = sourceInfo.brightness
-            val splitter = Splitter.builder
-                .apply {
-                    if (rotation!=0) {
-                        rotate(Rotation(rotation, true))
-                    }
-                }
-                .setProgressHandler { progress->
-                    task.progressSink?.onProgress(SaveTaskStatus.CONVERTING, progress)
-                }
-                .build()
-            task.onStart(SaveTaskStatus.CONVERTING) {
-                splitter.cancel()
-            }
-            splitter.trim(inputFile,outputFile, trimmingRanges).let { tr->
-                val adjustedRanges = if (trimmingRanges.isNotEmpty()) splitter.adjustedRangeList(trimmingRanges) else null
-                SaveVideoResult(ConvertResult(tr.succeeded, outputFile, tr.requestedRangeMs,adjustedRanges, report=null, tr.cancelled, tr.errorMessage, tr.exception))
-            }
-        } catch(e:Throwable) {
-            logger.error(e)
-            SaveVideoResult.fatal(e)
-        }
+        task.onStart(trimOptimizer)
+        val result = trimOptimizer.execute()
+        outputFileProvider.finalize(result.succeeded, inFile, outFile)
+        task.onEnd()
+        listener.onSaveTaskCompleted(SaveVideoResult.fromResult(result))
+        return result.succeeded
     }
 
     companion object {
@@ -359,12 +281,12 @@ class GenericSaveFileHandler(
          * @param audioStrategySelector IAudioStrategy選択用 i/f
          */
         fun create(
-            showSaveButton:Boolean,
             applicationContext: Context,
+            showSaveButton:Boolean,
             videoStrategySelector: IVideoStrategySelector,
             audioStrategySelector: IAudioStrategySelector = DefaultAudioStrategySelector,
             ): GenericSaveFileHandler {
-            return GenericSaveFileHandler(showSaveButton, applicationContext) { taskKind ->
+            return GenericSaveFileHandler(applicationContext, showSaveButton) { taskKind ->
                 when (taskKind) {
                     TaskKind.SAVE_IMAGE -> GenericSaveImageTask.defaultTask()
                     TaskKind.SAVE_VIDEO -> GenericSaveVideoTask.defaultTask(videoStrategySelector, audioStrategySelector)

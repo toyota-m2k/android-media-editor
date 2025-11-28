@@ -125,13 +125,24 @@ class EditorControlPanel @JvmOverloads constructor(context: Context, attrs: Attr
             }
 
             .clickBinding(controls.chopVideo) {
-                model.playerModel.scope.launch {
-                    model.splitVideo()
+                lifecycleOwner()?.lifecycleScope?.launch {
+                    val mode = popupSplitModeMenu(context, it)
+                    if(mode!=null) {
+                        model.splitVideo(mode)
+                    }
                 }
             }
             .clickBinding(controls.saveVideo) {
-                model.playerModel.scope.launch {
-                    model.saveFile(ExportFileProvider("-(edited)"))
+                lifecycleOwner()?.lifecycleScope?.launch {
+                    val item = model.playerModel.currentSource.value ?: return@launch
+                    if (item.isPhoto) {
+                        model.saveFile(ExportFileProvider("-(edited)"))
+                    } else {
+                        val mode = popupSaveModeMenu(context, it)
+                        if (mode != null) {
+                            model.saveVideo(mode,ExportFileProvider("-(edited)"))
+                        }
+                    }
                 }
             }
     }
@@ -159,5 +170,48 @@ class EditorControlPanel @JvmOverloads constructor(context: Context, attrs: Attr
                 else -> null
             }
         }
+
+        suspend fun popupSplitModeMenu(context: Context, anchor: View): MediaEditorModel.SplitMode? {
+            val selection = MutableStateFlow<Int?>(null)
+            PopupMenu(context, anchor).apply {
+                setOnMenuItemClickListener {
+                    selection.value = it.itemId
+                    true
+                }
+                setOnDismissListener {
+                    selection.value = -1
+                }
+                inflate(R.menu.menu_split_mode)
+            }.show()
+            val sel = selection.first { it != null }
+            return when(sel) {
+                R.id.split_at_current_position -> MediaEditorModel.SplitMode.AT_POSITION
+                R.id.split_by_chapters-> MediaEditorModel.SplitMode.BY_CHAPTERS
+                else -> null
+            }
+        }
+
+        suspend fun popupSaveModeMenu(context: Context, anchor: View): MediaEditorModel.SaveMode? {
+            val selection = MutableStateFlow<Int?>(null)
+            PopupMenu(context, anchor).apply {
+                setOnMenuItemClickListener {
+                    selection.value = it.itemId
+                    true
+                }
+                setOnDismissListener {
+                    selection.value = -1
+                }
+                inflate(R.menu.menu_save_mode)
+            }.show()
+            val sel = selection.first { it != null }
+            return when(sel) {
+                R.id.save_all -> MediaEditorModel.SaveMode.ALL
+                R.id.save_current_chapter-> MediaEditorModel.SaveMode.CHAPTER
+                R.id.save_left -> MediaEditorModel.SaveMode.LEFT
+                R.id.save_right -> MediaEditorModel.SaveMode.RIGHT
+                else -> null
+            }
+        }
+
     }
 }

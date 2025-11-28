@@ -6,12 +6,15 @@ import android.widget.Button
 import com.google.android.material.slider.Slider
 import io.github.toyota32k.binder.Binder
 import io.github.toyota32k.binder.command.IUnitCommand
+import io.github.toyota32k.lib.media.editor.handler.save.ISaveResult
+import io.github.toyota32k.lib.media.editor.handler.save.ISavedListener
 import io.github.toyota32k.lib.player.model.IMediaSource
 import io.github.toyota32k.lib.player.model.IMediaSourceWithChapter
 import io.github.toyota32k.lib.player.model.IMutableChapterList
 import io.github.toyota32k.lib.player.model.Range
 import io.github.toyota32k.media.lib.converter.AndroidFile
 import io.github.toyota32k.media.lib.converter.IMultiSplitResult
+import io.github.toyota32k.media.lib.converter.IOutputFileSelector
 import io.github.toyota32k.media.lib.converter.RangeMs
 import io.github.toyota32k.utils.IDisposable
 import kotlinx.coroutines.flow.Flow
@@ -86,8 +89,9 @@ interface IChapterEditorHandler {
  */
 interface ISplitHandler {
     val showSplitButton: Flow<Boolean>
-    suspend fun splitAtCurrentPosition(sourceInfo:IVideoSourceInfo): IMultiSplitResult?
-    suspend fun splitByChapters(sourceInfo:IVideoSourceInfo): IMultiSplitResult?
+    val listener: ISavedListener<IMultiSplitResult>
+    suspend fun splitAtCurrentPosition(sourceInfo:IVideoSourceInfo, optimize:Boolean, fileSelector: IOutputFileSelector): IMultiSplitResult?
+    suspend fun splitByChapters(sourceInfo:IVideoSourceInfo, optimize:Boolean, fileSelector: IOutputFileSelector): IMultiSplitResult?
 }
 
 // region Media Source i/f
@@ -127,6 +131,7 @@ interface IImageSourceInfo : ISourceInfo {
  */
 interface ISaveFileHandler {
     val showSaveButton: Flow<Boolean>   // ダイアログで使用する場合などにfalseにして、保存時には、MediaEditorModel#saveFile() を利用する
+    val listener:ISavedListener<ISaveResult>
     suspend fun saveImage(sourceInfo: IImageSourceInfo, outputFileProvider: IOutputFileProvider):Boolean
     suspend fun saveVideo(sourceInfo:IVideoSourceInfo, outputFileProvider: IOutputFileProvider):Boolean
 }
@@ -142,5 +147,6 @@ interface IMediaSourceWithMutableChapterList : IMediaSourceWithChapter {
  * 保存先ファイル（書き込み可能なファイルのUri）を取得するための i/f
  */
 interface IOutputFileProvider {
-    suspend fun getOutputFile(mimeType:String, inputFile:AndroidFile): AndroidFile?
+    suspend fun getOutputFile(mimeType: String, inputFile: AndroidFile): AndroidFile?
+    fun finalize(succeeded: Boolean, inFile: AndroidFile, outFile: AndroidFile)
 }

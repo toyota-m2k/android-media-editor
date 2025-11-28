@@ -14,10 +14,9 @@ import io.github.toyota32k.dialog.task.UtImmortalTask
 import io.github.toyota32k.dialog.task.createViewModel
 import io.github.toyota32k.dialog.task.getViewModel
 import io.github.toyota32k.lib.media.editor.databinding.DialogProgressBinding
-import io.github.toyota32k.lib.media.editor.handler.save.ICanceller
 import io.github.toyota32k.lib.media.editor.handler.save.IProgressSink
-import io.github.toyota32k.lib.media.editor.handler.save.SaveTaskStatus
-import io.github.toyota32k.media.lib.converter.IProgress
+import io.github.toyota32k.media.lib.converter.ICancellable
+import io.github.toyota32k.media.lib.converter.IMultiPhaseProgress
 import io.github.toyota32k.media.lib.converter.format
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,7 +28,7 @@ import kotlin.also
 import kotlin.ranges.coerceIn
 
 class ProgressDialog : UtDialogEx() {
-    class ProgressSink(val viewModel: ProgressViewModel, canceller:ICanceller?) : IProgressSink {
+    class ProgressSink(val viewModel: ProgressViewModel, canceller: ICancellable?) : IProgressSink {
         init {
             if (canceller!=null) {
                 viewModel.cancelCommand.bindForever { canceller.cancel() }
@@ -41,8 +40,8 @@ class ProgressDialog : UtDialogEx() {
             }
         }
 
-        override fun onProgress(status: SaveTaskStatus, progress: IProgress) {
-            viewModel.message.update(status.message)
+        override fun onProgress(progress: IMultiPhaseProgress) {
+            viewModel.message.update(progress.phase.description)
             viewModel.progress.update(progress.percentage)
             viewModel.progressText.update(progress.format())
         }
@@ -100,7 +99,7 @@ class ProgressDialog : UtDialogEx() {
     }
 
     companion object {
-        suspend fun showProgressDialog(title:String, cancel:ICanceller?) : ProgressSink {
+        suspend fun showProgressDialog(title:String, cancel: ICancellable?) : ProgressSink {
             val sink = MutableStateFlow<ProgressSink?>(null)
             UtImmortalTask.launchTask("AmeProgressDialog") {
                 val vm = createViewModel<ProgressViewModel>()

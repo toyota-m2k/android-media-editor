@@ -2,7 +2,10 @@ package io.github.toyota32k.lib.media.editor.model
 
 import android.graphics.Bitmap
 import android.graphics.Rect
+import com.google.common.primitives.Longs.min
+import io.github.toyota32k.lib.media.editor.handler.split.ExportToDirectoryFileSelector
 import io.github.toyota32k.lib.media.editor.handler.split.NoopSplitHandler
+import io.github.toyota32k.lib.media.editor.handler.split.OneByOneExportFileSelector
 import io.github.toyota32k.lib.player.model.IMediaSource
 import io.github.toyota32k.lib.player.model.IPlayerModel
 import io.github.toyota32k.lib.player.model.PlayerControllerModel
@@ -15,6 +18,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import java.io.Closeable
+import kotlin.math.max
 
 open class MediaEditorModel(
     val playerControllerModel: PlayerControllerModel,
@@ -69,6 +73,49 @@ open class MediaEditorModel(
                 val durationMs = model.playerModel.naturalDuration.value
                 return VideoSourceInfoImpl(source, ranges, rotation, cropRect, null/*for future*/, positionMs, durationMs)
             }
+            fun fromModel(model: MediaEditorModel, mode:SaveMode): VideoSourceInfoImpl? {
+                val source = model.playerModel.currentSource.value ?: return null
+                val size = model.playerModel.videoSize.value ?: return null
+                val durationMs = model.playerModel.naturalDuration.value
+                val positionMs = model.playerModel.currentPosition
+                val enabledRanges = model.chapterEditorHandler.getEnabledRangeList()
+                val ranges = when(mode) {
+                    SaveMode.ALL->enabledRanges.map { RangeMs(it.start, it.end) }
+                    SaveMode.LEFT->enabledRanges.mapNotNull { if (it.start <= positionMs) RangeMs(it.start, min(it.actualEnd(durationMs), positionMs)) else null }
+                    SaveMode.RIGHT->enabledRanges.mapNotNull { if (positionMs < it.end) RangeMs(max(it.start, positionMs), it.actualEnd(durationMs)) else null }
+                    SaveMode.CHAPTER->enabledRanges.mapNotNull { if (it.contains(positionMs)) RangeMs(positionMs, it.actualEnd(durationMs)) else null }
+                }
+                if (ranges.isEmpty() && mode!= SaveMode.ALL) return null
+                val rotation = model.playerModel.rotation.value
+                val cropRect = if (model.cropHandler.maskViewModel.isCropped.value) model.cropHandler.maskViewModel.cropRect(size.width, size.height).asRect else null
+                return VideoSourceInfoImpl(source, ranges, rotation, cropRect, null/*for future*/, positionMs, durationMs)
+            }
+        }
+    }
+
+    enum class SaveMode {
+        ALL,
+        LEFT,
+        RIGHT,
+        CHAPTER,
+    }
+
+    open suspend fun saveVideo(mode:SaveMode, outputFileProvider:IOutputFileProvider):Boolean {
+        if (mode == SaveMode.ALL) {
+            return saveFile(outputFileProvider)
+        }
+        val item = playerModel.currentSource.value ?: return false
+        savingNow.mutable.value = true
+        return try {
+            if (item.type.lowercase() == "mp4") {
+                val sourceInfo = VideoSourceInfoImpl.fromModel(this, mode) ?: return false
+                saveFileHandler.saveVideo(sourceInfo, outputFileProvider)
+            } else false
+        } catch (e: Throwable) {
+            logger.error(e)
+            false
+        } finally {
+            savingNow.mutable.value = false
         }
     }
 
@@ -81,10 +128,6 @@ open class MediaEditorModel(
                 val sourceInfo = ImageSourceInfoImpl(item, bitmap)
                 saveFileHandler.saveImage(sourceInfo, outputFileProvider)
             } else if (item.type.lowercase() == "mp4") {
-//                val size = playerModel.videoSize.value ?: return false
-//                val ranges = chapterEditorHandler.getEnabledRangeList().map { Converter.Factory.RangeMs(it.start, it.end) }.toTypedArray()
-//                val cropRect = if (cropHandler.maskViewModel.isCropped.value) cropHandler.maskViewModel.cropRect(size.width, size.height).asRect else null
-//                saveFileHandler.saveVideo(ranges, playerModel.rotation.value, cropRect, 1f)
                 val sourceInfo = VideoSourceInfoImpl.fromModel(this) ?: return false
                 saveFileHandler.saveVideo(sourceInfo, outputFileProvider)
             } else {
@@ -97,14 +140,21 @@ open class MediaEditorModel(
             savingNow.mutable.value = false
         }
     }
-    open suspend fun splitVideo():Boolean {
-        val item = playerModel.currentSource.value ?: return false
-        val pos = playerModel.currentPosition
-        if (pos < 1000 || playerModel.naturalDuration.value-1000 < pos) return false // 1sec未満の分割は禁止
+    enum class SplitMode {
+        AT_POSITION,
+        BY_CHAPTERS,
+    }
+    suspend fun splitVideo(mode:SplitMode):Boolean {
+//        val item = playerModel.currentSource.value ?: return false
         savingNow.mutable.value = true
         return try {
-            false
-//            splitHandler.splitVideoAt(item, pos)
+            val sourceInfo = VideoSourceInfoImpl.fromModel(this) ?: return false
+            val result = when (mode) {
+                SplitMode.AT_POSITION -> splitHandler.splitAtCurrentPosition(sourceInfo, true, ExportToDirectoryFileSelector())
+                SplitMode.BY_CHAPTERS -> splitHandler.splitByChapters(sourceInfo, true, ExportToDirectoryFileSelector())
+                // else -> throw IllegalArgumentException("mode = $mode")
+            }
+            result?.succeeded == true
         } catch (e:Throwable) {
             logger.error(e)
             false

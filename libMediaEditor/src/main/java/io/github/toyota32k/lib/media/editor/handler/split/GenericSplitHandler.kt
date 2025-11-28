@@ -2,22 +2,27 @@ package io.github.toyota32k.lib.media.editor.handler.split
 
 import android.content.Context
 import androidx.core.net.toUri
+import androidx.lifecycle.LifecycleOwner
+import io.github.toyota32k.lib.media.editor.handler.save.AbstractProgressSaveFileTask
 import io.github.toyota32k.lib.media.editor.handler.save.IProgressSinkProvider
 import io.github.toyota32k.lib.media.editor.handler.save.ISaveFileTask
-import io.github.toyota32k.lib.media.editor.handler.save.ISaveResult
-import io.github.toyota32k.lib.media.editor.handler.save.SaveTaskStatus
+import io.github.toyota32k.lib.media.editor.handler.save.ISavedListener
+import io.github.toyota32k.lib.media.editor.handler.save.SavedListenerImpl
 import io.github.toyota32k.lib.media.editor.model.AmeGlobal
 import io.github.toyota32k.lib.media.editor.model.ISplitHandler
 import io.github.toyota32k.lib.media.editor.model.IVideoSourceInfo
-import io.github.toyota32k.media.lib.converter.ConvertSplitter
-import io.github.toyota32k.media.lib.converter.IMultiChopper
-import io.github.toyota32k.media.lib.converter.IMultiPartitioner
+import io.github.toyota32k.media.lib.converter.ICancellable
 import io.github.toyota32k.media.lib.converter.IMultiSplitResult
 import io.github.toyota32k.media.lib.converter.IOutputFileSelector
-import io.github.toyota32k.media.lib.converter.IProgress
+import io.github.toyota32k.media.lib.converter.RangeMs
+import io.github.toyota32k.media.lib.converter.Rotation
 import io.github.toyota32k.media.lib.converter.Splitter
-import io.github.toyota32k.media.lib.converter.TrimSplitter
+import io.github.toyota32k.media.lib.converter.TrimOptimizer
 import io.github.toyota32k.media.lib.converter.toAndroidFile
+import io.github.toyota32k.media.lib.strategy.PresetAudioStrategies
+import io.github.toyota32k.media.lib.strategy.PresetVideoStrategies
+import io.github.toyota32k.utils.GenericDisposable
+import io.github.toyota32k.utils.IDisposable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 
@@ -25,6 +30,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 abstract class AbstractSplitHandler(showSplitButton:Boolean) : ISplitHandler {
     val logger = AmeGlobal.logger
     override val showSplitButton = MutableStateFlow(showSplitButton)
+    override val listener = SavedListenerImpl<IMultiSplitResult>()
     companion object {
         const val MIN_RANGE = 100L // 100ms
     }
@@ -32,143 +38,179 @@ abstract class AbstractSplitHandler(showSplitButton:Boolean) : ISplitHandler {
 
 object NoopSplitHandler : ISplitHandler {
     override val showSplitButton: Flow<Boolean> = MutableStateFlow(false)
-    override suspend fun splitAtCurrentPosition(sourceInfo: IVideoSourceInfo):IMultiSplitResult? { return null }
-    override suspend fun splitByChapters(sourceInfo: IVideoSourceInfo):IMultiSplitResult? { return null }
+    override val listener: ISavedListener<IMultiSplitResult>
+        = object:ISavedListener<IMultiSplitResult> {
+            override fun addOnSavedListener(fn: (IMultiSplitResult) -> Unit): IDisposable {
+                return GenericDisposable {}
+            }
+            override fun addOnSavedListener(owner: LifecycleOwner, fn: (IMultiSplitResult) -> Unit): IDisposable {
+                return GenericDisposable {}
+            }
+        }
+
+    override suspend fun splitAtCurrentPosition(sourceInfo: IVideoSourceInfo, optimize:Boolean, fileSelector: IOutputFileSelector):IMultiSplitResult? { return null }
+    override suspend fun splitByChapters(sourceInfo: IVideoSourceInfo, optimize:Boolean, fileSelector: IOutputFileSelector):IMultiSplitResult? { return null }
 }
 
 interface ISplitTask : ISaveFileTask, IProgressSinkProvider {
-    val convertIfNeed:Boolean
-    val fileSelector: IOutputFileSelector
 }
 
-class SplitResult(val result: IMultiSplitResult): ISaveResult {
-    override val status: ISaveResult.Status
-        get() = when {
-            result.succeeded -> ISaveResult.Status.SUCCESS
-            result.cancelled -> ISaveResult.Status.CANCELLED
-            else -> ISaveResult.Status.ERROR
+//class SplitResult(val result: IMultiSplitResult): ISaveResult {
+//    override val status: ISaveResult.Status
+//        get() = when {
+//            result.succeeded -> ISaveResult.Status.SUCCESS
+//            result.cancelled -> ISaveResult.Status.CANCELLED
+//            else -> ISaveResult.Status.ERROR
+//        }
+//    override val error: Throwable?
+//        get() = result.exception
+//    override val errorMessage: String?
+//        get() = result.errorMessage ?: error?.message
+//    override val outputFiles: List<IOutputMediaFile>
+//        get() = result.results.mapNotNull { if (it.succeeded) it.outputFile else null }
+//}
+
+class CancellerWrapper : ICancellable {
+    private var outerCanceller: ICancellable? = null
+    private var cancelled: Boolean = false
+    fun setCanceller(canceller: ICancellable) {
+        outerCanceller = canceller
+        if (isCancelled) {
+            canceller.cancel()
         }
-    override val error: Throwable?
-        get() = result.exception
-    override val errorMessage: String?
-        get() = result.errorMessage ?: error?.message
+    }
+
+    val isCancelled: Boolean get() = cancelled
+    override fun cancel() {
+        cancelled = true
+        outerCanceller?.cancel()
+    }
 }
+
+class SplitTask : AbstractProgressSaveFileTask(), ISplitTask
 
 /**
  * 現在の再生位置で分割する
  */
-class GenericSplitHandler(showSplitButton: Boolean, val applicationContext: Context, val startSplitTask:()->ISplitTask?):AbstractSplitHandler(true) {
-    var task: ISplitTask? = null
-
-    override suspend fun splitAtCurrentPosition(sourceInfo: IVideoSourceInfo): IMultiSplitResult {
+class GenericSplitHandler(
+    context: Context,
+    showSplitButton: Boolean,
+    val startSplitTask:()->ISplitTask?={ SplitTask() }) : AbstractSplitHandler(showSplitButton) {
+    val applicationContext = context.applicationContext ?: throw IllegalStateException("applicationContext is null")
+    /**
+     * 現在の再生位置で分割する
+     * UI上で指定されたトリミングを反映した状態で、カーソル位置で２つに分割する。
+     * 分割位置によっては、左側、あるいは、右側が空になる可能性があり、必ずしも２つのファイルが生成するとは限らない。
+     */
+    override suspend fun splitAtCurrentPosition(sourceInfo: IVideoSourceInfo, optimize:Boolean, fileSelector: IOutputFileSelector): IMultiSplitResult {
         val task = startSplitTask() ?: return Splitter.MultiResult().cancel()
-        this.task = task
-
         if (sourceInfo.positionMs<MIN_RANGE||sourceInfo.durationMs-MIN_RANGE < sourceInfo.durationMs) {
             logger.warn("requested range is too short.")
             return Splitter.MultiResult().error(IllegalArgumentException("requested range is too short."))
         }
-
         val inFile = sourceInfo.source.uri.toUri().toAndroidFile(applicationContext)
+        val ranges = mutableListOf<RangeMs>(
+            RangeMs(0, sourceInfo.positionMs),
+            RangeMs(sourceInfo.positionMs, sourceInfo.durationMs)
+        )
+        fileSelector.initialize(ranges)
+        val builder = TrimOptimizer.Builder(applicationContext)
+            .videoStrategy(PresetVideoStrategies.InvalidStrategy)
+            .audioStrategy(PresetAudioStrategies.AACDefault)
+            .input(inFile)
+            .deleteOutputOnError(true)
+            .keepHDR(true)
+            .keepVideoProfile(true)
+            .fastStart(optimize)
+            .removeFreeOnFastStart(optimize)
+            .trimming {
+                addRangesMs(sourceInfo.trimmingRanges)
+            }
+            .rotate(Rotation.relative(sourceInfo.rotation))
+            .crop(sourceInfo.cropRect)
+            .brightness(sourceInfo.brightness)
+            .setProgressHandler { progress->
+                task.progressSink?.onProgress(progress)
+            }
 
-        val splitter: IMultiChopper = when {
-            task.convertIfNeed && sourceInfo.needsReEncoding -> {
-                ConvertSplitter
-                    .builder
-                    .setProgressHandler(::onProgress)
-                    .trimming {
-                        addRangesMs(sourceInfo.trimmingRanges)
-                    }
-                    .apply {
-                        if (sourceInfo.cropRect!=null) {
-                            crop(sourceInfo.cropRect!!)
-                        }
-                        if (sourceInfo.brightness!=null) {
-                            brightness(sourceInfo.brightness!!)
-                        }
-                    }
-                    .build()
-            }
-            sourceInfo.trimmingRanges.isNotEmpty() -> {
-                TrimSplitter
-                    .builder
-                    .setProgressHandler(::onProgress)
-                    .trimming {
-                        addRangesMs(sourceInfo.trimmingRanges)
-                    }
-                    .build()
-            }
-            else -> {
-                Splitter.builder.setProgressHandler(::onProgress).build()
-            }
+        val cancellerWrapper = CancellerWrapper()
+        val multiResult = Splitter.MultiResult()
+        task.onStart(cancellerWrapper)
+        for (range in ranges) {
+            val outFile = fileSelector.selectOutputFile(ranges.indexOf(range), range.startMs) ?: return multiResult.add(Splitter.Result.cancelled)
+            if (inFile == outFile) throw IllegalStateException("cannot overwrite input file on splitting file.")
+            val trimOptimizer = builder
+                .output(outFile)
+                .trimming {
+                    startFromMs(range.startMs)
+                    endAtMs(range.endMs)
+                }
+                .build()
+            cancellerWrapper.setCanceller(trimOptimizer)
+            val result = trimOptimizer.execute()
+            multiResult.add(result)
         }
-        task.onStart(SaveTaskStatus.CONVERTING) { splitter.cancel() }
-        try {
-            return splitter.chop(inFile, listOf(sourceInfo.positionMs), task.fileSelector).apply {
-                task.onEnd(SaveTaskStatus.CONVERTING, SplitResult(this))
-            }
-        } finally {
-            task.onFinished()
-            this.task = null
-        }
+        task.onEnd()
+        listener.onSaveTaskCompleted(multiResult)
+        fileSelector.terminate()
+        return multiResult
     }
 
-    override suspend fun splitByChapters(sourceInfo: IVideoSourceInfo): IMultiSplitResult {
+    /**
+     * トリミング範囲リスト（有効範囲のリスト）の各範囲毎（つまり、有効なチャプター毎）に分割する。
+     * 有効範囲の数（sourceInfo.trimmingRanges.size)と出力ファイル数が一致する。
+     */
+    override suspend fun splitByChapters(sourceInfo: IVideoSourceInfo, optimize:Boolean, fileSelector: IOutputFileSelector): IMultiSplitResult {
         val task = startSplitTask() ?: return Splitter.MultiResult().cancel()
-        this.task = task
-
-        if (sourceInfo.positionMs<MIN_RANGE||sourceInfo.durationMs-MIN_RANGE < sourceInfo.durationMs) {
-            logger.warn("requested range is too short.")
-            return Splitter.MultiResult().error(IllegalArgumentException("requested range is too short."))
-        }
-
         val inFile = sourceInfo.source.uri.toUri().toAndroidFile(applicationContext)
+        val ranges = sourceInfo.trimmingRanges
 
-        val splitter: IMultiPartitioner = when {
-            task.convertIfNeed && sourceInfo.needsReEncoding -> {
-                ConvertSplitter
-                    .builder
-                    .setProgressHandler(::onProgress)
-                    .trimming {
-                        addRangesMs(sourceInfo.trimmingRanges)
-                    }
-                    .apply {
-                        if (sourceInfo.cropRect!=null) {
-                            crop(sourceInfo.cropRect!!)
-                        }
-                        if (sourceInfo.brightness!=null) {
-                            brightness(sourceInfo.brightness!!)
-                        }
-                    }
-                    .build()
+        fileSelector.initialize(ranges)
+        val builder = TrimOptimizer.Builder(applicationContext)
+            .videoStrategy(PresetVideoStrategies.InvalidStrategy)
+            .audioStrategy(PresetAudioStrategies.AACDefault)
+            .input(inFile)
+            .deleteOutputOnError(true)
+            .keepHDR(true)
+            .keepVideoProfile(true)
+            .fastStart(optimize)
+            .removeFreeOnFastStart(optimize)
+            .rotate(Rotation.relative(sourceInfo.rotation))
+            .crop(sourceInfo.cropRect)
+            .brightness(sourceInfo.brightness)
+            .setProgressHandler { progress->
+                task.progressSink?.onProgress(progress)
             }
-            sourceInfo.trimmingRanges.isNotEmpty() -> {
-                TrimSplitter
-                    .builder
-                    .setProgressHandler(::onProgress)
-                    .trimming {
-                        addRangesMs(sourceInfo.trimmingRanges)
-                    }
-                    .build()
-            }
-            else -> {
-                throw IllegalArgumentException("not supported")
-               //  Splitter.builder.setProgressHandler(::onProgress).build()
-            }
+
+        val cancellerWrapper = CancellerWrapper()
+        val multiResult = Splitter.MultiResult()
+        task.onStart(cancellerWrapper)
+        for (range in ranges) {
+            val outFile = fileSelector.selectOutputFile(ranges.indexOf(range), range.startMs) ?: return multiResult.add(Splitter.Result.cancelled)
+            if (inFile == outFile) throw IllegalStateException("cannot overwrite input file on splitting file.")
+            val trimOptimizer = builder
+                .output(outFile)
+                .trimming {
+                    reset()
+                    addRangeMs(range)
+                }
+                .build()
+            cancellerWrapper.setCanceller(trimOptimizer)
+            val result = trimOptimizer.execute()
+            multiResult.add(result)
         }
-        task.onStart(SaveTaskStatus.CONVERTING) { splitter.cancel() }
-        try {
-            return splitter.chop(inFile, task.fileSelector).apply {
-                task.onEnd(SaveTaskStatus.CONVERTING, SplitResult(this))
-            }
-        } finally {
-            task.onFinished()
-            this.task = null
-        }
+        fileSelector.terminate()
+        task.onEnd()
+        listener.onSaveTaskCompleted(multiResult)
+        return multiResult
     }
 
-    fun onProgress(progress: IProgress) {
-        task?.progressSink?.onProgress(SaveTaskStatus.CONVERTING, progress)
+    companion object {
+        fun create(
+            applicationContext: Context,
+            showSplitButton:Boolean = true,
+            ): GenericSplitHandler {
+            return GenericSplitHandler(applicationContext, showSplitButton)
+        }
     }
 }
-

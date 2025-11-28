@@ -24,6 +24,7 @@ import io.github.toyota32k.dialog.broker.IUtActivityBrokerStoreProvider
 import io.github.toyota32k.dialog.broker.UtActivityBrokerStore
 import io.github.toyota32k.dialog.broker.UtMultiPermissionsBroker
 import io.github.toyota32k.dialog.broker.pickers.UtCreateFilePicker
+import io.github.toyota32k.dialog.broker.pickers.UtDirectoryPicker
 import io.github.toyota32k.dialog.broker.pickers.UtMediaFilePicker
 import io.github.toyota32k.dialog.broker.pickers.UtOpenFilePicker
 import io.github.toyota32k.dialog.mortal.UtMortalActivity
@@ -37,6 +38,7 @@ import io.github.toyota32k.lib.media.editor.handler.save.DefaultAudioStrategySel
 import io.github.toyota32k.lib.media.editor.handler.save.GenericSaveFileHandler
 import io.github.toyota32k.lib.media.editor.handler.InteractiveOutputFileProvider
 import io.github.toyota32k.lib.media.editor.handler.save.InteractiveVideoStrategySelector
+import io.github.toyota32k.lib.media.editor.handler.split.GenericSplitHandler
 import io.github.toyota32k.lib.player.model.IMutableChapterList
 import io.github.toyota32k.lib.player.model.PlayerControllerModel
 import io.github.toyota32k.lib.player.model.Range
@@ -60,7 +62,7 @@ import java.util.concurrent.atomic.AtomicLong
 
 class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
     override val logger = UtLog("Main")
-    override val activityBrokers = UtActivityBrokerStore(this, UtOpenFilePicker(), UtCreateFilePicker(), UtMultiPermissionsBroker(), UtMediaFilePicker())
+    override val activityBrokers = UtActivityBrokerStore(this, UtOpenFilePicker(), UtCreateFilePicker(), UtMultiPermissionsBroker(), UtMediaFilePicker(), UtDirectoryPicker())
     private val binder = Binder()
     private lateinit var controls: ActivityMainBinding
     private val compatBackKeyDispatcher = CompatBackKeyDispatcher()
@@ -121,10 +123,11 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
             .supportCrop()
 //            .supportSplit(SplitHandler())
             .setSaveFileHandler { _ ->
-                GenericSaveFileHandler.create(true, application,
+                GenericSaveFileHandler.create( application, showSaveButton = true,
                     InteractiveVideoStrategySelector(),
                     DefaultAudioStrategySelector)
             }
+            .supportSplit(GenericSplitHandler.create(application))
             .build()
 
         fun snapshot(pos:Long, bmp: Bitmap) {

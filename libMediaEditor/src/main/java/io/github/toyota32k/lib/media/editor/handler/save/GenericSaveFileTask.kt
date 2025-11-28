@@ -4,31 +4,30 @@ import androidx.lifecycle.LifecycleOwner
 import io.github.toyota32k.lib.media.editor.dialog.ProgressDialog
 import io.github.toyota32k.lib.media.editor.model.AmeGlobal
 import io.github.toyota32k.logger.UtLog
+import io.github.toyota32k.media.lib.converter.ICancellable
 import io.github.toyota32k.utils.IDisposable
 import io.github.toyota32k.utils.lifecycle.Listeners
 
-interface ISavedListener {
-    fun addOnSavedListener(fn:(ISaveResult)->Unit): IDisposable
-    fun addOnSavedListener(owner:LifecycleOwner, fn:(ISaveResult)->Unit): IDisposable
+interface ISavedListener<T> {
+    fun addOnSavedListener(fn:(T)->Unit): IDisposable
+    fun addOnSavedListener(owner:LifecycleOwner, fn:(T)->Unit): IDisposable
 }
 
-class SavedListenerImpl : ISavedListener {
-    private val listeners = Listeners<ISaveResult>()
-    override fun addOnSavedListener(fn:(ISaveResult)->Unit): IDisposable {
+class SavedListenerImpl<T> : ISavedListener<T> {
+    private val listeners = Listeners<T>()
+    override fun addOnSavedListener(fn:(T)->Unit): IDisposable {
         return listeners.addForever(fn)
     }
-    override fun addOnSavedListener(owner:LifecycleOwner, fn:(ISaveResult)->Unit): IDisposable {
+    override fun addOnSavedListener(owner:LifecycleOwner, fn:(T)->Unit): IDisposable {
         return listeners.add(owner, fn)
     }
 
-    fun fireOnSaved(value: ISaveResult) {
+    fun onSaveTaskCompleted(value: T) {
         listeners.invoke(value)
     }
 }
 
-abstract class AbstractProgressSaveFileTask private constructor(val savedListener: SavedListenerImpl) : ISaveFileTask, IProgressSinkProvider, ISavedListener by savedListener {
-    constructor() : this(SavedListenerImpl())
-
+abstract class AbstractProgressSaveFileTask : ISaveFileTask, IProgressSinkProvider {
     open val logger = UtLog("SaveTask", AmeGlobal.logger)
 
     override var progressSink: IProgressSink? = null
@@ -37,15 +36,15 @@ abstract class AbstractProgressSaveFileTask private constructor(val savedListene
      * デフォルトでは ProgressDialogを使って進捗を表示する。
      * これを変更したければ、このメソッドをオーバーライドする。
      */
-    open suspend fun openProgressSink(canceller:ICanceller?):IProgressSink? {
+    open suspend fun openProgressSink(canceller: ICancellable?):IProgressSink? {
         return ProgressDialog.showProgressDialog("Save File", canceller)
     }
 
     /**
      * １ファイル保存開始イベント
      */
-    override suspend fun onStart(taskStatus: SaveTaskStatus, canceller: ICanceller?) {
-        logger.debug(taskStatus.message)
+    override suspend fun onStart(canceller: ICancellable?) {
+        logger.debug()
         if (progressSink==null) {
             progressSink = openProgressSink(canceller)
         }
@@ -54,16 +53,7 @@ abstract class AbstractProgressSaveFileTask private constructor(val savedListene
     /**
      * １ファイル保存終了イベント
      */
-    override suspend fun onEnd(taskStatus: SaveTaskStatus, result: ISaveResult) {
-        // nothing to do.
-        logger.debug(taskStatus.message)
-        savedListener.fireOnSaved(result)
-    }
-
-    /**
-     * 全ファイル保存完了イベント
-     */
-    override suspend fun onFinished() {
+    override suspend fun onEnd() {
         logger.debug()
         progressSink?.complete()
     }
@@ -101,18 +91,14 @@ open class GenericSaveVideoTask(
     }
 }
 
-open class GenericSaveImageTask(private val savedListener: SavedListenerImpl) : ISaveImageTask {
-    constructor():this(SavedListenerImpl())
+open class GenericSaveImageTask : ISaveImageTask {
 
-    override suspend fun onStart(taskStatus: SaveTaskStatus, canceller: ICanceller?) {
+    override suspend fun onStart(canceller: ICancellable?) {
     }
 
-    override suspend fun onEnd(taskStatus: SaveTaskStatus, result: ISaveResult) {
-        savedListener.fireOnSaved(result)
+    override suspend fun onEnd() {
     }
 
-    override suspend fun onFinished() {
-    }
     companion object {
         fun defaultTask(): ISaveImageTask {
             return GenericSaveImageTask()
