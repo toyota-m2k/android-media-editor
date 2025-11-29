@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.View
 import io.github.toyota32k.binder.IIDValueResolver
 import io.github.toyota32k.binder.checkBinding
+import io.github.toyota32k.binder.clickBinding
 import io.github.toyota32k.binder.enableBinding
 import io.github.toyota32k.binder.multiEnableBinding
 import io.github.toyota32k.binder.radioGroupBinding
@@ -33,14 +34,14 @@ data class SliderPartition(
     val span:Long) {
     companion object {
         fun fromModel(model: RangedPlayModel?, duration: Long): SliderPartition {
-            return if (model!=null) SliderPartition(true, model.duration, model.spanLength) else create(duration)
+            return if (model!=null) SliderPartition( true, model.duration, model.spanLength) else create(duration)
         }
         fun create(duration: Long): SliderPartition {
-            return SliderPartition(true, duration, 3)
+            return SliderPartition( true, duration, 3)
         }
     }
     fun toModel(): RangedPlayModel? {
-        return if(enabled) RangedPlayModel(duration, span) else null
+        return if (enabled ) RangedPlayModel(duration, span) else null
     }
 }
 
@@ -69,18 +70,19 @@ class SliderPartitionDialog: UtDialogEx() {
             }
         }
 
+        var reset = false
         var naturalDuration: Long = 0L
             private set
         val minSpan = 1 // min
         val maxSpan get() = ((naturalDuration - minSpan)/60000).toInt().coerceAtLeast(minSpan+1)
-        val enablePartialMode = MutableStateFlow(true)
+//        val enablePartialMode = MutableStateFlow(true)
         val presetSpan = MutableStateFlow(3)
         val customSpan = MutableStateFlow(1f)
 
         fun initWith(params:SliderPartition?) {
             if (params == null) return
             naturalDuration = params.duration
-            enablePartialMode.value = params.enabled
+//            enablePartialMode.value = params.enabled
             val spanInMin = (params.span/60000f).toInt()
             val id = SpanResolver.value2id(spanInMin)
             if(id == R.id.radio_span_custom) {
@@ -92,7 +94,7 @@ class SliderPartitionDialog: UtDialogEx() {
 
         fun toSliderPartition(): SliderPartition {
             return SliderPartition(
-                enablePartialMode.value,
+                !reset,
                 naturalDuration,
                 if(SpanResolver.isCustom(presetSpan.value)) customSpan.value.roundToLong()*60000 else presetSpan.value*60000L)
         }
@@ -123,6 +125,7 @@ class SliderPartitionDialog: UtDialogEx() {
         gravityOption = GravityOption.CENTER
         leftButtonType = ButtonType.CANCEL
         rightButtonType = ButtonType.OK
+        setOptionButton("Reset", false)
     }
 
     override fun createBodyView(savedInstanceState: Bundle?, inflater: IViewInflater): View {
@@ -134,14 +137,15 @@ class SliderPartitionDialog: UtDialogEx() {
             "${it.roundToInt()} min"
         }
         binder
-            .checkBinding(controls.checkEnablePartialMode, viewModel.enablePartialMode)
-            .multiEnableBinding(arrayOf(controls.radioSpan3min, controls.radioSpan5min, controls.radioSpan10min, controls.radioSpanCustom), viewModel.enablePartialMode)
             .radioGroupBinding(controls.radioSpanSelection, viewModel.presetSpan, SliderPartitionViewModel.SpanResolver)
-            .enableBinding(controls.spanSlider, combine(viewModel.enablePartialMode, viewModel.presetSpan) { e, s -> e && s == 0 })
             .textBinding(controls.spanValue, combine(viewModel.presetSpan, viewModel.customSpan) { p, c ->
                 if (p == 0) "${c.roundToLong()} min" else "$p min"
             })
             .sliderBinding(controls.spanSlider, viewModel.customSpan)
+            .clickBinding(optionButton!!) { v->
+                viewModel.reset = true
+                onPositive()
+            }
         return controls.root
     }
 
