@@ -73,7 +73,7 @@ class SaveOptionDialog : UtDialogEx() {
         binder.owner(this)
             .editTextBinding(controls.nameText, viewModel.targetName)
             .enableBinding(controls.nameText, viewModel.isSaveAs)
-            .radioGroupBinding(controls.radioGroupOptions, viewModel.targetType, SaveOptionViewModel.TargetType.IDResolver)
+            .radioGroupBinding(controls.radioGroupOptions, viewModel.targetType, TargetType.IDResolver)
             .dialogRightButtonEnable(combine(viewModel.targetType, viewModel.targetName) { type, name-> type!=TargetType.SAVE_MEDIA_FILE_AS || name.isNotBlank() })
         return controls.root
     }
@@ -86,9 +86,9 @@ class SaveOptionDialog : UtDialogEx() {
                 }
                 if (showDialog(taskName) { SaveOptionDialog() }.status.ok) {
                     when (vm.targetType.value) {
-                        SaveOptionViewModel.TargetType.EXPORT_FILE-> ExportFileProvider(suffix)
-                        SaveOptionViewModel.TargetType.SAVE_MEDIA_FILE_AS-> NamedMediaFileProvider(vm.targetName.value, subFolder)
-                        SaveOptionViewModel.TargetType.OVERWRITE-> OverwriteFileProvider()
+                        TargetType.EXPORT_FILE-> ExportFileProvider(suffix)
+                        TargetType.SAVE_MEDIA_FILE_AS-> NamedMediaFileProvider(vm.targetName.value, subFolder)
+                        TargetType.OVERWRITE-> OverwriteFileProvider()
                     }
                 } else null
             }
