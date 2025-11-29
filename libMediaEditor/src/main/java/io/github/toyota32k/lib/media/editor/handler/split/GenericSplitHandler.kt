@@ -36,22 +36,6 @@ abstract class AbstractSplitHandler(showSplitButton:Boolean) : ISplitHandler {
     }
 }
 
-object NoopSplitHandler : ISplitHandler {
-    override val showSplitButton: Flow<Boolean> = MutableStateFlow(false)
-    override val listener: ISavedListener<IMultiSplitResult>
-        = object:ISavedListener<IMultiSplitResult> {
-            override fun addOnSavedListener(fn: (IMultiSplitResult) -> Unit): IDisposable {
-                return GenericDisposable {}
-            }
-            override fun addOnSavedListener(owner: LifecycleOwner, fn: (IMultiSplitResult) -> Unit): IDisposable {
-                return GenericDisposable {}
-            }
-        }
-
-    override suspend fun splitAtCurrentPosition(sourceInfo: IVideoSourceInfo, optimize:Boolean, fileSelector: IOutputFileSelector):IMultiSplitResult? { return null }
-    override suspend fun splitByChapters(sourceInfo: IVideoSourceInfo, optimize:Boolean, fileSelector: IOutputFileSelector):IMultiSplitResult? { return null }
-}
-
 interface ISplitTask : ISaveFileTask, IProgressSinkProvider {
 }
 

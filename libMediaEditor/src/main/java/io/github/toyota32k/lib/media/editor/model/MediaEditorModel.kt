@@ -1,16 +1,19 @@
 package io.github.toyota32k.lib.media.editor.model
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Rect
 import com.google.common.primitives.Longs.min
+import io.github.toyota32k.lib.media.editor.dialog.SliderPartition
+import io.github.toyota32k.lib.media.editor.dialog.SliderPartitionDialog
 import io.github.toyota32k.lib.media.editor.handler.split.ExportToDirectoryFileSelector
-import io.github.toyota32k.lib.media.editor.handler.split.NoopSplitHandler
-import io.github.toyota32k.lib.media.editor.handler.split.OneByOneExportFileSelector
+import io.github.toyota32k.lib.media.editor.handler.split.GenericSplitHandler
 import io.github.toyota32k.lib.player.model.IMediaSource
 import io.github.toyota32k.lib.player.model.IPlayerModel
 import io.github.toyota32k.lib.player.model.PlayerControllerModel
 import io.github.toyota32k.media.lib.converter.RangeMs
 import io.github.toyota32k.utils.IUtPropOwner
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -168,36 +171,65 @@ open class MediaEditorModel(
         cropHandler.dispose()
     }
 
-    class Builder(val playerControllerModel: PlayerControllerModel) {
-        private var saveFileHandler: ISaveFileHandler? = null
-        private var mChapterEditorHandler: IChapterEditorHandler? = null
-        private var mCropHandler: ICropHandler? = null
-        private var mSplitHandler: ISplitHandler? = null
+    fun builder(androidContext: Context, viewModelScope: CoroutineScope, playerControllerModelInitializer:PlayerControllerModel.Builder.()-> PlayerControllerModel.Builder):Builder {
+        return Builder(PlayerControllerModel.Builder(androidContext, viewModelScope).playerControllerModelInitializer())
+    }
 
-        fun setSaveFileHandler(handler: ISaveFileHandler) :Builder = apply {
-            saveFileHandler = handler
-        }
-        fun setSaveFileHandler(fn:(PlayerControllerModel)-> ISaveFileHandler) :Builder = apply {
-            saveFileHandler = fn(playerControllerModel)
-        }
+    class Builder (val playerControllerModelBuilder: PlayerControllerModel.Builder) {
+        constructor (androidContext: Context, viewModelScope: CoroutineScope, playerControllerModelInitializer:PlayerControllerModel.Builder.()-> PlayerControllerModel.Builder):this(PlayerControllerModel.Builder(androidContext, viewModelScope).playerControllerModelInitializer())
+
+        private var mSaveFileHandler: ISaveFileHandler? = null
+
+        private var mChapterEditorHandler: IChapterEditorHandler? = null
+        private var mChapterEditorRequired = false
+
+        private var mCropHandler: ICropHandler? = null
+        private var mCropRequired = false
+
+        private var mSplitHandler: ISplitHandler? = null
+        private var mSplitRequired = false
+
+//        fun setSaveFileHandler(fn:(PlayerControllerModel)-> ISaveFileHandler) :Builder = apply {
+//            saveFileHandler = fn(playerControllerModel)
+//        }
 
         fun supportChapterEditor(handler: IChapterEditorHandler?=null) :Builder = apply {
-            mChapterEditorHandler = handler ?: ChapterEditorHandler(playerControllerModel.playerModel, true)
+            mChapterEditorHandler = handler
+            mChapterEditorRequired = true
+                //?: ChapterEditorHandler(playerControllerModel.playerModel, true)
         }
         fun supportCrop(handler: ICropHandler?=null) :Builder = apply {
-            mCropHandler = handler ?: CropHandler(playerControllerModel.playerModel, true, true)
+            mCropHandler = handler
+            mCropRequired = true
+                // ?: CropHandler(playerControllerModel.playerModel, true, true)
         }
-        fun supportSplit(handler: ISplitHandler): Builder = apply {
+        fun supportSplit(handler: ISplitHandler?=null): Builder = apply {
             mSplitHandler = handler
+            mSplitRequired = true
         }
+        fun setSaveFileHandler(handler: ISaveFileHandler) :Builder = apply {
+            mSaveFileHandler = handler
+        }
+
+        fun enableBuiltInMagnifySlider() = apply {
+            playerControllerModelBuilder.supportMagnifySlider { orgModel, duration->
+                val sp = SliderPartitionDialog.show(SliderPartition.fromModel(orgModel, duration))
+                if (sp==null) orgModel else sp.toModel()
+            }
+        }
+
         fun build() :MediaEditorModel {
-            val saveFileHandler = this.saveFileHandler
-            if (saveFileHandler == null) throw IllegalStateException("saveFileHandler is not set")
+            val saveFileHandler = mSaveFileHandler ?: throw IllegalStateException("saveFileHandler is not set")
+            val playerControllerModel = playerControllerModelBuilder.build()
+            val chapterEditorHandler =  mChapterEditorHandler ?:ChapterEditorHandler(playerControllerModel.playerModel, mChapterEditorRequired)
+            val cropHandler = mCropHandler ?: CropHandler(playerControllerModel.playerModel, mCropRequired, mCropRequired)
+            val splitHandler = mSplitHandler ?: GenericSplitHandler(playerControllerModel.context, mSplitRequired)
+
             return MediaEditorModel(
                 playerControllerModel,
-                mChapterEditorHandler ?: ChapterEditorHandler(playerControllerModel.playerModel, false),
-                mCropHandler ?: CropHandler(playerControllerModel.playerModel, false, false),
-                mSplitHandler ?: NoopSplitHandler,
+                chapterEditorHandler,
+                cropHandler,
+                splitHandler,
                 saveFileHandler,
                 )
         }

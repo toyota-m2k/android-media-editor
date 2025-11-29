@@ -40,7 +40,6 @@ import io.github.toyota32k.lib.media.editor.handler.InteractiveOutputFileProvide
 import io.github.toyota32k.lib.media.editor.handler.save.InteractiveVideoStrategySelector
 import io.github.toyota32k.lib.media.editor.handler.split.GenericSplitHandler
 import io.github.toyota32k.lib.player.model.IMutableChapterList
-import io.github.toyota32k.lib.player.model.PlayerControllerModel
 import io.github.toyota32k.lib.player.model.Range
 import io.github.toyota32k.lib.player.model.chapter.MutableChapterList
 import io.github.toyota32k.logger.UtLog
@@ -106,28 +105,26 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
         val localData = LocalData(application)
 
 
-        val editorModel = MediaEditorModel.Builder(
-            PlayerControllerModel.Builder(application, viewModelScope)
-                .supportChapter(false)
-                .supportSnapshot(::snapshot)
-                .enableRotateLeft()
-                .enableRotateRight()
-                .enableSeekSmall(0,0)
-                .enableSeekMedium(1000, 3000)
-                .enableSeekLarge(5000, 10000)
-                .enableSliderLock(true)
-                .enablePhotoViewer()
-                .build()
-            )
+        val editorModel = MediaEditorModel.Builder(application, viewModelScope) {
+                supportChapter(false)
+                supportSnapshot(::snapshot)
+                enableRotateLeft()
+                enableRotateRight()
+                enableSeekSmall(0, 0)
+                enableSeekMedium(1000, 3000)
+                enableSeekLarge(5000, 10000)
+                enableSliderLock(true)
+                enablePhotoViewer()
+            }
             .supportChapterEditor()
             .supportCrop()
-//            .supportSplit(SplitHandler())
-            .setSaveFileHandler { _ ->
-                GenericSaveFileHandler.create( application, showSaveButton = true,
-                    InteractiveVideoStrategySelector(),
-                    DefaultAudioStrategySelector)
-            }
+            .setSaveFileHandler(
+                GenericSaveFileHandler.create( application,
+                    showSaveButton = true,
+                    videoStrategySelector = InteractiveVideoStrategySelector(),
+                    audioStrategySelector = DefaultAudioStrategySelector))
             .supportSplit(GenericSplitHandler.create(application))
+            .enableBuiltInMagnifySlider()
             .build()
 
         fun snapshot(pos:Long, bmp: Bitmap) {
