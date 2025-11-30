@@ -34,6 +34,7 @@ class LocalData(val application: Application) {
         }
         get() = persistedEditingUri?.toUri()
 
+    var projectName: String? by spd.prefNullable<String?>()
     var serializedChapters: String? by spd.prefNullable<String?>()
     var serializedCropParams: String? by spd.prefNullable<String?>()
     var playPosition: Long by spd.pref(0L)
