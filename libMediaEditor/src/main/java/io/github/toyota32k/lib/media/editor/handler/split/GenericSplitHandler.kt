@@ -2,13 +2,12 @@ package io.github.toyota32k.lib.media.editor.handler.split
 
 import android.content.Context
 import androidx.core.net.toUri
-import androidx.lifecycle.LifecycleOwner
 import io.github.toyota32k.lib.media.editor.handler.save.AbstractProgressSaveFileTask
 import io.github.toyota32k.lib.media.editor.handler.save.IProgressSinkProvider
 import io.github.toyota32k.lib.media.editor.handler.save.ISaveFileTask
-import io.github.toyota32k.lib.media.editor.handler.save.ISavedListener
-import io.github.toyota32k.lib.media.editor.handler.save.SavedListenerImpl
+import io.github.toyota32k.lib.media.editor.handler.save.SaveTaskListenerImpl
 import io.github.toyota32k.lib.media.editor.model.AmeGlobal
+import io.github.toyota32k.lib.media.editor.model.ISourceInfo
 import io.github.toyota32k.lib.media.editor.model.ISplitHandler
 import io.github.toyota32k.lib.media.editor.model.IVideoSourceInfo
 import io.github.toyota32k.media.lib.converter.ICancellable
@@ -21,23 +20,19 @@ import io.github.toyota32k.media.lib.converter.TrimOptimizer
 import io.github.toyota32k.media.lib.converter.toAndroidFile
 import io.github.toyota32k.media.lib.strategy.PresetAudioStrategies
 import io.github.toyota32k.media.lib.strategy.PresetVideoStrategies
-import io.github.toyota32k.utils.GenericDisposable
-import io.github.toyota32k.utils.IDisposable
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 
 
 abstract class AbstractSplitHandler(showSplitButton:Boolean) : ISplitHandler {
     val logger = AmeGlobal.logger
     override val showSplitButton = MutableStateFlow(showSplitButton)
-    override val listener = SavedListenerImpl<IMultiSplitResult>()
+    override val listener = SaveTaskListenerImpl<ISourceInfo,IMultiSplitResult>()
     companion object {
         const val MIN_RANGE = 100L // 100ms
     }
 }
 
-interface ISplitTask : ISaveFileTask, IProgressSinkProvider {
-}
+interface ISplitTask : ISaveFileTask, IProgressSinkProvider
 
 //class SplitResult(val result: IMultiSplitResult): ISaveResult {
 //    override val status: ISaveResult.Status
@@ -93,7 +88,7 @@ class GenericSplitHandler(
             return Splitter.MultiResult().error(IllegalArgumentException("requested range is too short."))
         }
         val inFile = sourceInfo.source.uri.toUri().toAndroidFile(applicationContext)
-        val ranges = mutableListOf<RangeMs>(
+        val ranges = mutableListOf(
             RangeMs(0, sourceInfo.positionMs),
             RangeMs(sourceInfo.positionMs, sourceInfo.durationMs)
         )
@@ -120,6 +115,7 @@ class GenericSplitHandler(
         val cancellerWrapper = CancellerWrapper()
         val multiResult = Splitter.MultiResult()
         task.onStart(cancellerWrapper)
+        listener.onSaveTaskStarted(sourceInfo)
         for (range in ranges) {
             val outFile = fileSelector.selectOutputFile(ranges.indexOf(range), range.startMs) ?: return multiResult.add(Splitter.Result.cancelled)
             if (inFile == outFile) throw IllegalStateException("cannot overwrite input file on splitting file.")
@@ -134,8 +130,8 @@ class GenericSplitHandler(
             val result = trimOptimizer.execute()
             multiResult.add(result)
         }
-        task.onEnd()
         listener.onSaveTaskCompleted(multiResult)
+        task.onEnd()
         fileSelector.terminate()
         return multiResult
     }
@@ -169,6 +165,7 @@ class GenericSplitHandler(
         val cancellerWrapper = CancellerWrapper()
         val multiResult = Splitter.MultiResult()
         task.onStart(cancellerWrapper)
+        listener.onSaveTaskStarted(sourceInfo)
         for (range in ranges) {
             val outFile = fileSelector.selectOutputFile(ranges.indexOf(range), range.startMs) ?: return multiResult.add(Splitter.Result.cancelled)
             if (inFile == outFile) throw IllegalStateException("cannot overwrite input file on splitting file.")
@@ -184,17 +181,8 @@ class GenericSplitHandler(
             multiResult.add(result)
         }
         fileSelector.terminate()
-        task.onEnd()
         listener.onSaveTaskCompleted(multiResult)
+        task.onEnd()
         return multiResult
-    }
-
-    companion object {
-        fun create(
-            applicationContext: Context,
-            showSplitButton:Boolean = true,
-            ): GenericSplitHandler {
-            return GenericSplitHandler(applicationContext, showSplitButton)
-        }
     }
 }

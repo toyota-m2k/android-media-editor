@@ -106,8 +106,7 @@ interface ISourceInfo {
 /**
  * 動画用メディアソース情報 i/f
  */
-interface IVideoSourceInfo {
-    val source: IMediaSource
+interface IVideoSourceInfo : ISourceInfo {
     val trimmingRanges:List<RangeMs>
     val rotation:Int/*in degree*/
     val cropRect:Rect?

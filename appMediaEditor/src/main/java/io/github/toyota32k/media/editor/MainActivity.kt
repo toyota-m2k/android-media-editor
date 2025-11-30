@@ -118,12 +118,8 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
             }
             .supportChapterEditor()
             .supportCrop()
-            .setSaveFileHandler(
-                GenericSaveFileHandler.create( application,
-                    showSaveButton = true,
-                    videoStrategySelector = InteractiveVideoStrategySelector(),
-                    audioStrategySelector = DefaultAudioStrategySelector))
-            .supportSplit(GenericSplitHandler.create(application))
+            .setSaveFileHandler( GenericSaveFileHandler(application, true))
+            .supportSplit(GenericSplitHandler(application, true))
             .enableBuiltInMagnifySlider()
             .build()
 

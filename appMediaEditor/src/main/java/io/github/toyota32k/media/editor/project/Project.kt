@@ -5,6 +5,7 @@ import androidx.room.Dao
 import androidx.room.Database
 import androidx.room.Delete
 import androidx.room.Entity
+import androidx.room.Ignore
 import androidx.room.Index
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
@@ -30,6 +31,7 @@ data class Project(
     val lastAccessTime:Long
     )
 {
+    @Ignore
     val isPersisted:Boolean = uri!=null
 
     fun modified(

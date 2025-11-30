@@ -8,22 +8,40 @@ import io.github.toyota32k.media.lib.converter.ICancellable
 import io.github.toyota32k.utils.IDisposable
 import io.github.toyota32k.utils.lifecycle.Listeners
 
+interface ISavingListener<T> {
+    fun addOnSavingListener(fn:(T)->Unit): IDisposable
+    fun addOnSavingListener(owner:LifecycleOwner, fn:(T)->Unit): IDisposable
+}
 interface ISavedListener<T> {
     fun addOnSavedListener(fn:(T)->Unit): IDisposable
     fun addOnSavedListener(owner:LifecycleOwner, fn:(T)->Unit): IDisposable
 }
 
-class SavedListenerImpl<T> : ISavedListener<T> {
-    private val listeners = Listeners<T>()
-    override fun addOnSavedListener(fn:(T)->Unit): IDisposable {
-        return listeners.addForever(fn)
+class SaveTaskListenerImpl<I,R> : ISavedListener<R>, ISavingListener<I> {
+    private val onSavingListeners = Listeners<I>()
+    private val onSavedListeners = Listeners<R>()
+
+    override fun addOnSavedListener(fn:(R)->Unit): IDisposable {
+        return onSavedListeners.addForever(fn)
     }
-    override fun addOnSavedListener(owner:LifecycleOwner, fn:(T)->Unit): IDisposable {
-        return listeners.add(owner, fn)
+    override fun addOnSavedListener(owner:LifecycleOwner, fn:(R)->Unit): IDisposable {
+        return onSavedListeners.add(owner, fn)
     }
 
-    fun onSaveTaskCompleted(value: T) {
-        listeners.invoke(value)
+    override fun addOnSavingListener(owner: LifecycleOwner, fn: (I) -> Unit): IDisposable {
+        return onSavingListeners.add(owner, fn)
+    }
+
+    override fun addOnSavingListener(fn: (I) -> Unit): IDisposable {
+        return onSavingListeners.addForever(fn)
+    }
+
+    fun onSaveTaskStarted(value: I) {
+        onSavingListeners.invoke(value)
+    }
+
+    fun onSaveTaskCompleted(value: R) {
+        onSavedListeners.invoke(value)
     }
 }
 

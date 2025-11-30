@@ -293,7 +293,7 @@ open class MediaEditorModel(
             // デフォルト
             // - 保存ボタン表示
             // - InteractiveVideoStrategySelector を使用
-            val saveFileHandler = mSaveFileHandler ?: GenericSaveFileHandler.create(playerControllerModel.context, true, InteractiveVideoStrategySelector(), DefaultAudioStrategySelector)
+            val saveFileHandler = mSaveFileHandler ?: GenericSaveFileHandler(playerControllerModel.context, true)
             val chapterEditorHandler =  mChapterEditorHandler ?:ChapterEditorHandler(playerControllerModel.playerModel, mChapterEditorRequired)
             val cropHandler = mCropHandler ?: CropHandler(playerControllerModel.playerModel, mCropRequired, mCropRequired)
             val splitHandler = mSplitHandler ?: GenericSplitHandler(playerControllerModel.context, mSplitRequired)
