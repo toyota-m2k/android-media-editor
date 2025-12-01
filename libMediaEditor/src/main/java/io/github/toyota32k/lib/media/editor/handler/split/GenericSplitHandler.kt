@@ -92,7 +92,9 @@ class GenericSplitHandler(
             RangeMs(0, sourceInfo.positionMs),
             RangeMs(sourceInfo.positionMs, sourceInfo.durationMs)
         )
-        fileSelector.initialize(ranges)
+        if (!fileSelector.initialize(ranges)) {
+            return Splitter.MultiResult().cancel()
+        }
         val builder = TrimOptimizer.Builder(applicationContext)
             .videoStrategy(PresetVideoStrategies.InvalidStrategy)
             .audioStrategy(PresetAudioStrategies.AACDefault)

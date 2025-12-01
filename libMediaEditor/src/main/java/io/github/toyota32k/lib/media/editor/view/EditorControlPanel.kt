@@ -140,7 +140,7 @@ class EditorControlPanel @JvmOverloads constructor(context: Context, attrs: Attr
                     } else {
                         val mode = popupSaveModeMenu(context, it)
                         if (mode != null) {
-                            model.saveVideo(mode,ExportFileProvider("-(edited)"))
+                            model.saveVideo(mode)
                         }
                     }
                 }

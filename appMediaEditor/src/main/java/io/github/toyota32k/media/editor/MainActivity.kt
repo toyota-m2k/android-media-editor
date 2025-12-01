@@ -50,6 +50,8 @@ import io.github.toyota32k.logger.UtLogConfig
 import io.github.toyota32k.media.editor.databinding.ActivityMainBinding
 import io.github.toyota32k.media.editor.project.ProjectDB
 import io.github.toyota32k.media.editor.project.ProjectDB.Companion.documentId
+import io.github.toyota32k.media.editor.providers.CustomExportToDirectoryFileSelector
+import io.github.toyota32k.media.editor.providers.CustomInteractiveOutputFileProvider
 import io.github.toyota32k.media.lib.converter.AndroidFile
 import io.github.toyota32k.media.lib.converter.toAndroidFile
 import io.github.toyota32k.utils.android.CompatBackKeyDispatcher
@@ -107,6 +109,10 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
         val logger = UtLog("VM")
         val localData = LocalData(application)
         val projectDb = ProjectDB(application)
+        val targetMediaSource = MutableStateFlow<MediaSource?>(null)
+        val isEditing = targetMediaSource.map { it!=null }
+        val requestShowPanel = MutableStateFlow(true)
+        val projectName = MutableStateFlow<String>("a")
         val editorModel = MediaEditorModel.Builder(application, viewModelScope) {
                 supportChapter(false)
                 supportSnapshot(::snapshot)
@@ -122,6 +128,8 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
             .supportCrop()
             .setSaveFileHandler( GenericSaveFileHandler(application, true))
             .supportSplit(GenericSplitHandler(application, true))
+            .setOutputFileProvider(CustomInteractiveOutputFileProvider(projectName))
+            .setOutputFileSelector(CustomExportToDirectoryFileSelector(projectName))
             .enableBuiltInMagnifySlider()
             .build()
 
@@ -133,11 +141,6 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
             super.onCleared()
             editorModel.close()
         }
-
-        val targetMediaSource = MutableStateFlow<MediaSource?>(null)
-        val isEditing = targetMediaSource.map { it!=null }
-        val requestShowPanel = MutableStateFlow(true)
-        val projectName = MutableStateFlow<String>("a")
 
         // buttonPane のv表示ステータス
         enum class ViewState {
@@ -377,7 +380,7 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
                 lifecycleScope.launch {
                     viewModel.editorModel.playerControllerModel.commandPause.invoke()
                     viewModel.storeToLocalData()
-                    viewModel.editorModel.saveFile(InteractiveOutputFileProvider("", null))
+                    viewModel.editorModel.saveFile()
                 }
             }
             .clickBinding(controls.buttonClose) {

@@ -3,7 +3,10 @@ package io.github.toyota32k.lib.media.editor.handler
 import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
 import io.github.toyota32k.dialog.broker.IUtActivityBrokerStoreProvider
+import io.github.toyota32k.dialog.task.UtImmortalTask
 import io.github.toyota32k.dialog.task.UtImmortalTaskManager
+import io.github.toyota32k.dialog.task.showConfirmMessageBox
+import io.github.toyota32k.dialog.task.showYesNoMessageBox
 import io.github.toyota32k.lib.media.editor.dialog.NameDialog
 import io.github.toyota32k.lib.media.editor.dialog.SaveOptionDialog
 import io.github.toyota32k.lib.media.editor.model.AmeGlobal
@@ -107,8 +110,12 @@ object FileUtil {
  * @param outputFileSuffix inputFile から outputFile名を作成するときに付加するサフィックス
  */
 abstract class AbstractNamedFileProvider(val outputFileSuffix:String) : IOutputFileProvider {
+    open suspend fun getBaseFileName(inputFile:AndroidFile): String {
+        return inputFile.getFileName() ?: "unnamed"
+    }
+
     open suspend fun initialFileName(mimeType:String,inputFile: AndroidFile): String? {
-        return FileUtil.createInitialFileName(inputFile.getFileName() ?: "unnamed", outputFileSuffix, FileUtil.contentType2Ext(mimeType))
+        return FileUtil.createInitialFileName(getBaseFileName(inputFile), outputFileSuffix, FileUtil.contentType2Ext(mimeType))
     }
 
     override fun finalize(succeeded: Boolean, inFile:AndroidFile, outFile:AndroidFile) {
@@ -177,11 +184,20 @@ open class NamedMediaFileProvider(val name:String, subFolder:String?=null): Medi
  * 編集中ファイルを上書きする FileProvider
  * @param workSubFolder 一時ファイル作成場所指定。context.cacheDirの下にサブフォルダを作る場合はそのフォルダ名。nullなら cacheDir直下に配置
  */
-class OverwriteFileProvider(val workSubFolder:String?=null) : IOutputFileProvider {
+open class OverwriteFileProvider(val showConfirmMessage:Boolean=true, val workSubFolder:String?=null) : IOutputFileProvider {
+    protected open suspend fun getFallbackProvider(): IOutputFileProvider? {
+        return ExportFileProvider("")
+    }
     override suspend fun getOutputFile(mimeType:String, inputFile: AndroidFile): AndroidFile? {
         if (!inputFile.canWrite()) {
             AmeGlobal.logger.error("target file is not writable")
-            return ExportFileProvider("").getOutputFile(mimeType, inputFile)
+            return getFallbackProvider()?.getOutputFile(mimeType, inputFile)
+        }
+        if (showConfirmMessage) {
+            val confirm = UtImmortalTask.awaitTaskResult(this::class.java.name) {
+                showYesNoMessageBox("Overwrite", "Are you sure to overwrite the file?")
+            }
+            if (!confirm) return null
         }
         return FileUtil.createWorkFile(workSubFolder)
     }
@@ -200,10 +216,25 @@ class OverwriteFileProvider(val workSubFolder:String?=null) : IOutputFileProvide
  * @param outputFileSuffix inputFile から outputFile名を作成するときに付加するサフィックス
  * @param subFolder Media Files にエクスポートする場合は、そのサブフォルダ名 (nullなら直下)
  */
-class InteractiveOutputFileProvider(outputFileSuffix:String, val subFolder:String?) : AbstractNamedFileProvider(outputFileSuffix) {
+open class InteractiveOutputFileProvider(outputFileSuffix:String, val subFolder:String?) : AbstractNamedFileProvider(outputFileSuffix) {
+    open fun getExportFileProvider(): IOutputFileProvider {
+        return ExportFileProvider(outputFileSuffix)
+    }
+    open fun getNamedMediaFileProvider(targetName:String): IOutputFileProvider {
+        return NamedMediaFileProvider(targetName, subFolder)
+    }
+    open fun getOverwriteFileProvider() : IOutputFileProvider{
+        return OverwriteFileProvider()
+    }
+
     override suspend fun getOutputFile(mimeType: String, inputFile: AndroidFile): AndroidFile? {
-        val initialName = super.initialFileName(mimeType, inputFile) ?: return null
-        val provider = SaveOptionDialog.show(initialName, subFolder, outputFileSuffix) ?: return null
+        val initialName = initialFileName(mimeType, inputFile) ?: return null
+        val option = SaveOptionDialog.show(initialName) ?: return null
+        val provider = when(option.targetType) {
+            SaveOptionDialog.SaveOptionViewModel.TargetType.OVERWRITE -> getExportFileProvider()
+            SaveOptionDialog.SaveOptionViewModel.TargetType.SAVE_MEDIA_FILE_AS -> getNamedMediaFileProvider(option.targetName)
+            SaveOptionDialog.SaveOptionViewModel.TargetType.EXPORT_FILE -> getOverwriteFileProvider()
+        }
         return provider.getOutputFile(mimeType, inputFile)
     }
 }

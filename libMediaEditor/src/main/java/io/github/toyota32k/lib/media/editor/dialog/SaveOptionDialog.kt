@@ -79,17 +79,19 @@ class SaveOptionDialog : UtDialogEx() {
     }
 
     companion object {
-        suspend fun show(initialName:String, subFolder:String?, suffix:String): IOutputFileProvider? {
-            return UtImmortalTask.awaitTaskResult {
+        data class SaveOption(val targetType:TargetType, val targetName:String)
+        suspend fun show(initialName:String): SaveOption? {
+            return UtImmortalTask.awaitTaskResult(this::class.java.name) {
                 val vm = createViewModel<SaveOptionViewModel> {
                     targetName.value = initialName
                 }
                 if (showDialog(taskName) { SaveOptionDialog() }.status.ok) {
-                    when (vm.targetType.value) {
-                        TargetType.EXPORT_FILE-> ExportFileProvider(suffix)
-                        TargetType.SAVE_MEDIA_FILE_AS-> NamedMediaFileProvider(vm.targetName.value, subFolder)
-                        TargetType.OVERWRITE-> OverwriteFileProvider()
-                    }
+                    SaveOption(vm.targetType.value, vm.targetName.value)
+//                    when (vm.targetType.value) {
+//                        TargetType.EXPORT_FILE-> ExportFileProvider(suffix)
+//                        TargetType.SAVE_MEDIA_FILE_AS-> NamedMediaFileProvider(vm.targetName.value, subFolder)
+//                        TargetType.OVERWRITE-> OverwriteFileProvider()
+//                    }
                 } else null
             }
         }

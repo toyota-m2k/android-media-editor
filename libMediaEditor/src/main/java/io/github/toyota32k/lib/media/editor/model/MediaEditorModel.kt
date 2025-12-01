@@ -112,7 +112,7 @@ open class MediaEditorModel(
         CHAPTER,
     }
 
-    open suspend fun saveVideo(mode:SaveMode, outputFileProvider:IOutputFileProvider?):Boolean {
+    open suspend fun saveVideo(mode:SaveMode, outputFileProvider:IOutputFileProvider?=null):Boolean {
         if (mode == SaveMode.ALL) {
             return saveFile(outputFileProvider)
         }
@@ -139,7 +139,7 @@ open class MediaEditorModel(
         return outputFileSelector ?: outputFileSelectorResolver?.invoke(item) ?: ExportToDirectoryFileSelector()
     }
 
-    open suspend fun saveFile(outputFileProvider:IOutputFileProvider?):Boolean {
+    open suspend fun saveFile(outputFileProvider:IOutputFileProvider?=null):Boolean {
         val item = playerModel.currentSource.value ?: return false
         savingNow.mutable.value = true
         val provider = resolveFileProvider(outputFileProvider, item)
@@ -165,15 +165,15 @@ open class MediaEditorModel(
         AT_POSITION,
         BY_CHAPTERS,
     }
-    suspend fun splitVideo(mode:SplitMode):Boolean {
+    suspend fun splitVideo(mode:SplitMode, outputFileSelector: IOutputFileSelector?=null):Boolean {
         val item = playerModel.currentSource.value ?: return false
         if (item.isPhoto) return false
         savingNow.mutable.value = true
         return try {
             val sourceInfo = VideoSourceInfoImpl.fromModel(this) ?: return false
             val result = when (mode) {
-                SplitMode.AT_POSITION -> splitHandler.splitAtCurrentPosition(sourceInfo, true, resolveFileSelector(null, item))
-                SplitMode.BY_CHAPTERS -> splitHandler.splitByChapters(sourceInfo, true, resolveFileSelector(null, item))
+                SplitMode.AT_POSITION -> splitHandler.splitAtCurrentPosition(sourceInfo, true, resolveFileSelector(outputFileSelector, item))
+                SplitMode.BY_CHAPTERS -> splitHandler.splitByChapters(sourceInfo, true, resolveFileSelector(outputFileSelector, item))
                 // else -> throw IllegalArgumentException("mode = $mode")
             }
             result?.succeeded == true
