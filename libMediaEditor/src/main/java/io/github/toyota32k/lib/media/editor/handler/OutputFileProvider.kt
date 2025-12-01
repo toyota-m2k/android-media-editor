@@ -45,6 +45,12 @@ object FileUtil {
         return contentType2Ext(file.getContentType()?:"")
     }
 
+    fun getBaseName(file:AndroidFile):String? {
+        val originalName = file.getFileName() ?: return null
+        val dotIndex = originalName.lastIndexOf('.')
+        return if (dotIndex > 0) originalName.take(dotIndex) else originalName
+    }
+
     /**
      * 保存ファイル名の初期値を作成
      */

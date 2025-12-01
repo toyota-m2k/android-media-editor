@@ -24,21 +24,18 @@ data class Project(
     val name:String,
     val documentId: String,
     val type: String,
-    val uri: String?,
+    val uri: String,
     val serializedChapters: String?,
     var serializedCropParams: String?,
     val creationTime: Long,
     val lastAccessTime:Long
-    )
-{
-    @Ignore
-    val isPersisted:Boolean = uri!=null
-
+    ) {
     fun modified(
-        uri: String? = this.uri,
+        name: String = this.name,
+        uri: String = this.uri,
         serializedChapters: String? = this.serializedChapters,
         serializedCropParams: String? = this.serializedCropParams ) : Project? {
-        if (uri == this.uri && serializedChapters == this.serializedChapters && serializedCropParams == this.serializedCropParams) {
+        if (name!=this.name && uri == this.uri && serializedChapters == this.serializedChapters && serializedCropParams == this.serializedCropParams) {
             return null // 変更がなければ null を返す
         }
         return Project(id, name, documentId, type, uri, serializedChapters, serializedCropParams, creationTime, Date().time)

@@ -12,12 +12,16 @@ import android.view.ViewTreeObserver
 import android.view.WindowManager
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.core.net.toUri
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.application
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewModelScope
 import io.github.toyota32k.binder.Binder
 import io.github.toyota32k.binder.BoolConvert
 import io.github.toyota32k.binder.clickBinding
+import io.github.toyota32k.binder.editTextBinding
+import io.github.toyota32k.binder.multiVisibilityBinding
 import io.github.toyota32k.binder.observe
 import io.github.toyota32k.binder.visibilityBinding
 import io.github.toyota32k.dialog.broker.IUtActivityBrokerStoreProvider
@@ -31,13 +35,12 @@ import io.github.toyota32k.dialog.mortal.UtMortalActivity
 import io.github.toyota32k.dialog.task.UtImmortalTask
 import io.github.toyota32k.dialog.task.UtImmortalTaskManager
 import io.github.toyota32k.dialog.task.showYesNoMessageBox
+import io.github.toyota32k.lib.media.editor.handler.FileUtil
 import io.github.toyota32k.lib.media.editor.model.IMediaSourceWithMutableChapterList
 import io.github.toyota32k.lib.media.editor.model.MaskCoreParams
 import io.github.toyota32k.lib.media.editor.model.MediaEditorModel
-import io.github.toyota32k.lib.media.editor.handler.save.DefaultAudioStrategySelector
 import io.github.toyota32k.lib.media.editor.handler.save.GenericSaveFileHandler
 import io.github.toyota32k.lib.media.editor.handler.InteractiveOutputFileProvider
-import io.github.toyota32k.lib.media.editor.handler.save.InteractiveVideoStrategySelector
 import io.github.toyota32k.lib.media.editor.handler.split.GenericSplitHandler
 import io.github.toyota32k.lib.player.model.IMutableChapterList
 import io.github.toyota32k.lib.player.model.Range
@@ -45,6 +48,8 @@ import io.github.toyota32k.lib.player.model.chapter.MutableChapterList
 import io.github.toyota32k.logger.UtLog
 import io.github.toyota32k.logger.UtLogConfig
 import io.github.toyota32k.media.editor.databinding.ActivityMainBinding
+import io.github.toyota32k.media.editor.project.ProjectDB
+import io.github.toyota32k.media.editor.project.ProjectDB.Companion.documentId
 import io.github.toyota32k.media.lib.converter.AndroidFile
 import io.github.toyota32k.media.lib.converter.toAndroidFile
 import io.github.toyota32k.utils.android.CompatBackKeyDispatcher
@@ -52,11 +57,15 @@ import io.github.toyota32k.utils.android.setLayoutWidth
 import io.github.toyota32k.utils.gesture.Direction
 import io.github.toyota32k.utils.gesture.UtScaleGestureManager
 import io.github.toyota32k.utils.toggle
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.concurrent.atomic.AtomicLong
 
 class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
@@ -95,16 +104,9 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
     }
 
     class MainViewModel(application: Application): AndroidViewModel(application) {
-//        class SplitHandler : AbstractSplitHandler(true) {
-//            override suspend fun splitVideoAt(targetSource: IMediaSource, positionMs: Long): Boolean {
-//                TODO("Not yet implemented")
-//            }
-//
-//        }
-//
+        val logger = UtLog("VM")
         val localData = LocalData(application)
-
-
+        val projectDb = ProjectDB(application)
         val editorModel = MediaEditorModel.Builder(application, viewModelScope) {
                 supportChapter(false)
                 supportSnapshot(::snapshot)
@@ -135,22 +137,19 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
         val targetMediaSource = MutableStateFlow<MediaSource?>(null)
         val isEditing = targetMediaSource.map { it!=null }
         val requestShowPanel = MutableStateFlow(true)
+        val projectName = MutableStateFlow<String>("a")
 
-        // view state
-        // - buttonPane全面表示
-        // - buttonPane控えめ表示
-        // - buttonPane非表示
+        // buttonPane のv表示ステータス
         enum class ViewState {
-            FULL,
-            HALF,
-            NONE,
+            FULL,       // - buttonPane全面表示
+            HALF,       // - buttonPane控えめ表示
+            NONE,       // - buttonPane非表示
         }
         fun viewState(targetMediaSource: MediaSource?, requestShowPanel:Boolean) : ViewState =  when {
             targetMediaSource == null -> ViewState.FULL
             requestShowPanel -> ViewState.HALF
             else -> ViewState.NONE
         }
-
         val viewState = combine(isEditing, requestShowPanel) { isEditing, requestShowPanel ->
             when {
                 !isEditing-> ViewState.FULL
@@ -159,16 +158,31 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
             }
         }.stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.Eagerly, ViewState.FULL)
 
+        suspend fun setNewTargetMediaFile(fileUri:Uri) {
+            val project = withContext(Dispatchers.IO) { projectDb.getProject(fileUri) }
+            if (project!=null) {
+                // reopen
+                setTargetMediaFile(fileUri, project.name, project.serializedChapters, project.serializedCropParams)
+            } else {
+                val file = fileUri.toAndroidFile(application)
+                val name = FileUtil.getBaseName(file).takeIf { !it.isNullOrBlank() } ?: file.getFileName() ?: "noname"
+                setTargetMediaFile(fileUri, name, null, null)
+                saveCurrentProject()
+            }
+        }
 
-        fun openMediaFile(file: Uri, serializedChapters:String? = null, serializedCropParams:String? = null):MediaSource? {
+        fun setTargetMediaFile(fileUri: Uri, name:String, serializedChapters:String?, serializedCropParams:String?):MediaSource? {
             val orgSource = targetMediaSource.value
-            if (orgSource?.file?.uri == file) return orgSource
-            val source = MediaSource.fromFile(file.toAndroidFile(getApplication()))?.apply {
+            if (orgSource?.file?.uri == fileUri) return orgSource
+            val source = MediaSource.fromFile(fileUri.toAndroidFile(getApplication()))?.apply {
                 if (!isPhoto) {
                     chapterList.deserialize(serializedChapters)
                 }
             } ?: return null
-            localData.editingUri = file
+            logger.info("collect: before projectName=$name (${projectName.value})")
+            projectName.value = name
+            logger.info("collect: after projectName=$name (${projectName.value})")
+            localData.editingUri = fileUri.toString()
             targetMediaSource.value = source
             editorModel.playerModel.setSource(source)
             requestShowPanel.value = false
@@ -178,11 +192,32 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
             return source
         }
 
-        fun storeToLocalData() {
+
+        suspend fun saveCurrentProject() {
+            logger.debug("saving")
+            logger.chronos {
+                val source = targetMediaSource.value ?: return
+                withContext(Dispatchers.IO) {
+                    logger.debug("saving")
+                    projectDb.register(
+                        projectName.value,
+                        source.uri,
+                        source.type,
+                        source.chapterList.serialize(),
+                        editorModel.cropHandler.maskViewModel.getParams().serialize()
+                    )
+                }
+            }
+        }
+
+        suspend fun storeToLocalData() {
+            logger.debug("saving")
+            saveCurrentProject()
             localData.apply {
                 val source = targetMediaSource.value
                 serializedChapters = source?.chapterList?.serialize()
                 serializedCropParams = editorModel.cropHandler.maskViewModel.getParams().serialize()
+                projectName = this@MainViewModel.projectName.value
                 if (source!=null && !source.isPhoto) {
                     playPosition = editorModel.playerModel.currentPosition
                     isPlaying = editorModel.playerModel.isPlaying.value
@@ -194,13 +229,12 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
         }
 
         fun restoreFromLocalData() {
-            localData.editingUri?.also { file ->
-                val source = openMediaFile(file, localData.serializedChapters, localData.serializedCropParams) ?: return@also
-                if (source.isPhoto) return
-                editorModel.playerModel.seekTo(localData.playPosition)
-                if (localData.isPlaying) {
-                    editorModel.playerControllerModel.commandPlay.invoke()
-                }
+            val file = localData.editingUri?.toUri() ?: return
+            val source = setTargetMediaFile(file, localData.projectName ?: "noname", localData.serializedChapters, localData.serializedCropParams) ?: return
+            if (source.isPhoto) return
+            editorModel.playerModel.seekTo(localData.playPosition)
+            if (localData.isPlaying) {
+                editorModel.playerControllerModel.commandPlay.invoke()
             }
         }
 
@@ -320,9 +354,11 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
 ////                    controls.buttonPane.x = it.left.toFloat()
 //                }
 //            })
+            .editTextBinding(controls.projectNameEdit, viewModel.projectName)
             .visibilityBinding(controls.menuButton, combine(viewModel.isEditing, viewModel.editorModel.cropHandler.croppingNow) { isEditing, cropping ->
                 isEditing && !cropping
             })
+            .multiVisibilityBinding(arrayOf(controls.buttonSave, controls.buttonClose, controls.projectNameEdit, controls.projectNameLabel), viewModel.isEditing)
             .visibilityBinding(controls.buttonPane, viewModel.editorModel.cropHandler.croppingNow, BoolConvert.Inverse)
             .clickBinding(controls.menuButton) {
                 viewModel.requestShowPanel.toggle()
@@ -409,13 +445,13 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
         UtImmortalTask.launchTask {
             val file = activityBrokers.openFilePicker.selectFile(arrayOf("video/*", "image/*"))
             if (file != null) {
-                viewModel.openMediaFile(file)
+                viewModel.setNewTargetMediaFile(file)
             }
         }
     }
 
     override fun onPause() {
         super.onPause()
-        viewModel.storeToLocalData()
+        viewModel.viewModelScope.launch { viewModel.storeToLocalData() }
     }
 }

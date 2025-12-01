@@ -42,6 +42,18 @@
             app:layout_constraintEnd_toEndOf="parent"
             android:layout_gravity="center"
             android:gravity="center">
+            <TextView
+                android:id="@+id/project_name_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/project_label"
+                android:layout_gravity="start"
+                />
+            <EditText
+                android:id="@+id/project_name_edit"
+                android:layout_width="150dp"
+                android:layout_height="wrap_content"
+                />
             <Button
                 android:id="@+id/button_open"
                 android:layout_width="100dp"
