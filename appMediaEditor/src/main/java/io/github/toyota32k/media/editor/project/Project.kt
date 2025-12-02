@@ -1,11 +1,9 @@
 package io.github.toyota32k.media.editor.project
 
-import android.provider.DocumentsContract
 import androidx.room.Dao
 import androidx.room.Database
 import androidx.room.Delete
 import androidx.room.Entity
-import androidx.room.Ignore
 import androidx.room.Index
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
@@ -13,11 +11,12 @@ import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.RoomDatabase
 import androidx.room.Update
+import io.github.toyota32k.logger.UtLog
 import java.util.Date
 
 @Entity(
     tableName = "t_project",
-    indices = [Index(value = ["name"], unique=true)])
+    indices = [Index(value = ["name"]), Index(value=["uri"], unique = true)])
 data class Project(
     @PrimaryKey(autoGenerate = true)
     val id:Int,
@@ -27,7 +26,7 @@ data class Project(
     val uri: String,
     val serializedChapters: String?,
     var serializedCropParams: String?,
-    val creationTime: Long,
+    val fileTimestamp: Long,
     val lastAccessTime:Long
     ) {
     fun modified(
@@ -38,8 +37,20 @@ data class Project(
         if (name!=this.name && uri == this.uri && serializedChapters == this.serializedChapters && serializedCropParams == this.serializedCropParams) {
             return null // 変更がなければ null を返す
         }
-        return Project(id, name, documentId, type, uri, serializedChapters, serializedCropParams, creationTime, Date().time)
+        UtLog("DB").debug("ORG=$this")
+        return Project(id, name, documentId, type, uri, serializedChapters, serializedCropParams, fileTimestamp, Date().time).apply {UtLog("DB").debug("NEW=$this")}
     }
+    val isPhoto:Boolean
+        get() = when (type) {
+            "jpeg", "jpg", "png", "gif" -> true
+            else -> false
+        }
+    val isVideo:Boolean
+        get() = when (type) {
+            "mp4" -> true
+            else -> false
+        }
+
 }
 
 @Dao

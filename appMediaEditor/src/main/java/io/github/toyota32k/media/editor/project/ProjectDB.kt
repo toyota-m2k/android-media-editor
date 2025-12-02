@@ -4,11 +4,15 @@ import android.app.Application
 import android.content.Intent
 import android.net.Uri
 import android.provider.DocumentsContract
+import android.provider.MediaStore
 import androidx.core.net.toUri
-import androidx.core.os.persistableBundleOf
+import androidx.documentfile.provider.DocumentFile
 import androidx.room.Room
 import io.github.toyota32k.logger.UtLog
 import io.github.toyota32k.utils.UtLazyResetableValue
+import java.io.File
+import java.nio.file.Files
+import java.nio.file.attribute.BasicFileAttributes
 import java.util.Date
 
 class ProjectDB(val application: Application, val dbFileName:String="AME.db") : AutoCloseable {
@@ -76,7 +80,22 @@ class ProjectDB(val application: Application, val dbFileName:String="AME.db") : 
         return true
     }
 
-    fun register(
+    fun timestamp(uri:Uri):Long? {
+        try {
+            return if (uri.scheme == "file") {
+                val path = uri.path ?: return null
+                File(path).lastModified()
+            } else {
+                val docFile = DocumentFile.fromSingleUri(application, uri)
+                docFile?.lastModified()
+            }
+        } catch (e:Throwable) {
+            logger.error(e)
+            return null
+        }
+    }
+
+    fun registerProject(
         name:String,
         uri: String,
         type: String,
@@ -84,17 +103,20 @@ class ProjectDB(val application: Application, val dbFileName:String="AME.db") : 
         serializedCropParams: String?):Project? {
         val uriObj = uri.toUri()
         val documentId = DocumentsContract.getDocumentId(uriObj) ?: return null
-        val date = Date()
+        val now = Date().time
+        val timestamp = timestamp(uriObj)?:Date().time
         val oldProject = db.projectTable().get(documentId)
         logger.debug("saving")
         return if (oldProject == null) {
             persistPermission(uriObj)
             logger.debug("permission persisted for new document: $documentId")
-            Project(0, name, documentId, type, uri, serializedChapters, serializedCropParams, date.time, date.time)
+            Project(0, name, documentId, type.lowercase(), uri, serializedChapters, serializedCropParams, timestamp, now)
                 .also {
                     db.projectTable().insert(it)
                     logger.debug("inserted: $documentId ${it.uri}")
                 }
+            // id を含む登録済みProjectインスタンスを返す
+            getProject(uriObj)
         } else {
             oldProject.modified(name, uri, serializedChapters, serializedCropParams)
                 ?.also {
@@ -103,11 +125,11 @@ class ProjectDB(val application: Application, val dbFileName:String="AME.db") : 
                 }
                 ?.apply {
                     logger.debug("not updated: $documentId ${this.uri}")
-                }
+                } ?: oldProject
         }
     }
 
-    fun unregister(project:Project) {
+    fun unregisterProject(project:Project) {
         application.contentResolver.releasePersistableUriPermission(project.uri.toUri(), Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
         db.projectTable().delete(project)
     }
@@ -115,6 +137,13 @@ class ProjectDB(val application: Application, val dbFileName:String="AME.db") : 
     fun getProject(uri:Uri) : Project? {
         val documentId = DocumentsContract.getDocumentId(uri) ?: return null
         return db.projectTable().get(documentId)
+    }
+    fun getProject(id:Int) : Project? {
+        return db.projectTable().get(id)
+    }
+
+    fun getProjectList():List<Project> {
+        return db.projectTable().getAll()
     }
 
     fun checkPoint() {

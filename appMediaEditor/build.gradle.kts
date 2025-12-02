@@ -76,6 +76,7 @@ dependencies {
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.documentfile)
     ksp(libs.androidx.room.compiler)
     implementation(libs.android.dialog)
 
