@@ -31,22 +31,22 @@ import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 
-class ProjectsManagerDialog : UtDialogEx() {
+class ProjectManagerDialog : UtDialogEx() {
     data class ProjectSelection(val project:Project?)
-    class ProjectsViewModel : UtDialogViewModel() {
+    class ProjectManagerViewModel : UtDialogViewModel() {
         lateinit var projectDb: ProjectDB
         var currentProject: Project? = null
-        val projectsList = ObservableList<Project>()
+        val projectList = ObservableList<Project>()
         var selected = MutableStateFlow<Project?>(null)
 //        val itemSelected: LiteCommand<Project> = LiteCommand { selected = it }
         val toBeDeleted = mutableListOf<Project>()
         var result: ProjectSelection? = null
 
-        fun initWithDB(projectDb: ProjectDB, currentProject: Project?, list:List<Project>): ProjectsViewModel = apply {
+        fun initWithDB(projectDb: ProjectDB, currentProject: Project?, list:List<Project>): ProjectManagerViewModel = apply {
             this.projectDb = projectDb
             this.currentProject = currentProject
             this.selected.value = currentProject
-            this.projectsList.addAll(list)
+            this.projectList.addAll(list)
         }
 
         fun onDeletingItem(item:Project): RecyclerViewBinding.IDeletion? {
@@ -89,7 +89,7 @@ class ProjectsManagerDialog : UtDialogEx() {
         enableFocusManagement().autoRegister()
     }
 
-    val viewModel by lazy { getViewModel<ProjectsViewModel>() }
+    val viewModel by lazy { getViewModel<ProjectManagerViewModel>() }
     lateinit var controls : DialogProjectsManagerBinding
 
     val dateFormat = SimpleDateFormat("yyyy.MM.dd-HH:mm:ss",Locale.US).apply { timeZone = TimeZone.getTimeZone(ZoneId.systemDefault()) }
@@ -104,7 +104,7 @@ class ProjectsManagerDialog : UtDialogEx() {
             .dialogRightButtonEnable(viewModel.selected.map { it != null && it!=viewModel.currentProject})
             .recyclerViewBindingEx<Project, ItemProjectBinding>(controls.projectList) {
                 options(
-                    list = viewModel.projectsList,
+                    list = viewModel.projectList,
                     inflater = ItemProjectBinding::inflate,
                     bindView = { views, itemBinder, _, item ->
                         views.root.isSelected = item == viewModel.selected.value
@@ -125,7 +125,7 @@ class ProjectsManagerDialog : UtDialogEx() {
                             AmeGlobal.logger.debug("PMD:${item.id} selected")
                         }
                         itemBinder
-                            .owner(this@ProjectsManagerDialog)
+                            .owner(this@ProjectManagerDialog)
                             .headlessBinding(viewModel.selected) {
                                 val sel = it == item
                                 views.root.isSelected = sel
@@ -163,8 +163,8 @@ class ProjectsManagerDialog : UtDialogEx() {
                 if (list.isEmpty()) {
                     ProjectSelection(null)
                 } else {
-                    val vm = createViewModel<ProjectsViewModel> { initWithDB(projectDb, currentProject, list) }
-                    if (showDialog(taskName) { ProjectsManagerDialog() }.status.ok) {
+                    val vm = createViewModel<ProjectManagerViewModel> { initWithDB(projectDb, currentProject, list) }
+                    if (showDialog(taskName) { ProjectManagerDialog() }.status.ok) {
                         vm.result
                     } else null
                 }

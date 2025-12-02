@@ -15,7 +15,6 @@ import androidx.activity.viewModels
 import androidx.core.net.toUri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.application
-import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewModelScope
 import io.github.toyota32k.binder.Binder
 import io.github.toyota32k.binder.BoolConvert
@@ -51,7 +50,7 @@ import io.github.toyota32k.logger.UtLog
 import io.github.toyota32k.logger.UtLogConfig
 import io.github.toyota32k.media.editor.MainActivity.MediaSource.Companion.getType
 import io.github.toyota32k.media.editor.databinding.ActivityMainBinding
-import io.github.toyota32k.media.editor.dialog.ProjectsManagerDialog
+import io.github.toyota32k.media.editor.dialog.ProjectManagerDialog
 import io.github.toyota32k.media.editor.project.Project
 import io.github.toyota32k.media.editor.project.ProjectDB
 import io.github.toyota32k.media.editor.providers.CustomExportToDirectoryFileSelector
@@ -166,7 +165,7 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
 
         val commandOpenProject = LiteUnitCommand {
             UtImmortalTask.launchTask("commandOpenProject") {
-                val result = ProjectsManagerDialog.show(projectDb, targetMediaSource.value?.uri) ?: return@launchTask
+                val result = ProjectManagerDialog.show(projectDb, targetMediaSource.value?.uri) ?: return@launchTask
                 val project = result.project
                 if (project!=null) {
                     setTargetMediaFile(project)
