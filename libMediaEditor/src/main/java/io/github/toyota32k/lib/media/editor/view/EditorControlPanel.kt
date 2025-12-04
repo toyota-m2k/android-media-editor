@@ -148,7 +148,10 @@ class EditorControlPanel @JvmOverloads constructor(context: Context, attrs: Attr
     }
 
     companion object  {
-        suspend fun popupAspectMenu(context: Context, anchor: View): AspectMode? {
+        /**
+         * @param supportScreenAspect true: Screen(Portrait/Landscape)を選択可能 (for wallpaper)
+         */
+        suspend fun popupAspectMenu(context: Context, anchor: View, supportScreenAspect:Boolean=false): AspectMode? {
             val selection = MutableStateFlow<Int?>(null)
             PopupMenu(context, anchor).apply {
                 setOnMenuItemClickListener {
@@ -159,6 +162,10 @@ class EditorControlPanel @JvmOverloads constructor(context: Context, attrs: Attr
                     selection.value = -1
                 }
                 inflate(R.menu.menu_aspect)
+                if (!supportScreenAspect) {
+                    menu.removeItem(R.id.aspect_screen_landscape)
+                    menu.removeItem(R.id.aspect_screen_portrait)
+                }
             }.show()
             val sel = selection.first { it != null }
             return when(sel) {
@@ -167,6 +174,8 @@ class EditorControlPanel @JvmOverloads constructor(context: Context, attrs: Attr
                 R.id.aspect_16_9 -> AspectMode.ASPECT_16_9
                 R.id.aspect_4_3_portrait -> AspectMode.ASPECT_4_3_PORTRAIT
                 R.id.aspect_16_9_portrait -> AspectMode.ASPECT_16_9_PORTRAIT
+                R.id.aspect_screen_landscape -> AspectMode.ASPECT_SCREEN_LANDSCAPE
+                R.id.aspect_screen_portrait -> AspectMode.ASPECT_SCREEN_PORTRAIT
                 else -> null
             }
         }

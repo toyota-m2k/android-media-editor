@@ -4,15 +4,12 @@ import android.app.Application
 import android.content.Intent
 import android.net.Uri
 import android.provider.DocumentsContract
-import android.provider.MediaStore
 import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
 import androidx.room.Room
 import io.github.toyota32k.logger.UtLog
 import io.github.toyota32k.utils.UtLazyResetableValue
 import java.io.File
-import java.nio.file.Files
-import java.nio.file.attribute.BasicFileAttributes
 import java.util.Date
 
 class ProjectDB(val application: Application, val dbFileName:String="AME.db") : AutoCloseable {

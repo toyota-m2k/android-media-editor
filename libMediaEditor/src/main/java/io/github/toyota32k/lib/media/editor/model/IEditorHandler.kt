@@ -28,6 +28,9 @@ enum class AspectMode(val label:String, val horizontal:Float, val vertical:Float
     ASPECT_16_9("16:9", 16f, 9f),
     ASPECT_4_3_PORTRAIT("4:3 (P)", 3f,  vertical = 4f),
     ASPECT_16_9_PORTRAIT("16:9 (P)", 9f, vertical = 16f),
+    // for wallpaper
+    ASPECT_SCREEN_LANDSCAPE("Screen (L)", 0f, 0f),
+    ASPECT_SCREEN_PORTRAIT("Screen (P)", 0f, vertical = 0f),
 }
 
 /**

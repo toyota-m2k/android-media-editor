@@ -3,6 +3,7 @@ package io.github.toyota32k.lib.media.editor.model
 import android.graphics.Bitmap
 import android.graphics.Rect
 import android.util.Size
+import io.github.toyota32k.dialog.task.UtImmortalTaskManager
 import io.github.toyota32k.logger.UtLog
 import io.github.toyota32k.lib.media.editor.view.CropMaskView
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -207,6 +208,13 @@ class CropMaskViewModel {
         return correctEy(v).also { maskEy = it }
     }
 
+    private fun getDeviceScreenSize():Pair<Float, Float> {
+        return UtImmortalTaskManager.application.resources.displayMetrics.run {
+            widthPixels.toFloat()/heightPixels.toFloat() to 1f
+        }
+    }
+
+
     /**
      * AspectModeで指定されたアスペクト比に調整するための、x/y補正量を計算する
      * ただし、常に Landscapeとして計算する。
@@ -215,8 +223,13 @@ class CropMaskViewModel {
     private fun correctHeightBasedOnWidth(newWidth:Float, newHeight:Float, aspect:AspectMode):Float {
         if (aspectMode.value == AspectMode.FREE) return newHeight
 
+        val (horizontal,vertical) = when (aspect) {
+            AspectMode.ASPECT_SCREEN_LANDSCAPE, AspectMode.ASPECT_SCREEN_PORTRAIT -> getDeviceScreenSize()
+            else -> aspect.horizontal to aspect.vertical
+        }
+
         // 幅を基準に高さを調整する
-        val corrHeight = newWidth * aspect.vertical / aspect.horizontal
+        val corrHeight = newWidth * vertical / horizontal
         logger.debug("${cropFlows.height} -- ${(maxY-minY)/(maxX-minX)*(cropFlows.width)}")
         return corrHeight
 
@@ -238,8 +251,12 @@ class CropMaskViewModel {
     private fun correctWidthBasedOnHeight(newWidth:Float, newHeight:Float, aspect:AspectMode):Float {
         if (aspectMode.value == AspectMode.FREE) return newWidth
 
+        val (horizontal,vertical) = when (aspect) {
+            AspectMode.ASPECT_SCREEN_LANDSCAPE, AspectMode.ASPECT_SCREEN_PORTRAIT -> getDeviceScreenSize()
+            else -> aspect.horizontal to aspect.vertical
+        }
         // 高さを基準に調整
-        val corrWidth = newHeight * aspect.horizontal / aspect.vertical
+        val corrWidth = newHeight * horizontal / vertical
         return corrWidth
     }
 

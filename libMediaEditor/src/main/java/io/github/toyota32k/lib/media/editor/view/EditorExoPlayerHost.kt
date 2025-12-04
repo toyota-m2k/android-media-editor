@@ -174,18 +174,13 @@ class EditorExoPlayerHost  @JvmOverloads constructor(context: Context, attrs: At
             }
             .observe(model.cropHandler.croppingNow) { cropping->
                 maskView.showHandle(cropping)
-                if (cropping) {
-                    val padding = context.dp2px(16)
-                    maskView.setPadding(padding)
-                    exoPlayer.setPadding(padding)
-                    photoView.setPadding(padding)
-                    photoAltView.setPadding(padding)
-                } else {
-                    maskView.setPadding(0)
-                    exoPlayer.setPadding(0)
-                    photoView.setPadding(0)
-                    photoAltView.setPadding(0)
-                }
+                val padding = if (cropping) {
+                    context.dp2px(16)
+                } else 0
+                maskView.setPadding(padding)
+                exoPlayer.setPadding(padding)
+                photoView.setPadding(padding)
+                photoAltView.setPadding(padding)
             }
             .bindCommand(model.cropHandler.commandResetCrop) { controls.expCropMaskView.invalidateIfNeed() }
             .bindCommand(model.cropHandler.commandRestoreCropFromMemory) { controls.expCropMaskView.invalidateIfNeed() }

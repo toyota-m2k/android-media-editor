@@ -49,5 +49,7 @@
     <string name="save_left">Left of Current Position</string>
     <string name="save_right">Right of Current Position</string>
     <string name="save_current_chapter">Current Chapter</string>
+    <string name="aspect_screen_landscape">Screen (Landscape)</string>
+    <string name="aspect_screen_portrait">Screen (Portrait)</string>
 
 </resources>

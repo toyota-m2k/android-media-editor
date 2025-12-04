@@ -52,6 +52,7 @@ import io.github.toyota32k.logger.UtLogConfig
 import io.github.toyota32k.media.editor.MainActivity.MediaSource.Companion.getType
 import io.github.toyota32k.media.editor.databinding.ActivityMainBinding
 import io.github.toyota32k.media.editor.dialog.ProjectManagerDialog
+import io.github.toyota32k.media.editor.dialog.SnapshotDialog
 import io.github.toyota32k.media.editor.project.Project
 import io.github.toyota32k.media.editor.project.ProjectDB
 import io.github.toyota32k.media.editor.providers.CustomExportToDirectoryFileSelector
@@ -139,7 +140,9 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
             .build()
 
         fun snapshot(pos:Long, bmp: Bitmap) {
-
+            viewModelScope.launch {
+                runCatching { SnapshotDialog.showBitmap(bmp, autoRecycle = true) }.onFailure { e-> logger.error(e) }
+            }
         }
 
         val commandSaveFile = LiteUnitCommand {

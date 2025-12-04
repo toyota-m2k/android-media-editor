@@ -20,4 +20,12 @@
         android:id="@+id/aspect_16_9_portrait"
         android:title="@string/aspect_16_9_portrait"
         />
+    <item
+        android:id="@+id/aspect_screen_landscape"
+        android:title="@string/aspect_screen_landscape"
+        />
+    <item
+        android:id="@+id/aspect_screen_portrait"
+        android:title="@string/aspect_screen_portrait"
+        />
 </menu>
