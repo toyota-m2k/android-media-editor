@@ -34,6 +34,7 @@ import io.github.toyota32k.dialog.broker.pickers.UtMediaFilePicker
 import io.github.toyota32k.dialog.broker.pickers.UtOpenFilePicker
 import io.github.toyota32k.dialog.mortal.UtMortalActivity
 import io.github.toyota32k.dialog.task.UtImmortalTask
+import io.github.toyota32k.dialog.task.UtImmortalTaskBase
 import io.github.toyota32k.dialog.task.UtImmortalTaskManager
 import io.github.toyota32k.dialog.task.showYesNoMessageBox
 import io.github.toyota32k.lib.media.editor.dialog.NameDialog
@@ -113,7 +114,6 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
         val logger = UtLog("VM")
         val localData = LocalData(application)
         val projectDb = ProjectDB(application)
-        var currentProject:Project? = null
         val targetMediaSource = MutableStateFlow<MediaSource?>(null)
         val isEditing = targetMediaSource.map { it!=null }
         val requestShowPanel = MutableStateFlow(true)
@@ -166,7 +166,11 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
         val commandOpenProject = LiteUnitCommand {
             UtImmortalTask.launchTask("commandOpenProject") {
                 val result = ProjectManagerDialog.show(projectDb, targetMediaSource.value?.uri) ?: return@launchTask
-                val project = result.project
+                val project = result.selectedProject
+                if (result.removeCurrentProject) {
+                    closeCurrentProject()
+                }
+
                 if (project!=null) {
                     setTargetMediaFile(project)
                 } else {
@@ -175,19 +179,29 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
             }
         }
 
-        val commandCloseProject = LiteUnitCommand {
-            UtImmortalTask.launchTask("closeEditingFile") {
-                if (editorModel.isDirty) {
-                    if (!showYesNoMessageBox("Close Project", "Are you sure to abort your changes?")) {
-                        return@launchTask
-                    }
-                } else {
-                    if (!showYesNoMessageBox("Close Project", "Are you sure to close the project?")) {
-                        return@launchTask
-                    }
+        private suspend fun UtImmortalTaskBase.closeCurrentProject() {
+            if (editorModel.isDirty) {
+                if (!showYesNoMessageBox("Close Project", "Are you sure to abort your changes?")) {
+                    return
                 }
+            } else {
+                if (!showYesNoMessageBox("Close Project", "Are you sure to close the project?")) {
+                    return
+                }
+            }
+            withContext(Dispatchers.IO) {
+                val project = projectDb.getProject(localData.currentProjectId)
                 localData.currentProjectId = -1
                 targetMediaSource.value = null
+                if (project != null) {
+                    projectDb.unregisterProject(project)
+                }
+            }
+        }
+
+        val commandCloseProject = LiteUnitCommand {
+            UtImmortalTask.launchTask("closeEditingFile") {
+                closeCurrentProject()
             }
         }
 
@@ -221,14 +235,15 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
                 // reopen
                 setTargetMediaFile(project)
             } else {
+                // new file
                 val file = fileUri.toAndroidFile(application)
                 val name = FileUtil.getBaseName(file).takeIf { !it.isNullOrBlank() } ?: file.getFileName() ?: "noname"
                 val projectName = NameDialog.show(name, "New Project", "Project Name") ?: return
-                val project = projectDb.registerProject(
+                val project = withContext(Dispatchers.IO) { projectDb.registerProject(
                     projectName,
                     fileUri.toString(),
                     file.getType() ?: "mp4",
-                    null, null) ?: return
+                    null, null) } ?: return
                 setTargetMediaFile(project)
             }
         }
@@ -242,7 +257,6 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
                     chapterList.deserialize(project.serializedChapters)
                 }
             } ?: return null
-            currentProject = project
             projectName.value = project.name
             localData.currentProjectId = project.id
             targetMediaSource.value = source

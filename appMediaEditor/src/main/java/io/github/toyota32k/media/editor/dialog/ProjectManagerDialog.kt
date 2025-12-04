@@ -8,6 +8,7 @@ import io.github.toyota32k.binder.RecyclerViewBinding
 import io.github.toyota32k.binder.command.LiteUnitCommand
 import io.github.toyota32k.binder.headlessBinding
 import io.github.toyota32k.binder.list.ObservableList
+import io.github.toyota32k.binder.onGlobalLayout
 import io.github.toyota32k.binder.recyclerViewBindingEx
 import io.github.toyota32k.dialog.UtDialogEx
 import io.github.toyota32k.dialog.task.UtDialogViewModel
@@ -15,11 +16,11 @@ import io.github.toyota32k.dialog.task.UtImmortalTask
 import io.github.toyota32k.dialog.task.createViewModel
 import io.github.toyota32k.dialog.task.getViewModel
 import io.github.toyota32k.lib.media.editor.model.AmeGlobal
-import io.github.toyota32k.lib.player.TpLib
 import io.github.toyota32k.media.editor.databinding.DialogProjectsManagerBinding
 import io.github.toyota32k.media.editor.databinding.ItemProjectBinding
 import io.github.toyota32k.media.editor.project.Project
 import io.github.toyota32k.media.editor.project.ProjectDB
+import io.github.toyota32k.utils.android.setLayoutHeight
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
@@ -30,9 +31,10 @@ import java.time.ZoneId
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
+import kotlin.math.max
 
 class ProjectManagerDialog : UtDialogEx() {
-    data class ProjectSelection(val project:Project?)
+    data class ProjectSelection(val selectedProject:Project?, val removeCurrentProject:Boolean)
     class ProjectManagerViewModel : UtDialogViewModel() {
         lateinit var projectDb: ProjectDB
         var currentProject: Project? = null
@@ -49,15 +51,21 @@ class ProjectManagerDialog : UtDialogEx() {
             this.projectList.addAll(list)
         }
 
-        fun onDeletingItem(item:Project): RecyclerViewBinding.IDeletion? {
+        fun onDeletingItem(item:Project): RecyclerViewBinding.IDeletion {
             // カレントプロジェクトは削除禁止
-            if (item == currentProject) return null
+//            if (item == currentProject) return null
             // 削除予約リスト（toBeDeleted）に積む
             // 実際の削除は、complete()で実行。
             return object:RecyclerViewBinding.IDeletion {
                 override fun commit() {
-                    TpLib.logger.debug("deleting $item")
+                    logger.debug("deleting $item")
                     toBeDeleted.add(item)
+                    if (item==selected.value) {
+                        selected.value = null
+                    }
+                    if (projectList.isEmpty()) {
+                        allItemsDeleted.value = true
+                    }
                 }
             }
         }
@@ -66,25 +74,32 @@ class ProjectManagerDialog : UtDialogEx() {
             selected.value = item
         }
 
+        val allItemsDeleted = MutableStateFlow<Boolean>(false)
+
         suspend fun complete(new:Boolean=false) {
-            result = ProjectSelection(if(!new) selected.value else null)
+            var deleteCurrent = false
             if (toBeDeleted.isNotEmpty()) {
                 withContext(Dispatchers.IO) {
                     for (item in toBeDeleted) {
-                        projectDb.unregisterProject(item)
+                        if (item == currentProject) {
+                            deleteCurrent = true
+                        } else {
+                            projectDb.unregisterProject(item)
+                        }
                     }
-                    projectDb.checkPoint()
                 }
             }
             toBeDeleted.clear()
+            result = ProjectSelection(if(!new) selected.value else null, deleteCurrent)
         }
     }
     override fun preCreateBodyView() {
         title="Projects"
-        heightOption = HeightOption.FULL
-        widthOption = WidthOption.LIMIT(400)
+        heightOption = HeightOption.CUSTOM
+        widthOption = WidthOption.LIMIT(500)
         leftButtonType = ButtonType.CANCEL
         rightButtonType = ButtonType.DONE
+        cancellable = false
         setOptionButton("New")
         enableFocusManagement().autoRegister()
     }
@@ -97,6 +112,13 @@ class ProjectManagerDialog : UtDialogEx() {
         return dateFormat.format(Date(time))
     }
 
+    private var mListItemHeight:Int = 0
+    private fun setListItemHeight(height:Int) {
+        if (mListItemHeight!=height) {
+            mListItemHeight = height
+            updateCustomHeight()
+        }
+    }
 
     override fun createBodyView(savedInstanceState: Bundle?, inflater: IViewInflater): View {
         controls = DialogProjectsManagerBinding.inflate(inflater.layoutInflater, null, false)
@@ -118,7 +140,7 @@ class ProjectManagerDialog : UtDialogEx() {
                             views.typeVideoIcon.visibility = View.GONE
                         }
                         views.trashButton.setOnClickListener {
-                            viewModel.onDeletingItem(item)?.commit()
+                            viewModel.onDeletingItem(item).commit()
                         }
                         views.root.setOnClickListener {
                             viewModel.selectItem(item)
@@ -142,8 +164,57 @@ class ProjectManagerDialog : UtDialogEx() {
                     super.onPositive()
                 }
             })
+            .headlessBinding(viewModel.allItemsDeleted) {
+                if (it==true) {
+                    onPositive()
+                }
+            }
+            .add {
+                viewModel.projectList.addListener(binder.requireOwner) {
+                    updateCustomHeight()
+                }
+            }
+            .onGlobalLayout(controls.projectList) {
+                val recyclerView = controls.projectList
+                val count = recyclerView.childCount
+                if (count>0) {
+                    val child = recyclerView.getChildAt(0)
+                    val height = child.measuredHeight
+                    if (height>0) {
+                        setListItemHeight(height)
+                        return@onGlobalLayout false // これ以上のイベント通知は不要
+                    }
+                }
+                true
+            }
 
         return controls.root
+    }
+
+    override fun calcCustomContainerHeight(currentBodyHeight: Int, currentContainerHeight: Int, maxContainerHeight: Int): Int {
+        val recyclerView = controls.projectList
+
+        val adapter = recyclerView.adapter ?: return 0
+        val calculatedRvHeight = max(mListItemHeight * viewModel.projectList.size,300)
+        val remainHeight = currentBodyHeight-recyclerView.height    // == listviewを除く、その他のパーツの高さ合計
+        val maxLvHeight = maxContainerHeight - remainHeight     // listViewの最大高さ
+        return if(calculatedRvHeight>=maxLvHeight) {
+            // リストビューの中身が、最大高さを越える --> 最大高さを採用
+            recyclerView.setLayoutHeight(maxLvHeight)
+            maxContainerHeight
+        } else {
+            // リストビューの中身が、最大高さより小さい --> リストビューの中身のサイズを採用
+            recyclerView.setLayoutHeight(calculatedRvHeight)
+            calculatedRvHeight + remainHeight
+        }
+
+
+
+//        if (recyclerView.childCount > 0) {
+//            val avgHeight = totalHeight / recyclerView.childCount
+//            totalHeight = avgHeight * itemCount
+//        }
+
     }
 
     override fun onPositive() {
@@ -161,7 +232,7 @@ class ProjectManagerDialog : UtDialogEx() {
                     projectDb.getProjectList())
                 }
                 if (list.isEmpty()) {
-                    ProjectSelection(null)
+                    ProjectSelection(null, false)
                 } else {
                     val vm = createViewModel<ProjectManagerViewModel> { initWithDB(projectDb, currentProject, list) }
                     if (showDialog(taskName) { ProjectManagerDialog() }.status.ok) {
