@@ -34,7 +34,7 @@ data class Project(
         uri: String = this.uri,
         serializedChapters: String? = this.serializedChapters,
         serializedCropParams: String? = this.serializedCropParams ) : Project? {
-        if (name!=this.name && uri == this.uri && serializedChapters == this.serializedChapters && serializedCropParams == this.serializedCropParams) {
+        if (name==this.name && uri == this.uri && serializedChapters == this.serializedChapters && serializedCropParams == this.serializedCropParams) {
             return null // 変更がなければ null を返す
         }
         UtLog("DB").debug("ORG=$this")

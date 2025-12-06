@@ -66,6 +66,13 @@ interface ICropHandler : IDisposable {
     val isDirty:Boolean
 
     fun bindView(binder: Binder, slider: Slider, minus: Button, plus: Button, presetButtons: Map<Int, Button>)
+
+    /**
+     * Cropping / ResolutionChanging モード中ならキャンセルする
+     * @return true: キャンセルした
+     *         false: キャンセルしなかった（どちらのモードでもなかった）
+     */
+    fun cancelMode():Boolean
 }
 
 /**

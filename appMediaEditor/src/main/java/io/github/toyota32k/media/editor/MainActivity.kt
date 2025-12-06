@@ -61,6 +61,7 @@ import io.github.toyota32k.media.lib.converter.AndroidFile
 import io.github.toyota32k.media.lib.converter.toAndroidFile
 import io.github.toyota32k.utils.TimeSpan
 import io.github.toyota32k.utils.android.CompatBackKeyDispatcher
+import io.github.toyota32k.utils.android.PackageUtil
 import io.github.toyota32k.utils.android.setLayoutWidth
 import io.github.toyota32k.utils.gesture.Direction
 import io.github.toyota32k.utils.gesture.UtScaleGestureManager
@@ -148,13 +149,13 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
             }
         }
 
-        val commandSaveFile = LiteUnitCommand {
-            viewModelScope.launch {
-                editorModel.playerControllerModel.commandPause.invoke()
-                storeToLocalData()
-                editorModel.saveFile()
-            }
-        }
+//        val commandSaveFile = LiteUnitCommand {
+//            viewModelScope.launch {
+//                editorModel.playerControllerModel.commandPause.invoke()
+//                storeToLocalData()
+//                editorModel.saveFile()
+//            }
+//        }
 
         val commandOpenFile = LiteUnitCommand {
             UtImmortalTask.launchTask("commandOpenFile") {
@@ -171,6 +172,7 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
 
         val commandOpenProject = LiteUnitCommand {
             UtImmortalTask.launchTask("commandOpenProject") {
+                saveCurrentProject()
                 val result = ProjectManagerDialog.show(projectDb, targetMediaSource.value?.uri) ?: return@launchTask
                 val project = result.selectedProject
                 if (result.removeCurrentProject) {
@@ -333,12 +335,16 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
 
         enableEdgeToEdge()
         controls = ActivityMainBinding.inflate(layoutInflater)
+        controls.appName.text = "${getString(R.string.app_name)} - v${PackageUtil.getVersion(this)?:"?"}${if(BuildConfig.DEBUG) " (D)" else ""}"
         setContentView(controls.root)
 
         setupWindowInsetsListener(controls.root)
 
         compatBackKeyDispatcher.register(this) {
             UtImmortalTask.launchTask {
+                if (viewModel.editorModel.cropHandler.cancelMode()) {
+                    return@launchTask
+                }
                 if (showYesNoMessageBox("Exit", "Are you sure to exit?")) {
                     withOwner {
                         it.asActivity()?.finish()
@@ -436,13 +442,13 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
             .visibilityBinding(controls.menuButton, combine(viewModel.isEditing, viewModel.editorModel.cropHandler.croppingNow) { isEditing, cropping ->
                 isEditing && !cropping
             })
-            .multiVisibilityBinding(arrayOf(controls.buttonSave, controls.buttonClose, controls.projectNameEdit, controls.projectNameLabel), viewModel.isEditing)
+            .multiVisibilityBinding(arrayOf(controls.buttonClose, controls.projectNameEdit, controls.projectNameLabel), viewModel.isEditing)
             .visibilityBinding(controls.buttonPane, viewModel.editorModel.cropHandler.croppingNow, BoolConvert.Inverse)
             .clickBinding(controls.menuButton) {
                 viewModel.requestShowPanel.toggle()
             }
             .bindCommand(viewModel.commandOpenProject, controls.buttonOpen)
-            .bindCommand(viewModel.commandSaveFile, controls.buttonSave)
+//            .bindCommand(viewModel.commandSaveFile, controls.buttonSave)
             .bindCommand(viewModel.commandCloseProject,controls.buttonClose)
             .observe(viewModel.editorModel.cropHandler.croppingNow) {
                 if (it) {

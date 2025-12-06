@@ -109,6 +109,18 @@ open class CropHandler(val playerModel: IPlayerModel, croppable: Boolean, showCo
         cropImageModel.bitmapScaler.resetResolution()
     }
 
+    override fun cancelMode(): Boolean {
+        if (croppingNow.value) {
+            onCancelCrop()
+            return true
+        }
+        if (resolutionChangingNow.value) {
+            onCancelResolutionChanging()
+            return true
+        }
+        return false
+    }
+
     override fun dispose() {
         cropImageModel.dispose()
     }

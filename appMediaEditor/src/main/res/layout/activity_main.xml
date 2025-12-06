@@ -30,7 +30,7 @@
         android:id="@+id/button_pane"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:minWidth="200dp"
+        android:minWidth="250dp"
         android:background="?attr/colorSecondaryContainer"
         tools:visibility="visible">
 
@@ -43,34 +43,50 @@
             android:layout_gravity="center"
             android:gravity="center">
             <TextView
+                android:id="@+id/app_name"
+                android:layout_width="200dp"
+                android:layout_height="wrap_content"
+                android:text="@string/app_name"
+                android:layout_gravity="center_horizontal"
+                android:textStyle="bold"
+                android:textSize="18dp"
+                android:background="?attr/colorTertiary"
+                android:textColor="?attr/colorOnTertiary"
+                android:padding="8dp"
+                android:textAlignment="center"
+                android:layout_marginBottom="30dp"
+                />
+            <TextView
                 android:id="@+id/project_name_label"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/project_label"
                 android:layout_gravity="start"
+                android:textSize="18dp"
                 />
             <EditText
                 android:id="@+id/project_name_edit"
-                android:layout_width="150dp"
+                android:layout_width="200dp"
                 android:layout_height="wrap_content"
+                android:layout_marginBottom="20dp"
                 />
             <Button
                 android:id="@+id/button_open"
-                android:layout_width="100dp"
+                android:layout_width="120dp"
                 android:layout_height="wrap_content"
                 android:text="Open"
                 android:layout_margin="8dp"
                 />
-            <Button
-                android:id="@+id/button_save"
-                android:layout_width="100dp"
-                android:layout_height="wrap_content"
-                android:text="Save"
-                android:layout_margin="8dp"
-                />
+<!--            <Button-->
+<!--                android:id="@+id/button_save"-->
+<!--                android:layout_width="120dp"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:text="Save"-->
+<!--                android:layout_margin="8dp"-->
+<!--                />-->
             <Button
                 android:id="@+id/button_close"
-                android:layout_width="100dp"
+                android:layout_width="120dp"
                 android:layout_height="wrap_content"
                 android:text="Close"
                 android:layout_margin="8dp"
