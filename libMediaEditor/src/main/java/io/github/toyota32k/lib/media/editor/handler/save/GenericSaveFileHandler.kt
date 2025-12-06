@@ -3,6 +3,7 @@ package io.github.toyota32k.lib.media.editor.handler.save
 import android.content.Context
 import android.graphics.Bitmap
 import androidx.core.net.toUri
+import io.github.toyota32k.lib.media.editor.handler.AndroidMediaFile.saveBitmap
 import io.github.toyota32k.lib.media.editor.model.AmeGlobal
 import io.github.toyota32k.lib.media.editor.model.IImageSourceInfo
 import io.github.toyota32k.lib.media.editor.model.IOutputFileProvider
@@ -219,10 +220,7 @@ open class GenericSaveFileHandler(
         val result = try {
             task.onStart(null)  // image does not support cancellation
             listener.onSaveTaskStarted(sourceInfo)
-            outputFile.fileOutputStream { outputStream ->
-                sourceInfo.editedBitmap.compress(imageFormat, quality, outputStream)
-                outputStream.flush()
-            }
+            outputFile.saveBitmap(sourceInfo.editedBitmap, imageFormat, quality)
             ImageSaveResult.succeeded(sourceInfo,outputFile)
         } catch(e:Throwable) {
             logger.error(e)

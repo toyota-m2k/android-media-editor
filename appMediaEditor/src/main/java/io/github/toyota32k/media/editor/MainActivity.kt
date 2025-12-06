@@ -59,6 +59,7 @@ import io.github.toyota32k.media.editor.providers.CustomExportToDirectoryFileSel
 import io.github.toyota32k.media.editor.providers.CustomInteractiveOutputFileProvider
 import io.github.toyota32k.media.lib.converter.AndroidFile
 import io.github.toyota32k.media.lib.converter.toAndroidFile
+import io.github.toyota32k.utils.TimeSpan
 import io.github.toyota32k.utils.android.CompatBackKeyDispatcher
 import io.github.toyota32k.utils.android.setLayoutWidth
 import io.github.toyota32k.utils.gesture.Direction
@@ -141,7 +142,9 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
 
         fun snapshot(pos:Long, bmp: Bitmap) {
             viewModelScope.launch {
-                runCatching { SnapshotDialog.showBitmap(bmp, autoRecycle = true) }.onFailure { e-> logger.error(e) }
+                val time = if (pos>0) TimeSpan(pos).run { if(hours>0) "$hours.$minutes.$seconds}" else "$minutes.$seconds"} else ""
+                val initialName = projectName.value.takeIf { it.lowercase().startsWith("img-") } ?: "img-${projectName.value}-$time"
+                runCatching { SnapshotDialog.showBitmap(bmp, initialName = projectName.value, autoRecycle = true, editorModel.cropHandler.maskViewModel.getParams()) }.onFailure { e-> logger.error(e) }
             }
         }
 

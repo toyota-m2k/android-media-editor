@@ -10,6 +10,7 @@ import io.github.toyota32k.dialog.task.showYesNoMessageBox
 import io.github.toyota32k.lib.media.editor.dialog.NameDialog
 import io.github.toyota32k.lib.media.editor.dialog.SaveOptionDialog
 import io.github.toyota32k.lib.media.editor.model.AmeGlobal
+import io.github.toyota32k.lib.media.editor.model.ICommonOutputFileProvider
 import io.github.toyota32k.lib.media.editor.model.IOutputFileProvider
 import io.github.toyota32k.media.lib.converter.AndroidFile
 import io.github.toyota32k.media.lib.converter.toAndroidFile
@@ -130,10 +131,13 @@ abstract class AbstractNamedFileProvider(val outputFileSuffix:String) : IOutputF
  * 出力ファイル名の初期値の取得に、NamedFileProviderの実装を利用
  * @param outputFileSuffix inputFile から outputFile名を作成するときに付加するサフィックス
  */
-open class ExportFileProvider(outputFileSuffix:String) : AbstractNamedFileProvider(outputFileSuffix) {
+open class ExportFileProvider(outputFileSuffix:String) : AbstractNamedFileProvider(outputFileSuffix), ICommonOutputFileProvider {
+    override suspend fun getOutputFile(mimeType:String, name:String): AndroidFile? {
+        return FileUtil.selectFile(mimeType, name)
+    }
     override suspend fun getOutputFile(mimeType:String, inputFile: AndroidFile): AndroidFile? {
         val name = initialFileName(mimeType, inputFile) ?: return null
-        return FileUtil.selectFile(mimeType, name)
+        return getOutputFile(mimeType, name)
     }
 }
 
@@ -142,9 +146,8 @@ open class ExportFileProvider(outputFileSuffix:String) : AbstractNamedFileProvid
  * @param outputFileSuffix inputFile から outputFile名を作成するときに付加するサフィックス
  * @param subFolder Media Files のサブフォルダ名 (nullなら直下)
  */
-open class MediaFileProvider(outputFileSuffix: String, val subFolder:String?=null) : AbstractNamedFileProvider(outputFileSuffix) {
-    override suspend fun getOutputFile(mimeType: String, inputFile: AndroidFile): AndroidFile? {
-        val name = initialFileName(mimeType, inputFile) ?: return null
+open class MediaFileProvider(outputFileSuffix: String, val subFolder:String?=null) : AbstractNamedFileProvider(outputFileSuffix), ICommonOutputFileProvider {
+    override suspend fun getOutputFile(mimeType:String, name:String): AndroidFile? {
         val ct = mimeType.lowercase()
         val owner = UtImmortalTaskManager.mortalInstanceSource.getOwner()
         return if (ct.startsWith("video/")) {
@@ -154,6 +157,11 @@ open class MediaFileProvider(outputFileSuffix: String, val subFolder:String?=nul
         } else {
             throw IllegalStateException("unsupported mime type: $mimeType")
         }
+    }
+
+    override suspend fun getOutputFile(mimeType: String, inputFile: AndroidFile): AndroidFile? {
+        val name = initialFileName(mimeType, inputFile) ?: return null
+        return getOutputFile(mimeType, name)
     }
 }
 

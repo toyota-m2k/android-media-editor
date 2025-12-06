@@ -9,6 +9,7 @@ import io.github.toyota32k.media.lib.converter.AndroidFile
 import io.github.toyota32k.media.lib.converter.IOutputFileSelector
 import io.github.toyota32k.media.lib.converter.IOutputMediaFile
 import io.github.toyota32k.media.lib.converter.RangeMs
+import io.github.toyota32k.utils.TimeSpan
 import java.text.DateFormat
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -24,7 +25,8 @@ class OutputWorkFileSelector(subFolder:String?=null) : IOutputFileSelector {
         return true
     }
     override suspend fun selectOutputFile(index: Int, positionMs: Long): IOutputMediaFile {
-        return FileUtil.createWorkFile(null, "${index}-${positionMs}-", ".mp4")
+        val time = if (positionMs>0) TimeSpan(positionMs).run { if(hours>0) "$hours.$minutes.$seconds}" else "$minutes.$seconds"} else ""
+        return FileUtil.createWorkFile(null, "${index}-${time}-", ".mp4")
     }
     override suspend fun terminate() {
     }
@@ -47,7 +49,8 @@ open class OneByOneExportFileSelector(val prefix:String="mov-", dateFormat: Date
     }
 
     override suspend fun selectOutputFile(index: Int, positionMs: Long): IOutputMediaFile? {
-        val initialName = "${getBaseName()}-${index+1}-${positionMs/1000L}"
+        val time = if (positionMs>0) TimeSpan(positionMs).run { if(hours>0) "$hours.$minutes.$seconds}" else "$minutes.$seconds"} else ""
+        val initialName = "${getBaseName()}-${index+1}-$time"
         return FileUtil.selectFile("video/mp4", initialName)
     }
 

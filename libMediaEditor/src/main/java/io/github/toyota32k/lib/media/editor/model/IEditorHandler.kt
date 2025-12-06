@@ -152,3 +152,7 @@ interface IOutputFileProvider {
     suspend fun getOutputFile(mimeType: String, inputFile: AndroidFile): AndroidFile?
     fun finalize(succeeded: Boolean, inFile: AndroidFile, outFile: AndroidFile)
 }
+
+interface ICommonOutputFileProvider {
+    suspend fun getOutputFile(mimeType: String, name: String): AndroidFile?
+}
