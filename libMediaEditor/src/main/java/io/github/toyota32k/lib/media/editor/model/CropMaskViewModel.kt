@@ -9,6 +9,8 @@ import io.github.toyota32k.lib.media.editor.view.CropMaskView
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import org.json.JSONObject
+import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.roundToInt
 
 /**
@@ -208,9 +210,15 @@ class CropMaskViewModel {
         return correctEy(v).also { maskEy = it }
     }
 
-    private fun getDeviceScreenSize():Pair<Float, Float> {
+    private fun getDeviceScreenSize(aspect: AspectMode):Pair<Float, Float> {
         return UtImmortalTaskManager.application.resources.displayMetrics.run {
-            widthPixels.toFloat()/heightPixels.toFloat() to 1f
+            val longSide = max(widthPixels, heightPixels).toFloat()
+            val shortSide = min(widthPixels, heightPixels).toFloat()
+            if (aspect == AspectMode.ASPECT_SCREEN_LANDSCAPE) {
+                longSide to shortSide
+            } else {
+                shortSide to longSide
+            }
         }
     }
 
@@ -224,7 +232,7 @@ class CropMaskViewModel {
         if (aspectMode.value == AspectMode.FREE) return newHeight
 
         val (horizontal,vertical) = when (aspect) {
-            AspectMode.ASPECT_SCREEN_LANDSCAPE, AspectMode.ASPECT_SCREEN_PORTRAIT -> getDeviceScreenSize()
+            AspectMode.ASPECT_SCREEN_LANDSCAPE, AspectMode.ASPECT_SCREEN_PORTRAIT -> getDeviceScreenSize(aspect)
             else -> aspect.horizontal to aspect.vertical
         }
 
@@ -252,7 +260,7 @@ class CropMaskViewModel {
         if (aspectMode.value == AspectMode.FREE) return newWidth
 
         val (horizontal,vertical) = when (aspect) {
-            AspectMode.ASPECT_SCREEN_LANDSCAPE, AspectMode.ASPECT_SCREEN_PORTRAIT -> getDeviceScreenSize()
+            AspectMode.ASPECT_SCREEN_LANDSCAPE, AspectMode.ASPECT_SCREEN_PORTRAIT -> getDeviceScreenSize(aspect)
             else -> aspect.horizontal to aspect.vertical
         }
         // 高さを基準に調整

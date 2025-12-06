@@ -97,8 +97,8 @@ class ProjectManagerDialog : UtDialogEx() {
         title="Projects"
         heightOption = HeightOption.CUSTOM
         widthOption = WidthOption.LIMIT(500)
-        leftButtonType = ButtonType.CANCEL
-        rightButtonType = ButtonType.DONE
+        //leftButtonType = ButtonType.CANCEL
+        rightButtonType = ButtonType.CANCEL
         cancellable = false
         setOptionButton("New")
         enableFocusManagement().autoRegister()
@@ -123,7 +123,7 @@ class ProjectManagerDialog : UtDialogEx() {
     override fun createBodyView(savedInstanceState: Bundle?, inflater: IViewInflater): View {
         controls = DialogProjectsManagerBinding.inflate(inflater.layoutInflater, null, false)
         binder
-            .dialogRightButtonEnable(viewModel.selected.map { it != null && it!=viewModel.currentProject})
+//            .dialogRightButtonEnable(viewModel.selected.map { it != null && it!=viewModel.currentProject})
             .recyclerViewBindingEx<Project, ItemProjectBinding>(controls.projectList) {
                 options(
                     list = viewModel.projectList,
@@ -139,12 +139,16 @@ class ProjectManagerDialog : UtDialogEx() {
                             views.typePhotoIcon.visibility = View.VISIBLE
                             views.typeVideoIcon.visibility = View.GONE
                         }
-                        views.trashButton.setOnClickListener {
-                            viewModel.onDeletingItem(item).commit()
-                        }
+//                        views.trashButton.setOnClickListener {
+//                            viewModel.onDeletingItem(item).commit()
+//                        }
                         views.root.setOnClickListener {
                             viewModel.selectItem(item)
                             AmeGlobal.logger.debug("PMD:${item.id} selected")
+                            lifecycleScope.launch {
+                                viewModel.complete(false)
+                                super.onPositive()
+                            }
                         }
                         itemBinder
                             .owner(this@ProjectManagerDialog)

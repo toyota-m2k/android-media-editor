@@ -32,17 +32,17 @@
             />
     </FrameLayout>
 
-    <ImageButton
-        android:id="@+id/trash_button"
-        style="@style/Widget.Material3.Button.IconButton.Filled"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
-        android:tint="?attr/colorSecondary"
-        android:src="@drawable/ic_trash"
-        />
+<!--    <ImageButton-->
+<!--        android:id="@+id/trash_button"-->
+<!--        style="@style/Widget.Material3.Button.IconButton.Filled"-->
+<!--        android:layout_width="wrap_content"-->
+<!--        android:layout_height="wrap_content"-->
+<!--        app:layout_constraintEnd_toEndOf="parent"-->
+<!--        app:layout_constraintTop_toTopOf="parent"-->
+<!--        app:layout_constraintBottom_toBottomOf="parent"-->
+<!--        android:tint="?attr/colorSecondary"-->
+<!--        android:src="@drawable/ic_trash"-->
+<!--        />-->
 
     <TextView
         android:id="@+id/name_text"

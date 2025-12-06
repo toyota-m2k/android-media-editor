@@ -254,7 +254,9 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
             }
         }
 
-        fun setTargetMediaFile(project: Project):MediaSource? {
+        suspend fun setTargetMediaFile(project: Project):MediaSource? {
+            saveCurrentProject()
+
             val fileUri = project.uri.toUri()
             val orgSource = targetMediaSource.value
             if (orgSource?.file?.uri == fileUri) return orgSource
