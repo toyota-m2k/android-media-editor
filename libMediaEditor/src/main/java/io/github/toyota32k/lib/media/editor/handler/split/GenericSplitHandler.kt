@@ -34,21 +34,6 @@ abstract class AbstractSplitHandler(showSplitButton:Boolean) : ISplitHandler {
 
 interface ISplitTask : ISaveFileTask, IProgressSinkProvider
 
-//class SplitResult(val result: IMultiSplitResult): ISaveResult {
-//    override val status: ISaveResult.Status
-//        get() = when {
-//            result.succeeded -> ISaveResult.Status.SUCCESS
-//            result.cancelled -> ISaveResult.Status.CANCELLED
-//            else -> ISaveResult.Status.ERROR
-//        }
-//    override val error: Throwable?
-//        get() = result.exception
-//    override val errorMessage: String?
-//        get() = result.errorMessage ?: error?.message
-//    override val outputFiles: List<IOutputMediaFile>
-//        get() = result.results.mapNotNull { if (it.succeeded) it.outputFile else null }
-//}
-
 class CancellerWrapper : ICancellable {
     private var outerCanceller: ICancellable? = null
     private var cancelled: Boolean = false

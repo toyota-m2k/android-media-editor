@@ -2,13 +2,11 @@ package io.github.toyota32k.lib.media.editor.model
 
 import io.github.toyota32k.binder.command.IUnitCommand
 import io.github.toyota32k.binder.command.LiteUnitCommand
-import io.github.toyota32k.lib.player.model.IChapter
-import io.github.toyota32k.lib.player.model.IMediaSourceWithChapter
+import io.github.toyota32k.lib.player.model.IChapterList
 import io.github.toyota32k.lib.player.model.IMutableChapterList
 import io.github.toyota32k.lib.player.model.IPlayerModel
 import io.github.toyota32k.lib.player.model.Range
 import io.github.toyota32k.lib.player.model.chapter.ChapterEditor
-import io.github.toyota32k.lib.player.model.chapter.MutableChapterList
 import io.github.toyota32k.lib.player.model.skipChapter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -16,7 +14,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 
 /**
@@ -96,5 +93,9 @@ open class ChapterEditorHandler(protected val playerModel: IPlayerModel, support
 
     override fun getEnabledRangeList(): List<Range> {
         return chapterEditor.enabledRanges(Range.empty)
+    }
+
+    override fun getChapterList(): IChapterList {
+        return chapterEditor
     }
 }

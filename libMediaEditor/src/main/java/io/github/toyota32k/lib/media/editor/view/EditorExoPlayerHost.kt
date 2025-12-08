@@ -27,7 +27,6 @@ import io.github.toyota32k.binder.command.bindCommand
 import io.github.toyota32k.binder.observe
 import io.github.toyota32k.binder.textBinding
 import io.github.toyota32k.binder.visibilityBinding
-import io.github.toyota32k.dialog.UtDialogBase
 import io.github.toyota32k.lib.media.editor.databinding.EditorExoPlayerHostBinding
 import io.github.toyota32k.lib.media.editor.model.AmeGlobal
 import io.github.toyota32k.lib.media.editor.model.EditorPlayerViewAttributes
@@ -35,7 +34,6 @@ import io.github.toyota32k.lib.media.editor.model.MediaEditorModel
 import io.github.toyota32k.lib.player.model.PlayerControllerModel
 import io.github.toyota32k.utils.FlowableEvent
 import io.github.toyota32k.utils.android.FitMode
-import io.github.toyota32k.utils.android.StyledAttrRetriever
 import io.github.toyota32k.utils.android.UtFitter
 import io.github.toyota32k.utils.android.dp
 import io.github.toyota32k.utils.android.dp2px
@@ -57,6 +55,16 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 import kotlin.math.abs
 
+/**
+ * 編集する動画・画像の表示ビュー
+ * - 動画 ... exoplayer
+ * - 画像 ... ImageView
+ *
+ * io.github.toyota32k.lib.player.view.ExoPlayerView に、
+ * - photoAltView（解像度を変更した画像表示用）
+ * - maskView（切り抜き編集用マスク表示）
+ * を追加している。
+ */
 class EditorExoPlayerHost  @JvmOverloads constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0)
     : FrameLayout(context, attrs, defStyleAttr), PlayerControllerModel.IScreenshotSource {
     val logger = AmeGlobal.logger
@@ -92,6 +100,7 @@ class EditorExoPlayerHost  @JvmOverloads constructor(context: Context, attrs: At
             ProgressRingSize.None -> null
         }
 
+    @Suppress("unused")
     var useExoController:Boolean
         get() = exoPlayer.useController
         set(v) { exoPlayer.useController = v }
@@ -108,7 +117,7 @@ class EditorExoPlayerHost  @JvmOverloads constructor(context: Context, attrs: At
             )
         }
         if (sar.sa.getBoolean(io.github.toyota32k.lib.player.R.styleable.ControlPanel_ampPlayerCenteringVertically, false)) {
-            val params = controls.expPlayerView.layoutParams as FrameLayout.LayoutParams
+            val params = controls.expPlayerView.layoutParams as LayoutParams
             params.gravity = Gravity.CENTER_HORIZONTAL or Gravity.CENTER_VERTICAL
             controls.expPlayerContainer.layoutParams = params
         }
@@ -151,7 +160,7 @@ class EditorExoPlayerHost  @JvmOverloads constructor(context: Context, attrs: At
 
         val activeProgressRing = progressRing
         if (progressRingGravity!=0 && activeProgressRing!=null) {
-            val params = activeProgressRing.layoutParams as FrameLayout.LayoutParams
+            val params = activeProgressRing.layoutParams as LayoutParams
             params.gravity = progressRingGravity
             activeProgressRing.layoutParams = params
         }
@@ -294,7 +303,7 @@ class EditorExoPlayerHost  @JvmOverloads constructor(context: Context, attrs: At
         event.waitOne(1000L)
         @OptIn(UnstableApi::class)
         val surfaceView = exoPlayer.videoSurfaceView
-        if (surfaceView !is SurfaceView && surfaceView !is android.view.TextureView) {
+        if (surfaceView !is SurfaceView && surfaceView !is TextureView) {
             logger.error("Unknown surface view type: ${surfaceView?.javaClass?.name}")
             return null
         }

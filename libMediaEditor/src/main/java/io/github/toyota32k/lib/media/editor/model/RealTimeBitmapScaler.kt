@@ -25,19 +25,20 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.max
 import kotlin.math.roundToInt
 
+/**
+ * 画像の解像度変更操作用に、スケールされたビットマップをリアルタイムに生成するクラス
+ */
 class RealTimeBitmapScaler(val bitmapStore: BitmapStore): IUtPropOwner {
     companion object {
         const val MIN_LENGTH = 100f // px
     }
     private val busy = AtomicBoolean(false)
     private var scaledBitmap: Bitmap? = null
-        get() = field
         set(v) { field = bitmapStore.replaceNullable(field, v) }
 
     private var scaledWidth:Int = 0
     private var scaledHeight:Int = 0
-    val bitmap: StateFlow<Bitmap?> = MutableStateFlow<Bitmap?>(null)
-//    var orgLongSideLength:Float = 100f // = max(sourceBitmap.width, sourceBitmap.height).toFloat()
+    val bitmap: StateFlow<Bitmap?> = MutableStateFlow(null)
     private val orgLongSideLength = MutableStateFlow(MIN_LENGTH+1f)
     val longSideLength = MutableStateFlow(0f)
     val isResolutionChanged = longSideLength.map {

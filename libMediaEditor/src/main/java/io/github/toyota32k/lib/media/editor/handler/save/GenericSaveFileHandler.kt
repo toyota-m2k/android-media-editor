@@ -8,6 +8,7 @@ import io.github.toyota32k.lib.media.editor.model.AmeGlobal
 import io.github.toyota32k.lib.media.editor.model.IImageSourceInfo
 import io.github.toyota32k.lib.media.editor.model.IOutputFileProvider
 import io.github.toyota32k.lib.media.editor.model.ISaveFileHandler
+import io.github.toyota32k.lib.media.editor.model.ISaveResult
 import io.github.toyota32k.lib.media.editor.model.ISourceInfo
 import io.github.toyota32k.lib.media.editor.model.IVideoSourceInfo
 import io.github.toyota32k.logger.UtLog
@@ -20,69 +21,52 @@ import io.github.toyota32k.media.lib.converter.IOutputMediaFile
 import io.github.toyota32k.media.lib.converter.Rotation
 import io.github.toyota32k.media.lib.converter.TrimOptimizer
 import io.github.toyota32k.media.lib.converter.toAndroidFile
-import io.github.toyota32k.media.lib.report.Report
 import io.github.toyota32k.media.lib.strategy.IAudioStrategy
 import io.github.toyota32k.media.lib.strategy.IVideoStrategy
 import io.github.toyota32k.media.lib.strategy.PresetAudioStrategies
 import kotlinx.coroutines.flow.MutableStateFlow
 
 /**
- * cancel i/f
+ * IMultiPhaseProgress を受け取る i/f
  */
-//fun interface ICanceller {
-//    fun cancel()
-//}
-
-///**
-// * 保存タスクのステータス
-// */
-//enum class SaveTaskStatus(val message:String, val phase: IMultiPhaseProgress.Phase?){
-//    CONVERTING("Converting", IMultiPhaseProgress.Phase.CONVERTING),
-//    EXTRACTING("Extracting", IMultiPhaseProgress.Phase.OPTIMIZING),
-//    OPTIMIZING("Optimizing", IMultiPhaseProgress.Phase.OPTIMIZING),
-//    FINALIZING("Finalizing", null),
-//    ;
-//    companion object {
-//        fun fromPhase(phase: IMultiPhaseProgress.Phase?): SaveTaskStatus {
-//            return entries.firstOrNull { it.phase == phase  } ?: CONVERTING
-//        }
-//    }
-//}
-
 interface IProgressSink {
     fun onProgress(progress: IMultiPhaseProgress)
     fun complete()
 }
 
 /**
- * 保存結果を返す i/f
+ * ISaveResultの画像用実装
  */
-interface ISaveResult {
-    enum class Status {
-        SUCCESS,
-        ERROR,
-        CANCELLED
+class ImageSaveResult(override val outputFile: IOutputMediaFile?, override val status: ISaveResult.Status, override val sourceInfo:ISourceInfo, override val error:Throwable?, override val errorMessage:String?): ISaveResult {
+    companion object {
+        fun succeeded(sourceInfo:ISourceInfo,outputFile: IOutputMediaFile):ImageSaveResult = ImageSaveResult(outputFile,ISaveResult.Status.SUCCESS, sourceInfo,null, null)
+//        fun cancelled(sourceInfo:ISourceInfo): ImageSaveResult = ImageSaveResult(null, ISaveResult.Status.CANCELLED, sourceInfo,null, null)
+        fun error(sourceInfo:ISourceInfo, error:Throwable, message:String? = null) = ImageSaveResult(null,ISaveResult.Status.ERROR, sourceInfo,error, message)
     }
-    val sourceInfo: ISourceInfo
-    val status: Status
-    val error:Throwable?
-    val errorMessage:String?
-
-    val succeeded:Boolean get() = status == Status.SUCCESS
-    val cancelled:Boolean get() = status == Status.CANCELLED
-    val failed:Boolean get() = status == Status.ERROR
-
-    val outputFile: IOutputMediaFile?
 }
 
 /**
- * 画像保存結果
+ * ISaveResultの動画用実装
  */
-class ImageSaveResult(override val outputFile: IOutputMediaFile?, override val status:ISaveResult.Status, override val sourceInfo:ISourceInfo, override val error:Throwable?, override val errorMessage:String?): ISaveResult {
+class SaveVideoResult private constructor (override val sourceInfo:ISourceInfo, val convertResult: IConvertResult): ISaveResult {
+    override val status: ISaveResult.Status
+        get() = when {
+            convertResult.succeeded -> ISaveResult.Status.SUCCESS
+            convertResult.cancelled -> ISaveResult.Status.CANCELLED
+            else -> ISaveResult.Status.ERROR
+        }
+    override val error: Throwable?
+        get() = convertResult.exception
+    override val errorMessage: String?
+        get() = convertResult.errorMessage
+
+    override val outputFile: IOutputMediaFile?
+        get() = convertResult.outputFile
+
     companion object {
-        fun succeeded(sourceInfo:ISourceInfo,outputFile: IOutputMediaFile):ImageSaveResult = ImageSaveResult(outputFile,ISaveResult.Status.SUCCESS, sourceInfo,null, null)
-        fun cancelled(sourceInfo:ISourceInfo): ImageSaveResult = ImageSaveResult(null, ISaveResult.Status.CANCELLED, sourceInfo,null, null)
-        fun error(sourceInfo:ISourceInfo, error:Throwable, message:String? = null) = ImageSaveResult(null,ISaveResult.Status.ERROR, sourceInfo,error, message)
+        //            fun error(error:Throwable, message:String? = null) = SaveVideoResult( null, ConvertResult.error(error, message))
+        fun cancel(sourceInfo:ISourceInfo) = SaveVideoResult(sourceInfo, ConvertResult.cancelled)
+        fun fromResult(sourceInfo:ISourceInfo, result: IConvertResult) = SaveVideoResult(sourceInfo,result)
     }
 }
 
@@ -136,6 +120,7 @@ object DefaultAudioStrategySelector: IAudioStrategySelector {
 /**
  * 単一 IVideoStrategy を使用する IVideoStrategySelector
  */
+@Suppress("unused")
 class SingleVideoStrategySelector(val strategy:IVideoStrategy): IVideoStrategySelector {
     override suspend fun getVideoStrategy(inputFile: IInputMediaFile, sourceInfo: IVideoSourceInfo): IVideoStrategy {
         return strategy
@@ -159,7 +144,10 @@ interface ISaveVideoTask: ISaveFileTask, IProgressSinkProvider, IVideoStrategySe
  * ISaveFileHandlerの汎用実装クラス
  * 
  * Image/Video共通
- * getImageSaveTask, getVideoSaveTask を設定することによって動作をカスタマイズできる。
+ * @param context   application context
+ * @param showSaveButton    EditorControlPanelに保存ボタンを表示する場合は true
+ * @param startImageSaveTask    画像保存用 ISaveImageTask インスタンス。これを差し替えることで動作のカスタマイズが可能。
+ * @param startVideoSaveTask    動画保存用 ISaveVideoTask インスタンス。これを差し替えることで動作のカスタマイズが可能。
  */
 open class GenericSaveFileHandler(
     context: Context,
@@ -171,37 +159,6 @@ open class GenericSaveFileHandler(
     val applicationContext = context.applicationContext ?: throw IllegalStateException("applicationContext is null")
     override val showSaveButton = MutableStateFlow(showSaveButton)
     override val listener = SaveTaskListenerImpl<ISourceInfo, ISaveResult>()
-    enum class TaskKind {
-        SAVE_IMAGE,
-        SAVE_VIDEO,
-    }
-
-    class SaveVideoResult private constructor (override val sourceInfo:ISourceInfo, val convertResult: IConvertResult): ISaveResult {
-        override val status: ISaveResult.Status
-            get() = when {
-                convertResult.succeeded -> ISaveResult.Status.SUCCESS
-                convertResult.cancelled -> ISaveResult.Status.CANCELLED
-                else -> ISaveResult.Status.ERROR
-            }
-        override val error: Throwable?
-            get() = convertResult.exception
-        override val errorMessage: String?
-            get() = convertResult.errorMessage
-
-        val report:Report?
-            get() = convertResult.report
-
-        override val outputFile: IOutputMediaFile?
-            get() = convertResult.outputFile
-
-        companion object {
-//            fun error(error:Throwable, message:String? = null) = SaveVideoResult( null, ConvertResult.error(error, message))
-            fun cancel(sourceInfo:ISourceInfo) = SaveVideoResult(sourceInfo, ConvertResult.cancelled)
-            fun fromResult(sourceInfo:ISourceInfo, result: IConvertResult) = SaveVideoResult(sourceInfo,result)
-        }
-    }
-
-
 
     /**
      * 画像ファイルを保存する

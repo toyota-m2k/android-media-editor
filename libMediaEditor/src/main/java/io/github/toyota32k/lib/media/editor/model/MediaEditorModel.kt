@@ -7,9 +7,7 @@ import com.google.common.primitives.Longs.min
 import io.github.toyota32k.lib.media.editor.dialog.SliderPartition
 import io.github.toyota32k.lib.media.editor.dialog.SliderPartitionDialog
 import io.github.toyota32k.lib.media.editor.handler.ExportFileProvider
-import io.github.toyota32k.lib.media.editor.handler.save.DefaultAudioStrategySelector
 import io.github.toyota32k.lib.media.editor.handler.save.GenericSaveFileHandler
-import io.github.toyota32k.lib.media.editor.handler.save.InteractiveVideoStrategySelector
 import io.github.toyota32k.lib.media.editor.handler.split.ExportToDirectoryFileSelector
 import io.github.toyota32k.lib.media.editor.handler.split.GenericSplitHandler
 import io.github.toyota32k.lib.player.model.IMediaSource
@@ -28,6 +26,16 @@ import kotlinx.coroutines.flow.stateIn
 import java.io.Closeable
 import kotlin.math.max
 
+/**
+ * EditorPlayerViewを使った、動画・画像編集のためのビューモデル総本山
+ * @param playerControllerModel PlayerControllerModel (android-player)
+ * @param chapterEditorHandler チャプター編集ハンドラ
+ * @param cropHandler 画像・動画の切り抜き編集ハンドラ
+ * @param splitHandler 動画の時間分割編集ハンドラ
+ * @param saveFileHandler ファイル保存ハンドラ
+ * @param outputFileSelectorResolver    // Split用 ファイル選択 i/f
+ * @param outputFileProviderResolver    // Save用 ファイル選択 i/f
+ */
 open class MediaEditorModel(
     val playerControllerModel: PlayerControllerModel,
     val chapterEditorHandler: IChapterEditorHandler,
@@ -48,6 +56,13 @@ open class MediaEditorModel(
         CROP,
         RESOLUTION,
     }
+
+    /**
+     * 編集モード
+     * - NORMAL     ... Chapter編集
+     * - CROP       ... 映像（動画・画像）切り取り
+     * - RESOLUTION ... 画像解像度変更
+     */
     val editMode: Flow<EditMode> = combine(cropHandler.croppingNow, cropHandler.resolutionChangingNow) { crop, resolution ->
         when {
             resolution -> EditMode.RESOLUTION
@@ -56,14 +71,17 @@ open class MediaEditorModel(
         }
     }.stateIn(playerModel.scope, SharingStarted.Lazily, EditMode.NORMAL)
 
-    open fun onMagnifyTimeline() {}
-
-
+    /**
+     * 画像ソース情報
+     */
     class ImageSourceInfoImpl(
         override val source: IMediaSource,
         override val editedBitmap: Bitmap
     ) : IImageSourceInfo
 
+    /**
+     * 動画ソース情報
+     */
     class VideoSourceInfoImpl(
         override val source: IMediaSource,
         override val trimmingRanges: List<RangeMs>,
@@ -95,7 +113,22 @@ open class MediaEditorModel(
                     SaveMode.ALL->enabledRanges.map { RangeMs(it.start, it.end) }
                     SaveMode.LEFT->enabledRanges.mapNotNull { if (it.start <= positionMs) RangeMs(it.start, min(it.actualEnd(durationMs), positionMs)) else null }
                     SaveMode.RIGHT->enabledRanges.mapNotNull { if (positionMs < it.end) RangeMs(max(it.start, positionMs), it.actualEnd(durationMs)) else null }
-                    SaveMode.CHAPTER->enabledRanges.mapNotNull { if (it.contains(positionMs)) RangeMs(positionMs, it.actualEnd(durationMs)) else null }
+                    SaveMode.CURRENT_RANGES->enabledRanges.mapNotNull { if (it.contains(positionMs)) RangeMs(positionMs, it.actualEnd(durationMs)) else null }
+                    SaveMode.CHAPTER-> {
+                        // 現在の再生位置を含む単一チャプター（有効・無効は考慮しない）
+                        val chapterList = model.chapterEditorHandler.getChapterList()
+                        val neighbor = chapterList.getNeighborChapters(positionMs)
+                        val start = if (neighbor.hit>=0) chapterList.chapters[neighbor.hit].position
+                                    else if (neighbor.prev>=0) chapterList.chapters[neighbor.prev].position
+                                    else 0
+                        val end = if (neighbor.next>=0) chapterList.chapters[neighbor.next].position
+                                  else durationMs
+                        if (start<end) {
+                            listOf(RangeMs(start, end))
+                        } else {
+                            emptyList()
+                        }
+                    }
                 }
                 if (ranges.isEmpty() && mode!= SaveMode.ALL) return null
                 val rotation = model.playerModel.rotation.value
@@ -105,13 +138,34 @@ open class MediaEditorModel(
         }
     }
 
+    /**
+     * 保存モード
+     * ALL      ... すべての有効範囲を保存
+     * LEFT     ... 現在の再生位置より前の有効範囲を保存
+     * RIGHT    ... 現在の再生位置より後ろの有効範囲を保存
+     * CHAPTER  ... 現在の再生位置を含むチャプターを保存
+     */
     enum class SaveMode {
         ALL,
         LEFT,
         RIGHT,
-        CHAPTER,
+        CHAPTER,        // カレントチャプター１つのみ
+        CURRENT_RANGES,  // カレントチャプターを含む一続きの有効範囲
     }
 
+    /**
+     * 動画を保存する。
+     *
+     * 保存先ファイルの選択に使用する IOutputFileProvider は、以下の優先順序で使用する。
+     *
+     * 1. outputFileProvider 引数で渡された IOutputFileProvider
+     * 2. MediaEditorModelコンストラクタで指定した outputFileProviderResolver から取得した IOutputFileProvider
+     * 3. 上記どちらも設定されていなければ、ExportFileProvider
+     *
+     * @param mode 保存モード
+     * @param outputFileProvider 保存先ファイル選択用
+     * @return 保存に成功すれば true
+     */
     open suspend fun saveVideo(mode:SaveMode, outputFileProvider:IOutputFileProvider?=null):Boolean {
         if (mode == SaveMode.ALL) {
             return saveFile(outputFileProvider)
@@ -132,13 +186,16 @@ open class MediaEditorModel(
         }
     }
 
-    fun resolveFileProvider(outputFileProvider:IOutputFileProvider?, item:IMediaSource) : IOutputFileProvider {
+    private fun resolveFileProvider(outputFileProvider:IOutputFileProvider?, item:IMediaSource) : IOutputFileProvider {
         return outputFileProvider ?: outputFileProviderResolver?.invoke(item) ?: ExportFileProvider("-EDITED")
     }
-    fun resolveFileSelector(outputFileSelector:IOutputFileSelector?, item:IMediaSource) : IOutputFileSelector {
+    private fun resolveFileSelector(outputFileSelector:IOutputFileSelector?, item:IMediaSource) : IOutputFileSelector {
         return outputFileSelector ?: outputFileSelectorResolver?.invoke(item) ?: ExportToDirectoryFileSelector()
     }
 
+    /**
+     * saveVideo(SaveMode.ALL) と同義
+     */
     open suspend fun saveFile(outputFileProvider:IOutputFileProvider?=null):Boolean {
         val item = playerModel.currentSource.value ?: return false
         savingNow.mutable.value = true
@@ -161,10 +218,30 @@ open class MediaEditorModel(
             savingNow.mutable.value = false
         }
     }
+
+    /**
+     * 分割モード
+     * AT_POSITION ... 現在の再生位置で２つに分割
+     * BY_CHAPTERS ... チャプターで分割
+     */
     enum class SplitMode {
         AT_POSITION,
         BY_CHAPTERS,
     }
+
+    /**
+     * 動画ファイルを再生時間で分割する
+     *
+     * 保存先ファイルの選択に使用する IOutputSelectProvider は、以下の優先順序で使用する。
+     *
+     * 1. outputFileProvider 引数で渡された IOutputSelectorProvider
+     * 2. MediaEditorModelコンストラクタで指定した outputFileSelectorResolver から取得した IOutputSelectorProvider
+     * 3. 上記どちらも設定されていなければ、ExportToDirectoryFileSelector
+     *
+     * @param mode 保存モード
+     * @param IOutputFileSelector 保存先ファイル選択用
+     * @return 保存に成功すれば true
+     */
     suspend fun splitVideo(mode:SplitMode, outputFileSelector: IOutputFileSelector?=null):Boolean {
         val item = playerModel.currentSource.value ?: return false
         if (item.isPhoto) return false
@@ -185,11 +262,17 @@ open class MediaEditorModel(
         }
     }
 
+    /**
+     * リソース解放
+     */
     override fun close() {
         playerControllerModel.close()
         cropHandler.dispose()
     }
 
+    /**
+     * ビルダークラス
+     */
     class Builder (val playerControllerModelBuilder: PlayerControllerModel.Builder) {
         constructor (androidContext: Context, viewModelScope: CoroutineScope, playerControllerModelInitializer:PlayerControllerModel.Builder.()-> PlayerControllerModel.Builder):this(PlayerControllerModel.Builder(androidContext, viewModelScope).playerControllerModelInitializer())
 
@@ -266,6 +349,7 @@ open class MediaEditorModel(
         /**
          * 動画ファイルの時間分割で使用する IOutputFileSelector を動的に取得するためのリゾルバを設定する。
          */
+        @Suppress("unused")
         fun setOutputFileSelector(resolver: (IMediaSource)->IOutputFileSelector) = apply {
             mOutputFileSelectorResolver = resolver
         }
@@ -280,6 +364,7 @@ open class MediaEditorModel(
         /**
          * ファイル保存に使用する IOutputFileProvider を動的に取得するためのリゾルバを設定する。
          */
+        @Suppress("unused")
         fun setOutputFileProvider(resolver: (IMediaSource)->IOutputFileProvider) = apply {
             mOutputFileProviderResolver = resolver
         }

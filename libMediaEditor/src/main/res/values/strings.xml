@@ -51,5 +51,6 @@
     <string name="save_current_chapter">Current Chapter</string>
     <string name="aspect_screen_landscape">Screen (Landscape)</string>
     <string name="aspect_screen_portrait">Screen (Portrait)</string>
+    <string name="save_current_active_range">Current Active Ranges</string>
 
 </resources>

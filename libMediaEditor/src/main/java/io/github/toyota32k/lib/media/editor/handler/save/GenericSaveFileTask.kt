@@ -3,48 +3,46 @@ package io.github.toyota32k.lib.media.editor.handler.save
 import androidx.lifecycle.LifecycleOwner
 import io.github.toyota32k.lib.media.editor.dialog.ProgressDialog
 import io.github.toyota32k.lib.media.editor.model.AmeGlobal
+import io.github.toyota32k.lib.media.editor.model.ISaveListener
 import io.github.toyota32k.logger.UtLog
 import io.github.toyota32k.media.lib.converter.ICancellable
 import io.github.toyota32k.utils.IDisposable
 import io.github.toyota32k.utils.lifecycle.Listeners
 
-interface ISavingListener<T> {
-    fun addOnSavingListener(fn:(T)->Unit): IDisposable
-    fun addOnSavingListener(owner:LifecycleOwner, fn:(T)->Unit): IDisposable
-}
-interface ISavedListener<T> {
-    fun addOnSavedListener(fn:(T)->Unit): IDisposable
-    fun addOnSavedListener(owner:LifecycleOwner, fn:(T)->Unit): IDisposable
-}
+/**
+ * ISaveListener の実装クラス
+ */
+class SaveTaskListenerImpl<S,E> : ISaveListener<S, E> {
+    private val onSavingListeners = Listeners<S>()
+    private val onSavedListeners = Listeners<E>()
 
-class SaveTaskListenerImpl<I,R> : ISavedListener<R>, ISavingListener<I> {
-    private val onSavingListeners = Listeners<I>()
-    private val onSavedListeners = Listeners<R>()
-
-    override fun addOnSavedListener(fn:(R)->Unit): IDisposable {
-        return onSavedListeners.addForever(fn)
-    }
-    override fun addOnSavedListener(owner:LifecycleOwner, fn:(R)->Unit): IDisposable {
-        return onSavedListeners.add(owner, fn)
-    }
-
-    override fun addOnSavingListener(owner: LifecycleOwner, fn: (I) -> Unit): IDisposable {
+    override fun addOnSavingListener(owner: LifecycleOwner, fn: (S) -> Unit): IDisposable {
         return onSavingListeners.add(owner, fn)
     }
 
-    override fun addOnSavingListener(fn: (I) -> Unit): IDisposable {
+    override fun addOnSavingListener(fn: (S) -> Unit): IDisposable {
         return onSavingListeners.addForever(fn)
     }
 
-    fun onSaveTaskStarted(value: I) {
+    override fun addOnSavedListener(fn:(E)->Unit): IDisposable {
+        return onSavedListeners.addForever(fn)
+    }
+    override fun addOnSavedListener(owner:LifecycleOwner, fn:(E)->Unit): IDisposable {
+        return onSavedListeners.add(owner, fn)
+    }
+
+    fun onSaveTaskStarted(value: S) {
         onSavingListeners.invoke(value)
     }
 
-    fun onSaveTaskCompleted(value: R) {
+    fun onSaveTaskCompleted(value: E) {
         onSavedListeners.invoke(value)
     }
 }
 
+/**
+ * ISaveFileTaskの共通実装クラス
+ */
 abstract class AbstractProgressSaveFileTask : ISaveFileTask, IProgressSinkProvider {
     open val logger = UtLog("SaveTask", AmeGlobal.logger)
 
@@ -79,9 +77,14 @@ abstract class AbstractProgressSaveFileTask : ISaveFileTask, IProgressSinkProvid
 
 
 /**
- * ISaveVideoTaskの汎用実装
+ * ISaveVideoTaskの動画用実装
  * - ProgressDialog を使って進捗を表示する
  * - コーデックは、IVideoStrategySelector, IAudioStrategySelector によって選択される。
+ *
+ * @param videoStrategySelector 動画コーデック IVideoStrategy を選択・取得するためのオブジェクトを渡す。
+ * @param audioStrategySelector 音声コーデック IAudioStrategy を選択・取得するためのオブジェクトを渡す。
+ * @param mKeepHdr  動画エンコード時に、元動画の HDR を維持する場合は true
+ * @param fastStart 出力動画ファイルに fast start を実施する場合は true
  */
 open class GenericSaveVideoTask(
     val videoStrategySelector: IVideoStrategySelector,
@@ -109,6 +112,10 @@ open class GenericSaveVideoTask(
     }
 }
 
+/**
+ * ISaveVideoTaskの画像用実装
+ * デフォルトでは特に何もしない。
+ */
 open class GenericSaveImageTask : ISaveImageTask {
 
     override suspend fun onStart(canceller: ICancellable?) {

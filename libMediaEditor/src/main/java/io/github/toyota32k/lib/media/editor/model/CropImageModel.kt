@@ -4,16 +4,15 @@ import android.graphics.Bitmap
 import android.widget.Button
 import com.google.android.material.slider.Slider
 import io.github.toyota32k.binder.Binder
-import io.github.toyota32k.binder.observe
 import io.github.toyota32k.utils.IDisposable
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
 
+/**
+ * 画像切り抜き / 解像度変更操作用 ViewModel
+ */
 class CropImageModel(val maskViewModel: CropMaskViewModel): IDisposable {
     val bitmapStore = BitmapStore()
     val bitmapScaler = RealTimeBitmapScaler(bitmapStore)
-//    val targetBitmap:Flow<Bitmap?> get() = bitmapScaler.bitmap
-//    private val cropFlows: CropMaskViewModel.ICropFlows get() =  maskViewModel.cropFlows
     val isResolutionChanged: Flow<Boolean> get() = bitmapScaler.isResolutionChanged
     val isDirty:Boolean get() = bitmapScaler.isDirty
 
@@ -28,11 +27,6 @@ class CropImageModel(val maskViewModel: CropMaskViewModel): IDisposable {
 
     fun bindView(binder: Binder, slider: Slider, minus: Button, plus: Button, presetButtons:Map<Int, Button>) {
         bitmapScaler.bindView(binder, slider, minus, plus, presetButtons)
-//        binder.observe(bitmapScaler.bitmap) {
-//            if (it!=null) {
-//                maskViewModel.startCropFlow(it.width, it.height)
-//            }
-//        }
     }
 
     override fun dispose() {

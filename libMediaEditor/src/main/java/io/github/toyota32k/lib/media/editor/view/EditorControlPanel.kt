@@ -35,6 +35,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
+/**
+ * 動画編集用コントロールパネル
+ */
 class EditorControlPanel @JvmOverloads constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0)
     : FrameLayout(context, attrs, defStyleAttr) {
     val logger = AmeGlobal.logger
@@ -216,6 +219,7 @@ class EditorControlPanel @JvmOverloads constructor(context: Context, attrs: Attr
             return when(sel) {
                 R.id.save_all -> MediaEditorModel.SaveMode.ALL
                 R.id.save_current_chapter-> MediaEditorModel.SaveMode.CHAPTER
+                R.id.save_current_active_range-> MediaEditorModel.SaveMode.CURRENT_RANGES
                 R.id.save_left -> MediaEditorModel.SaveMode.LEFT
                 R.id.save_right -> MediaEditorModel.SaveMode.RIGHT
                 else -> null

@@ -1,11 +1,9 @@
 package io.github.toyota32k.lib.media.editor.handler
 
-import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
 import io.github.toyota32k.dialog.broker.IUtActivityBrokerStoreProvider
 import io.github.toyota32k.dialog.task.UtImmortalTask
 import io.github.toyota32k.dialog.task.UtImmortalTaskManager
-import io.github.toyota32k.dialog.task.showConfirmMessageBox
 import io.github.toyota32k.dialog.task.showYesNoMessageBox
 import io.github.toyota32k.lib.media.editor.dialog.NameDialog
 import io.github.toyota32k.lib.media.editor.dialog.SaveOptionDialog
@@ -14,11 +12,7 @@ import io.github.toyota32k.lib.media.editor.model.ICommonOutputFileProvider
 import io.github.toyota32k.lib.media.editor.model.IOutputFileProvider
 import io.github.toyota32k.media.lib.converter.AndroidFile
 import io.github.toyota32k.media.lib.converter.toAndroidFile
-import org.w3c.dom.Document
 import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 object FileUtil {
     /**
@@ -45,9 +39,9 @@ object FileUtil {
     /**
      * ファイルの拡張子を取得
      */
-    fun getExtension(file:AndroidFile):String {
-        return contentType2Ext(file.getContentType()?:"")
-    }
+//    fun getExtension(file:AndroidFile):String {
+//        return contentType2Ext(file.getContentType()?:"")
+//    }
 
     fun getBaseName(file:AndroidFile):String? {
         val originalName = file.getFileName() ?: return null
@@ -90,7 +84,7 @@ object FileUtil {
                 mkdirs()
             }
         } else owner.cacheDir
-        return File.createTempFile("amp", ".tmp", dir).toAndroidFile()
+        return File.createTempFile(prefix, suffix, dir).toAndroidFile()
     }
 
 //    suspend fun selectFile(type:String, srcFile:AndroidFile, outputFileSuffix:String, ext:String=getExtension(srcFile)):AndroidFile? {
@@ -98,10 +92,10 @@ object FileUtil {
 //        return selectFile(type, initialFileName)
 //    }
 
-    val dateFormatForFilename = SimpleDateFormat("yyyyMMdd-HHmmss",Locale.US)
-    fun defaultFileNameSuffix(): String {
-        return dateFormatForFilename.format(Date())
-    }
+//    val dateFormatForFilename = SimpleDateFormat("yyyyMMdd-HHmmss",Locale.US)
+//    fun defaultFileNameSuffix(): String {
+//        return dateFormatForFilename.format(Date())
+//    }
 }
 
 /**
@@ -169,6 +163,7 @@ open class MediaFileProvider(outputFileSuffix: String, val subFolder:String?=nul
  * 保存先選択ダイアログを表示して、保存先ファイルを取得。
  * @param subFolder Media Files のサブフォルダ名 (nullなら直下)
  */
+@Suppress("unused")
 open class InteractiveMediaFileProvider(subFolder:String?=null): MediaFileProvider("", subFolder) {
     override suspend fun initialFileName(mimeType: String, inputFile: AndroidFile): String? {
         val initialName = super.initialFileName(mimeType, inputFile) ?: return null
@@ -251,6 +246,7 @@ open class InteractiveOutputFileProvider(outputFileSuffix:String, val subFolder:
  * 作業ファイル作成用 FileProvider
  * @param workSubFolder 一時ファイル作成場所指定。context.cacheDirの下にサブフォルダを作る場合はそのフォルダ名。nullなら cacheDir直下に配置
  */
+@Suppress("unused")
 class WorkFileProvider(val workSubFolder:String?=null) : IOutputFileProvider {
     override suspend fun getOutputFile(mimeType: String, inputFile: AndroidFile): AndroidFile {
         return FileUtil.createWorkFile(workSubFolder)

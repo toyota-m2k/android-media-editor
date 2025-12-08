@@ -20,6 +20,7 @@ import java.util.Locale
  *
  * 作業フォルダ（cacheDir）にファイルを作成する IOutputFileSelector
  */
+@Suppress("unused")
 class OutputWorkFileSelector(subFolder:String?=null) : IOutputFileSelector {
     override suspend fun initialize(trimmedRangeMsList: List<RangeMs>): Boolean {
         return true

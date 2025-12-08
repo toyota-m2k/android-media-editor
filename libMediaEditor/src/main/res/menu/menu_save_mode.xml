@@ -9,6 +9,10 @@
         android:title="@string/save_current_chapter"
         />
     <item
+        android:id="@+id/save_current_active_range"
+        android:title="@string/save_current_active_range"
+        />
+    <item
         android:id="@+id/save_left"
         android:title="@string/save_left"
         />

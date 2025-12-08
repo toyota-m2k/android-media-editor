@@ -8,7 +8,6 @@ import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import androidx.core.net.toUri
-import io.github.toyota32k.lib.media.editor.handler.save.ImageSaveResult
 import io.github.toyota32k.lib.media.editor.model.AmeGlobal
 import io.github.toyota32k.media.lib.converter.AndroidFile
 import java.io.File
@@ -78,6 +77,7 @@ object AndroidMediaFile {
     }
 
 
+    @Suppress("unused")
     fun AndroidFile.expose(context: Context) {
         if(Build.VERSION.SDK_INT< Build.VERSION_CODES.Q) {
             // ACTION_MEDIA_SCANNER_SCAN_FILEは、

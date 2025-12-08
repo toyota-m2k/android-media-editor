@@ -1,7 +1,6 @@
 package io.github.toyota32k.lib.media.editor.model
 
 import android.content.Context
-import androidx.core.net.toUri
 import io.github.toyota32k.dialog.task.UtImmortalTask
 import io.github.toyota32k.dialog.task.createViewModel
 import io.github.toyota32k.dialog.task.launchSubTask
@@ -22,15 +21,8 @@ import io.github.toyota32k.media.lib.strategy.IVideoStrategy
 import io.github.toyota32k.media.lib.strategy.PresetAudioStrategies
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.lang.IllegalStateException
-import kotlin.apply
-import kotlin.collections.fold
-import kotlin.collections.isEmpty
-import kotlin.collections.reversed
-import kotlin.collections.toTypedArray
 import kotlin.time.Duration.Companion.seconds
 
 class ConvertHelper(
@@ -43,10 +35,11 @@ class ConvertHelper(
 ) {
     val logger = UtLog("CH", AmeGlobal.logger)
     var trimFileName: String = "trim"
-    var optFileName: String = "opt"
+//    var optFileName: String = "opt"
 
     lateinit var result: IConvertResult
         private set
+    @Suppress("unused")
     val report: Report? get() = (result as? ConvertResult)?.report
 
     /**
@@ -55,27 +48,7 @@ class ConvertHelper(
     val trimmedDuration:Long
         get() = calcTrimmedDuration(durationMs, trimmingRanges)
 
-//    private fun optimize(context: Context, src:File, dst:File, vm: ProgressDialog.ProgressViewModel):File {
-//        return try {
-//            vm.message.value = "Optimizing Now..."
-//            if (FastStart.process(src.toAndroidFile(), dst.toAndroidFile(), removeFree = true) {
-//                    vm.progress.value = it.percentage
-//                    vm.progressText.value = it.format()
-//                }
-//            ) {
-//                safeDeleteFile(src)
-//                dst
-//            } else {
-//                safeDeleteFile(dst)
-//                src
-//            }
-//        } catch (e: Throwable) {
-//            safeDeleteFile(dst)
-//            src
-//        }
-//    }
-
-    private suspend fun convert(applicationContext: Context, limitDuration:Long, ranges: List<RangeMs>?): File? {
+    private suspend fun convert(applicationContext: Context, limitDuration:Long, ranges: List<RangeMs>?): File {
         val videoStrategy = this.videoStrategy ?: return trim(applicationContext, ranges?:trimmingRanges)
         return UtImmortalTask.awaitTaskResult("ConvertHelper") {
             val vm = createViewModel<ProgressDialog.ProgressViewModel>()
@@ -204,10 +177,10 @@ class ConvertHelper(
         val remaining = calcRemainingDurationAfter(convertFrom, durationMs)
         return if (remaining>=limitDuration) {
             // 残り時間が十分ある場合は、posを起点とする TrimmingRanges配列を作成
-            trimmingRanges.fold(mutableListOf<RangeMs>()) { acc, range ->
+            trimmingRanges.fold(mutableListOf()) { acc, range ->
                 val end = if (range.endMs==0L) durationMs else range.endMs
                 when {
-                    end < convertFrom -> acc
+                    end < convertFrom -> {}
                     range.startMs <= convertFrom -> acc.add(RangeMs(convertFrom, end))
                     else -> acc.add(range)
                 }

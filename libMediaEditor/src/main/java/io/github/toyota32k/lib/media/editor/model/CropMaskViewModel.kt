@@ -26,6 +26,7 @@ data class MaskCoreParams(
     val rey:Float,
 ) {
     companion object {
+        @Suppress("unused")
         fun fromSize(sourceWidth:Int, sourceHeight:Int, sx:Float, sy:Float, w:Float, h:Float):MaskCoreParams {
             return MaskCoreParams(
                 (sx / sourceWidth.toFloat()).coerceIn(0f, 1f),
@@ -67,18 +68,18 @@ class CropMaskViewModel {
         //        const val MIN = 32f
         val logger = UtLog("CropMaskView", null, CropMaskView::class.java)
         var previousAspectMode = AspectMode.FREE
-        var memorizedCoreParams:MaskCoreParams? = null
+//        var memorizedCoreParams:MaskCoreParams? = null
     }
 
     // invalidateが必要かどうか
     var isDirty: Boolean = false
     var aspectMode = MutableStateFlow(previousAspectMode)
-    var memory:StateFlow<MaskCoreParams?> = MutableStateFlow(memorizedCoreParams)
-    fun pushMemory() {
-        val p = getParams()
-        (memory as MutableStateFlow<MaskCoreParams?>).value = p
-        memorizedCoreParams = p
-    }
+//    var memory:StateFlow<MaskCoreParams?> = MutableStateFlow(memorizedCoreParams)
+//    fun pushMemory() {
+//        val p = getParams()
+//        (memory as MutableStateFlow<MaskCoreParams?>).value = p
+//        memorizedCoreParams = p
+//    }
 
     // isDirty が true の場合に fn() を実行し、isDirty を false にする
     // usage: viewModel.clearDirty { invalidate() }
@@ -185,8 +186,8 @@ class CropMaskViewModel {
     val minY:Float get() = padding.toFloat()
     val maxX:Float get() = viewWidth.toFloat() + padding
     val maxY:Float get() = viewHeight.toFloat() + padding
-    val rangeX: ClosedFloatingPointRange<Float> get() = minX..maxX
-    val rangeY: ClosedFloatingPointRange<Float> get() = minY..maxY
+//    val rangeX: ClosedFloatingPointRange<Float> get() = minX..maxX
+//    val rangeY: ClosedFloatingPointRange<Float> get() = minY..maxY
 
     var maskSy:Float
         get() = rsy * viewHeight + padding
