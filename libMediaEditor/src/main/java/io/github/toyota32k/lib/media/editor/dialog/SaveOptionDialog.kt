@@ -15,9 +15,9 @@ import io.github.toyota32k.lib.media.editor.R
 import io.github.toyota32k.lib.media.editor.databinding.DialogSaveOptionBinding
 import io.github.toyota32k.lib.media.editor.dialog.SaveOptionDialog.SaveOptionViewModel.TargetType
 import io.github.toyota32k.lib.media.editor.model.IOutputFileProvider
-import io.github.toyota32k.lib.media.editor.output.ExportFileProvider
-import io.github.toyota32k.lib.media.editor.output.NamedMediaFileProvider
-import io.github.toyota32k.lib.media.editor.output.OverwriteFileProvider
+import io.github.toyota32k.lib.media.editor.handler.ExportFileProvider
+import io.github.toyota32k.lib.media.editor.handler.NamedMediaFileProvider
+import io.github.toyota32k.lib.media.editor.handler.OverwriteFileProvider
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
@@ -73,23 +73,25 @@ class SaveOptionDialog : UtDialogEx() {
         binder.owner(this)
             .editTextBinding(controls.nameText, viewModel.targetName)
             .enableBinding(controls.nameText, viewModel.isSaveAs)
-            .radioGroupBinding(controls.radioGroupOptions, viewModel.targetType, SaveOptionViewModel.TargetType.IDResolver)
+            .radioGroupBinding(controls.radioGroupOptions, viewModel.targetType, TargetType.IDResolver)
             .dialogRightButtonEnable(combine(viewModel.targetType, viewModel.targetName) { type, name-> type!=TargetType.SAVE_MEDIA_FILE_AS || name.isNotBlank() })
         return controls.root
     }
 
     companion object {
-        suspend fun show(initialName:String, subFolder:String?, suffix:String): IOutputFileProvider? {
-            return UtImmortalTask.awaitTaskResult {
+        data class SaveOption(val targetType:TargetType, val targetName:String)
+        suspend fun show(initialName:String): SaveOption? {
+            return UtImmortalTask.awaitTaskResult(this::class.java.name) {
                 val vm = createViewModel<SaveOptionViewModel> {
                     targetName.value = initialName
                 }
                 if (showDialog(taskName) { SaveOptionDialog() }.status.ok) {
-                    when (vm.targetType.value) {
-                        SaveOptionViewModel.TargetType.EXPORT_FILE-> ExportFileProvider(suffix)
-                        SaveOptionViewModel.TargetType.SAVE_MEDIA_FILE_AS-> NamedMediaFileProvider(vm.targetName.value, subFolder)
-                        SaveOptionViewModel.TargetType.OVERWRITE-> OverwriteFileProvider
-                    }
+                    SaveOption(vm.targetType.value, vm.targetName.value)
+//                    when (vm.targetType.value) {
+//                        TargetType.EXPORT_FILE-> ExportFileProvider(suffix)
+//                        TargetType.SAVE_MEDIA_FILE_AS-> NamedMediaFileProvider(vm.targetName.value, subFolder)
+//                        TargetType.OVERWRITE-> OverwriteFileProvider()
+//                    }
                 } else null
             }
         }

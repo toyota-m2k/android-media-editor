@@ -26,7 +26,7 @@ import io.github.toyota32k.lib.media.editor.model.AmeGlobal
 import io.github.toyota32k.lib.media.editor.model.AspectMode
 import io.github.toyota32k.lib.media.editor.model.EditorPlayerViewAttributes
 import io.github.toyota32k.lib.media.editor.model.MediaEditorModel
-import io.github.toyota32k.lib.media.editor.output.ExportFileProvider
+import io.github.toyota32k.lib.media.editor.handler.ExportFileProvider
 import io.github.toyota32k.lib.player.view.ControlPanel.Companion.createButtonColorStateList
 import io.github.toyota32k.utils.android.lifecycleOwner
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,6 +35,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
+/**
+ * 動画編集用コントロールパネル
+ */
 class EditorControlPanel @JvmOverloads constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0)
     : FrameLayout(context, attrs, defStyleAttr) {
     val logger = AmeGlobal.logger
@@ -92,6 +95,7 @@ class EditorControlPanel @JvmOverloads constructor(context: Context, attrs: Attr
             .visibilityBinding(controls.resolutionPanel, model.cropHandler.resolutionChangingNow, BoolConvert.Straight, VisibilityBinding.HiddenMode.HideByGone)
             .enableBinding(controls.undoChapter, model.chapterEditorHandler.canUndo)
             .enableBinding(controls.redoChapter, model.chapterEditorHandler.canRedo)
+            .textBinding(controls.cropText, model.cropHandler.sizeText)
 
             .bindCommand(model.chapterEditorHandler.commandAddChapter, controls.makeChapter)
             .bindCommand(model.chapterEditorHandler.commandAddSkippedChapterBefore, controls.makeChapterAndSkip)
@@ -124,19 +128,33 @@ class EditorControlPanel @JvmOverloads constructor(context: Context, attrs: Attr
             }
 
             .clickBinding(controls.chopVideo) {
-                model.playerModel.scope.launch {
-                    model.splitVideo()
+                lifecycleOwner()?.lifecycleScope?.launch {
+                    val mode = popupSplitModeMenu(context, it)
+                    if(mode!=null) {
+                        model.splitVideo(mode)
+                    }
                 }
             }
             .clickBinding(controls.saveVideo) {
-                model.playerModel.scope.launch {
-                    model.saveFile(ExportFileProvider("-(edited)"))
+                lifecycleOwner()?.lifecycleScope?.launch {
+                    val item = model.playerModel.currentSource.value ?: return@launch
+                    if (item.isPhoto) {
+                        model.saveFile(ExportFileProvider("-(edited)"))
+                    } else {
+                        val mode = popupSaveModeMenu(context, it)
+                        if (mode != null) {
+                            model.saveVideo(mode)
+                        }
+                    }
                 }
             }
     }
 
     companion object  {
-        suspend fun popupAspectMenu(context: Context, anchor: View): AspectMode? {
+        /**
+         * @param supportScreenAspect true: Screen(Portrait/Landscape)を選択可能 (for wallpaper)
+         */
+        suspend fun popupAspectMenu(context: Context, anchor: View, supportScreenAspect:Boolean=false): AspectMode? {
             val selection = MutableStateFlow<Int?>(null)
             PopupMenu(context, anchor).apply {
                 setOnMenuItemClickListener {
@@ -147,14 +165,66 @@ class EditorControlPanel @JvmOverloads constructor(context: Context, attrs: Attr
                     selection.value = -1
                 }
                 inflate(R.menu.menu_aspect)
+                if (!supportScreenAspect) {
+                    menu.removeItem(R.id.aspect_screen_landscape)
+                    menu.removeItem(R.id.aspect_screen_portrait)
+                }
             }.show()
             val sel = selection.first { it != null }
             return when(sel) {
                 R.id.aspect_free -> AspectMode.FREE
                 R.id.aspect_4_3 -> AspectMode.ASPECT_4_3
                 R.id.aspect_16_9 -> AspectMode.ASPECT_16_9
+                R.id.aspect_4_3_portrait -> AspectMode.ASPECT_4_3_PORTRAIT
+                R.id.aspect_16_9_portrait -> AspectMode.ASPECT_16_9_PORTRAIT
+                R.id.aspect_screen_landscape -> AspectMode.ASPECT_SCREEN_LANDSCAPE
+                R.id.aspect_screen_portrait -> AspectMode.ASPECT_SCREEN_PORTRAIT
                 else -> null
             }
         }
+
+        suspend fun popupSplitModeMenu(context: Context, anchor: View): MediaEditorModel.SplitMode? {
+            val selection = MutableStateFlow<Int?>(null)
+            PopupMenu(context, anchor).apply {
+                setOnMenuItemClickListener {
+                    selection.value = it.itemId
+                    true
+                }
+                setOnDismissListener {
+                    selection.value = -1
+                }
+                inflate(R.menu.menu_split_mode)
+            }.show()
+            val sel = selection.first { it != null }
+            return when(sel) {
+                R.id.split_at_current_position -> MediaEditorModel.SplitMode.AT_POSITION
+                R.id.split_by_chapters-> MediaEditorModel.SplitMode.BY_CHAPTERS
+                else -> null
+            }
+        }
+
+        suspend fun popupSaveModeMenu(context: Context, anchor: View): MediaEditorModel.SaveMode? {
+            val selection = MutableStateFlow<Int?>(null)
+            PopupMenu(context, anchor).apply {
+                setOnMenuItemClickListener {
+                    selection.value = it.itemId
+                    true
+                }
+                setOnDismissListener {
+                    selection.value = -1
+                }
+                inflate(R.menu.menu_save_mode)
+            }.show()
+            val sel = selection.first { it != null }
+            return when(sel) {
+                R.id.save_all -> MediaEditorModel.SaveMode.ALL
+                R.id.save_current_chapter-> MediaEditorModel.SaveMode.CHAPTER
+                R.id.save_current_active_range-> MediaEditorModel.SaveMode.CURRENT_RANGES
+                R.id.save_left -> MediaEditorModel.SaveMode.LEFT
+                R.id.save_right -> MediaEditorModel.SaveMode.RIGHT
+                else -> null
+            }
+        }
+
     }
 }

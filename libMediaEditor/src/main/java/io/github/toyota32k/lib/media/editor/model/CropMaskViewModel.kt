@@ -2,11 +2,15 @@ package io.github.toyota32k.lib.media.editor.model
 
 import android.graphics.Bitmap
 import android.graphics.Rect
+import android.util.Size
+import io.github.toyota32k.dialog.task.UtImmortalTaskManager
 import io.github.toyota32k.logger.UtLog
 import io.github.toyota32k.lib.media.editor.view.CropMaskView
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import org.json.JSONObject
+import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.roundToInt
 
 /**
@@ -22,6 +26,7 @@ data class MaskCoreParams(
     val rey:Float,
 ) {
     companion object {
+        @Suppress("unused")
         fun fromSize(sourceWidth:Int, sourceHeight:Int, sx:Float, sy:Float, w:Float, h:Float):MaskCoreParams {
             return MaskCoreParams(
                 (sx / sourceWidth.toFloat()).coerceIn(0f, 1f),
@@ -63,18 +68,18 @@ class CropMaskViewModel {
         //        const val MIN = 32f
         val logger = UtLog("CropMaskView", null, CropMaskView::class.java)
         var previousAspectMode = AspectMode.FREE
-        var memorizedCoreParams:MaskCoreParams? = null
+//        var memorizedCoreParams:MaskCoreParams? = null
     }
 
     // invalidateが必要かどうか
     var isDirty: Boolean = false
     var aspectMode = MutableStateFlow(previousAspectMode)
-    var memory:StateFlow<MaskCoreParams?> = MutableStateFlow(memorizedCoreParams)
-    fun pushMemory() {
-        val p = getParams()
-        (memory as MutableStateFlow<MaskCoreParams?>).value = p
-        memorizedCoreParams = p
-    }
+//    var memory:StateFlow<MaskCoreParams?> = MutableStateFlow(memorizedCoreParams)
+//    fun pushMemory() {
+//        val p = getParams()
+//        (memory as MutableStateFlow<MaskCoreParams?>).value = p
+//        memorizedCoreParams = p
+//    }
 
     // isDirty が true の場合に fn() を実行し、isDirty を false にする
     // usage: viewModel.clearDirty { invalidate() }
@@ -181,8 +186,8 @@ class CropMaskViewModel {
     val minY:Float get() = padding.toFloat()
     val maxX:Float get() = viewWidth.toFloat() + padding
     val maxY:Float get() = viewHeight.toFloat() + padding
-    val rangeX: ClosedFloatingPointRange<Float> get() = minX..maxX
-    val rangeY: ClosedFloatingPointRange<Float> get() = minY..maxY
+//    val rangeX: ClosedFloatingPointRange<Float> get() = minX..maxX
+//    val rangeY: ClosedFloatingPointRange<Float> get() = minY..maxY
 
     var maskSy:Float
         get() = rsy * viewHeight + padding
@@ -206,6 +211,19 @@ class CropMaskViewModel {
         return correctEy(v).also { maskEy = it }
     }
 
+    private fun getDeviceScreenSize(aspect: AspectMode):Pair<Float, Float> {
+        return UtImmortalTaskManager.application.resources.displayMetrics.run {
+            val longSide = max(widthPixels, heightPixels).toFloat()
+            val shortSide = min(widthPixels, heightPixels).toFloat()
+            if (aspect == AspectMode.ASPECT_SCREEN_LANDSCAPE) {
+                longSide to shortSide
+            } else {
+                shortSide to longSide
+            }
+        }
+    }
+
+
     /**
      * AspectModeで指定されたアスペクト比に調整するための、x/y補正量を計算する
      * ただし、常に Landscapeとして計算する。
@@ -214,8 +232,13 @@ class CropMaskViewModel {
     private fun correctHeightBasedOnWidth(newWidth:Float, newHeight:Float, aspect:AspectMode):Float {
         if (aspectMode.value == AspectMode.FREE) return newHeight
 
+        val (horizontal,vertical) = when (aspect) {
+            AspectMode.ASPECT_SCREEN_LANDSCAPE, AspectMode.ASPECT_SCREEN_PORTRAIT -> getDeviceScreenSize(aspect)
+            else -> aspect.horizontal to aspect.vertical
+        }
+
         // 幅を基準に高さを調整する
-        val corrHeight = newWidth * aspect.shortSide / aspect.longSide
+        val corrHeight = newWidth * vertical / horizontal
         logger.debug("${cropFlows.height} -- ${(maxY-minY)/(maxX-minX)*(cropFlows.width)}")
         return corrHeight
 
@@ -237,8 +260,12 @@ class CropMaskViewModel {
     private fun correctWidthBasedOnHeight(newWidth:Float, newHeight:Float, aspect:AspectMode):Float {
         if (aspectMode.value == AspectMode.FREE) return newWidth
 
+        val (horizontal,vertical) = when (aspect) {
+            AspectMode.ASPECT_SCREEN_LANDSCAPE, AspectMode.ASPECT_SCREEN_PORTRAIT -> getDeviceScreenSize(aspect)
+            else -> aspect.horizontal to aspect.vertical
+        }
         // 高さを基準に調整
-        val corrWidth = newHeight * aspect.longSide / aspect.shortSide
+        val corrWidth = newHeight * horizontal / vertical
         return corrWidth
     }
 
@@ -399,12 +426,19 @@ class CropMaskViewModel {
         }
     }
     val cropFlows :CropFlows = CropFlows()
-    fun startCropFlow(width:Int, height:Int):ICropFlows {
-        return cropFlows.setSize(width.toFloat(), height.toFloat())
+    fun updateCropFlow(size: Size?) {
+        if (size!=null) {
+            cropFlows.setSize(size.width.toFloat(), size.height.toFloat())
+        } else {
+            cropFlows.setSize(0f, 0f)
+        }
     }
-    fun stopCropFlow():ICropFlows {
-        return cropFlows.setSize(0f, 0f)
-    }
+//    fun startCropFlow(width:Int, height:Int):ICropFlows {
+//        return cropFlows.setSize(width.toFloat(), height.toFloat())
+//    }
+//    fun stopCropFlow():ICropFlows {
+//        return cropFlows.setSize(0f, 0f)
+//    }
 
     data class CropRect(val sx:Int, val sy:Int, val width:Int, val height:Int) {
         val asRect: Rect get() = Rect(sx, sy, sx+width, sy+height)

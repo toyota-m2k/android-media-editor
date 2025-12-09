@@ -1,19 +1,28 @@
 [versions]
-agp = "8.13.0"
-kotlin = "2.2.20"
+agp = "8.13.1"
+kotlin = "2.2.21"
+# room compiler で使用。
+# ksp のバージョンは、kotlin_version と同じ世代のものを指定する必要がある。
+# https://github.com/google/ksp/releases で確認する。
+ksp = "2.2.21-2.0.4"
+
 coreKtx = "1.17.0"
 junit = "4.13.2"
 junitVersion = "1.3.0"
 espressoCore = "3.7.0"
 appcompat = "1.7.1"
 material = "1.13.0"
-activity = "1.11.0"
+activity = "1.12.1"
 constraintlayout = "2.2.1"
 media3ExoplayerVersion = "1.8.0"
-androidMediaProcessor = "LOCAL"
-androidMediaPlayer = "LOCAL"
-androidDialog = "LOCAL"
+androidMediaProcessor = "3.0.0"
+androidMediaPlayer = "4.0.0"
+androidDialog = "6.3.1"
+androidBinding = "1.10.1"
 slidingpanelayout = "1.2.0"
+documentfile = "1.1.0"
+roomRuntime = "2.8.4"
+roomCompiler = "2.8.4"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -27,13 +36,18 @@ androidx-media3-exoplayer = { module = "androidx.media3:media3-exoplayer", versi
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 androidx-activity = { group = "androidx.activity", name = "activity", version.ref = "activity" }
 androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
+androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "roomCompiler" }
+androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "roomRuntime" }
 
 android-media-player = { module = "com.github.toyota-m2k:android-media-player", version.ref = "androidMediaPlayer" }
 android-media-processor = { module = "com.github.toyota-m2k:android-media-processor", version.ref = "androidMediaProcessor" }
 android-dialog = { module = "com.github.toyota-m2k:android-dialog", version.ref = "androidDialog" }
+android-binding = { module = "com.github.toyota-m2k:android-binding", version.ref = "androidBinding" }
+androidx-documentfile = { group = "androidx.documentfile", name = "documentfile", version.ref = "documentfile" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 android-library = { id = "com.android.library", version.ref = "agp" }
+devtool-ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 

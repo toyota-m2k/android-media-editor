@@ -7,19 +7,21 @@ import io.github.toyota32k.binder.command.IUnitCommand
 import io.github.toyota32k.binder.command.LiteUnitCommand
 import io.github.toyota32k.binder.observe
 import io.github.toyota32k.lib.player.model.IPlayerModel
-import io.github.toyota32k.utils.IDisposable
-import io.github.toyota32k.utils.toggle
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 
+/**
+ * ICropHandlerの標準実装
+ * オーバーライドして動作をカスタマイズすることも可能。
+ */
 open class CropHandler(val playerModel: IPlayerModel, croppable: Boolean, showCompleteCancelButton:Boolean) : ICropHandler {
-    override val croppable = MutableStateFlow<Boolean>(croppable)
-    override val showCompleteCancelButton = MutableStateFlow<Boolean>(showCompleteCancelButton)
-    override val croppingNow = MutableStateFlow<Boolean>(false)
+    override val croppable = MutableStateFlow(croppable)
+    override val showCompleteCancelButton = MutableStateFlow(showCompleteCancelButton)
+    override val croppingNow = MutableStateFlow(false)
     override val cropAspectMode get() = maskViewModel.aspectMode
-    override val resolutionChangingNow = MutableStateFlow<Boolean>(false)
-    override val canChangeResolution = MutableStateFlow<Boolean>(false)
+    override val resolutionChangingNow = MutableStateFlow(false)
+    override val canChangeResolution = MutableStateFlow(false)
 
     override val commandBeginCrop: IUnitCommand = LiteUnitCommand(::onBeginCrop)
     override val commandResetCrop: IUnitCommand = LiteUnitCommand(::onResetCrop)
@@ -37,29 +39,34 @@ open class CropHandler(val playerModel: IPlayerModel, croppable: Boolean, showCo
     override val maskViewModel: CropMaskViewModel = CropMaskViewModel()
     override var cropImageModel: CropImageModel = CropImageModel(maskViewModel)
 
-    val sizeText: Flow<String?> = combine(playerModel.isCurrentSourcePhoto, playerModel.videoSize, maskViewModel.cropFlows.cropWidth, maskViewModel.cropFlows.cropHeight, cropImageModel.bitmapScaler.bitmap) { isPhoto, videoSize, width, height, bmp ->
+    override val sizeText: Flow<String> = combine(playerModel.isCurrentSourcePhoto, playerModel.videoSize, maskViewModel.cropFlows.cropWidth, maskViewModel.cropFlows.cropHeight, cropImageModel.bitmapScaler.bitmap) { isPhoto, videoSize, width, height, bmp ->
         if (isPhoto && bmp !=null) {
             "$width x $height (${bmp.width} x ${bmp.height})"
         } else if (videoSize!=null){
             "$width x $height (${videoSize.width} x ${videoSize.height})"
-        } else null
+        } else ""
     }
 
-    val storedCropParams = MutableStateFlow<MaskCoreParams?>(null)
-    var originalCropParam = MaskCoreParams.IDENTITY
+    private val storedCropParams = MutableStateFlow<MaskCoreParams?>(null)
+    private var originalCropParam = MaskCoreParams.IDENTITY
 
     override val isCropped: Flow<Boolean> get() = maskViewModel.isCropped
     override val isResolutionChanged: Flow<Boolean> = combine(canChangeResolution, cropImageModel.isResolutionChanged) { canChange, isChanged -> canChange && isChanged }
+    override val isDirty: Boolean get() = maskViewModel.isCropped.value || (canChangeResolution.value && cropImageModel.isDirty)
 
     override fun bindView(binder: Binder, slider: Slider, minus: Button, plus: Button, presetButtons:Map<Int, Button>) {
         binder
             .observe(playerModel.shownBitmap) { bmp->
                 canChangeResolution.value = bmp!=null
                 cropImageModel.setSourceBitmap(bmp)
-                cropImageModel.bindView(binder, slider, minus, plus, presetButtons)
             }
+            .observe(playerModel.videoSize) { size ->
+                maskViewModel.updateCropFlow(size)
+            }
+        cropImageModel.bindView(binder, slider, minus, plus, presetButtons)
     }
 
+    @Suppress("unused")
     fun setAspectMode(mode: AspectMode) {
         cropAspectMode.value = mode
         maskViewModel.aspectMode.value = mode
@@ -90,16 +97,31 @@ open class CropHandler(val playerModel: IPlayerModel, croppable: Boolean, showCo
     open fun onBeginResolutionChanging() {
         oldResolutionValue = cropImageModel.bitmapScaler.longSideLength.value
         resolutionChangingNow.value = true
+        cropImageModel.bitmapScaler.enable()
     }
     open fun onCompleteResolutionChanging() {
         resolutionChangingNow.value = false
+        cropImageModel.bitmapScaler.disable()
     }
     open fun onCancelResolutionChanging() {
         cropImageModel.bitmapScaler.longSideLength.value = oldResolutionValue
         resolutionChangingNow.value = false
+        cropImageModel.bitmapScaler.disable()
     }
     open fun onResetResolutionChanging() {
-        cropImageModel.bitmapScaler.longSideLength.value = cropImageModel.bitmapScaler.orgLongSideLength
+        cropImageModel.bitmapScaler.resetResolution()
+    }
+
+    override fun cancelMode(): Boolean {
+        if (croppingNow.value) {
+            onCancelCrop()
+            return true
+        }
+        if (resolutionChangingNow.value) {
+            onCancelResolutionChanging()
+            return true
+        }
+        return false
     }
 
     override fun dispose() {

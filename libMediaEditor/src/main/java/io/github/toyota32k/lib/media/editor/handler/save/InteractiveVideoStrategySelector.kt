@@ -1,15 +1,17 @@
-package io.github.toyota32k.lib.media.editor.output
+package io.github.toyota32k.lib.media.editor.handler.save
 
 import io.github.toyota32k.dialog.task.UtImmortalTask
 import io.github.toyota32k.lib.media.editor.dialog.SelectQualityDialog
 import io.github.toyota32k.lib.media.editor.model.ConvertHelper
 import io.github.toyota32k.lib.media.editor.model.IVideoSourceInfo
-import io.github.toyota32k.media.lib.converter.Converter
 import io.github.toyota32k.media.lib.converter.IInputMediaFile
 import io.github.toyota32k.media.lib.converter.Rotation
 import io.github.toyota32k.media.lib.strategy.IVideoStrategy
 import java.lang.IllegalStateException
 
+/**
+ * UI (SelectQualityDialog) を表示して VideoStrategy を選択可能とする IVideoStrategySelector
+ */
 class InteractiveVideoStrategySelector() : IVideoStrategyAndHdrSelector {
     private var mKeepHdr:Boolean? = null
     override val keepHdr: Boolean

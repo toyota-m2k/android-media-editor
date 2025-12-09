@@ -18,6 +18,11 @@ import io.github.toyota32k.lib.media.editor.model.MediaEditorModel
 import io.github.toyota32k.utils.gesture.IUtManipulationTarget
 import kotlinx.coroutines.flow.MutableStateFlow
 
+/**
+ * 動画編集用プレーヤービュー
+ *
+ * io.github.toyota32k.lib.player.view.VideoPlayerView を 編集用に変更・拡張したビュー
+ */
 class EditorPlayerView @JvmOverloads constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0)
     : FrameLayout(context, attrs, defStyleAttr) {
     val logger get() = AmeGlobal.logger
@@ -60,9 +65,11 @@ class EditorPlayerView @JvmOverloads constructor(context: Context, attrs: Attrib
             }
     }
 
+    @Suppress("unused")
     fun associatePlayer() {
         controls.player.associatePlayer()
     }
+    @Suppress("unused")
     fun dissociatePlayer() {
         controls.player.dissociatePlayer()
     }

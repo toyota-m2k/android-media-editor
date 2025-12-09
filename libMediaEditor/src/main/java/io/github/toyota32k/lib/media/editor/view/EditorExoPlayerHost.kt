@@ -27,7 +27,6 @@ import io.github.toyota32k.binder.command.bindCommand
 import io.github.toyota32k.binder.observe
 import io.github.toyota32k.binder.textBinding
 import io.github.toyota32k.binder.visibilityBinding
-import io.github.toyota32k.dialog.UtDialogBase
 import io.github.toyota32k.lib.media.editor.databinding.EditorExoPlayerHostBinding
 import io.github.toyota32k.lib.media.editor.model.AmeGlobal
 import io.github.toyota32k.lib.media.editor.model.EditorPlayerViewAttributes
@@ -35,7 +34,6 @@ import io.github.toyota32k.lib.media.editor.model.MediaEditorModel
 import io.github.toyota32k.lib.player.model.PlayerControllerModel
 import io.github.toyota32k.utils.FlowableEvent
 import io.github.toyota32k.utils.android.FitMode
-import io.github.toyota32k.utils.android.StyledAttrRetriever
 import io.github.toyota32k.utils.android.UtFitter
 import io.github.toyota32k.utils.android.dp
 import io.github.toyota32k.utils.android.dp2px
@@ -57,6 +55,16 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 import kotlin.math.abs
 
+/**
+ * 編集する動画・画像の表示ビュー
+ * - 動画 ... exoplayer
+ * - 画像 ... ImageView
+ *
+ * io.github.toyota32k.lib.player.view.ExoPlayerView に、
+ * - photoAltView（解像度を変更した画像表示用）
+ * - maskView（切り抜き編集用マスク表示）
+ * を追加している。
+ */
 class EditorExoPlayerHost  @JvmOverloads constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0)
     : FrameLayout(context, attrs, defStyleAttr), PlayerControllerModel.IScreenshotSource {
     val logger = AmeGlobal.logger
@@ -92,6 +100,7 @@ class EditorExoPlayerHost  @JvmOverloads constructor(context: Context, attrs: At
             ProgressRingSize.None -> null
         }
 
+    @Suppress("unused")
     var useExoController:Boolean
         get() = exoPlayer.useController
         set(v) { exoPlayer.useController = v }
@@ -108,7 +117,7 @@ class EditorExoPlayerHost  @JvmOverloads constructor(context: Context, attrs: At
             )
         }
         if (sar.sa.getBoolean(io.github.toyota32k.lib.player.R.styleable.ControlPanel_ampPlayerCenteringVertically, false)) {
-            val params = controls.expPlayerView.layoutParams as FrameLayout.LayoutParams
+            val params = controls.expPlayerView.layoutParams as LayoutParams
             params.gravity = Gravity.CENTER_HORIZONTAL or Gravity.CENTER_VERTICAL
             controls.expPlayerContainer.layoutParams = params
         }
@@ -151,7 +160,7 @@ class EditorExoPlayerHost  @JvmOverloads constructor(context: Context, attrs: At
 
         val activeProgressRing = progressRing
         if (progressRingGravity!=0 && activeProgressRing!=null) {
-            val params = activeProgressRing.layoutParams as FrameLayout.LayoutParams
+            val params = activeProgressRing.layoutParams as LayoutParams
             params.gravity = progressRingGravity
             activeProgressRing.layoutParams = params
         }
@@ -170,22 +179,19 @@ class EditorExoPlayerHost  @JvmOverloads constructor(context: Context, attrs: At
             .conditional( model.playerModel.isPhotoViewerEnabled ) {
                 add(model.playerModel.attachPhotoView(photoView))
                 visibilityBinding(photoAltView, combine(model.cropHandler.cropImageModel.isResolutionChanged, model.playerModel.isCurrentSourcePhoto) {r,p-> r && p })
-                observe(model.cropHandler.cropImageModel.bitmapScaler.bitmap) { bmp-> photoAltView.setImageBitmap(bmp) }
+                observe(model.cropHandler.cropImageModel.bitmapScaler.bitmap) {
+                    bmp-> photoAltView.setImageBitmap(bmp)
+                }
             }
             .observe(model.cropHandler.croppingNow) { cropping->
                 maskView.showHandle(cropping)
-                if (cropping) {
-                    val padding = context.dp2px(16)
-                    maskView.setPadding(padding)
-                    exoPlayer.setPadding(padding)
-                    photoView.setPadding(padding)
-                    photoAltView.setPadding(padding)
-                } else {
-                    maskView.setPadding(0)
-                    exoPlayer.setPadding(0)
-                    photoView.setPadding(0)
-                    photoAltView.setPadding(0)
-                }
+                val padding = if (cropping) {
+                    context.dp2px(16)
+                } else 0
+                maskView.setPadding(padding)
+                exoPlayer.setPadding(padding)
+                photoView.setPadding(padding)
+                photoAltView.setPadding(padding)
             }
             .bindCommand(model.cropHandler.commandResetCrop) { controls.expCropMaskView.invalidateIfNeed() }
             .bindCommand(model.cropHandler.commandRestoreCropFromMemory) { controls.expCropMaskView.invalidateIfNeed() }
@@ -297,7 +303,7 @@ class EditorExoPlayerHost  @JvmOverloads constructor(context: Context, attrs: At
         event.waitOne(1000L)
         @OptIn(UnstableApi::class)
         val surfaceView = exoPlayer.videoSurfaceView
-        if (surfaceView !is SurfaceView && surfaceView !is android.view.TextureView) {
+        if (surfaceView !is SurfaceView && surfaceView !is TextureView) {
             logger.error("Unknown surface view type: ${surfaceView?.javaClass?.name}")
             return null
         }

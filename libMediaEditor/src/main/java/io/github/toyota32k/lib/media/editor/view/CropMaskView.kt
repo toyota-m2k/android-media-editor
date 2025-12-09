@@ -22,6 +22,9 @@ import io.github.toyota32k.utils.android.dp2px
 import io.github.toyota32k.utils.android.getLayoutHeight
 import io.github.toyota32k.utils.android.getLayoutWidth
 
+/**
+ * 画像切り抜き用の矩形マスクビュー
+ */
 class CropMaskView@JvmOverloads constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0)
     : View(context, attrs, defStyleAttr) {
     private lateinit var maskDrawable: Drawable // = 0x50FFFFFF.toDrawable()
@@ -64,6 +67,7 @@ class CropMaskView@JvmOverloads constructor(context: Context, attrs: AttributeSe
         }
     }
 
+    @Suppress("unused")
     fun setMaskDrawable(drawable: Drawable) {
         maskDrawable = drawable
         invalidate()

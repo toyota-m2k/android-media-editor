@@ -41,5 +41,16 @@
     <string name="radio_overwrite">Overwrite</string>
     <string name="radio_save_as">Save as</string>
     <string name="file_name_label">Filename</string>
+    <string name="aspect_4_3_portrait">4:3 (Portrait)</string>
+    <string name="aspect_16_9_portrait">16:9 (Portrait)</string>
+    <string name="split_at_current_position">At Current Position</string>
+    <string name="split_by_chapters">By Chapters</string>
+    <string name="save_all">All</string>
+    <string name="save_left">Left of Current Position</string>
+    <string name="save_right">Right of Current Position</string>
+    <string name="save_current_chapter">Current Chapter</string>
+    <string name="aspect_screen_landscape">Screen (Landscape)</string>
+    <string name="aspect_screen_portrait">Screen (Portrait)</string>
+    <string name="save_current_active_range">Current Active Ranges</string>
 
 </resources>

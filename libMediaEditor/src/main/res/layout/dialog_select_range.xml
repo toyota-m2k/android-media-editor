@@ -6,21 +6,13 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     >
-    <CheckBox
-        android:id="@+id/check_enable_partial_mode"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/enable_partial_mode"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        />
     <TextView
         android:id="@+id/label_span_of_part"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/label_part_span"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/check_enable_partial_mode"
+        app:layout_constraintTop_toTopOf="parent"
         />
     <RadioGroup
         android:id="@+id/radio_span_selection"

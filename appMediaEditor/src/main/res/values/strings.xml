@@ -1,3 +1,14 @@
 <resources>
-    <string name="app_name">android-media-editor</string>
+    <string name="app_name">ClipCrop</string>
+    <string name="project_label">Project</string>
+    <string name="new_project">New</string>
+    <string name="save_as">Save As</string>
+    <string name="wallpaper">Wallpaper</string>
+    <string name="file">File</string>
+    <string name="save_as_file">Save as ...</string>
+    <string name="set_clop_hint">Set Crop Hint</string>
+    <string name="wallpaper_lock_screen">Lock Screen</string>
+    <string name="wallpaper_home_screen">Home Screen</string>
+    <string name="save_to_album">Save in album</string>
+    <string name="file_name">Display Name</string>
 </resources>

@@ -1,9 +1,9 @@
-package io.github.toyota32k.lib.media.editor.output
+package io.github.toyota32k.lib.media.editor.handler
 
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
+import android.graphics.Bitmap
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
@@ -11,8 +11,10 @@ import androidx.core.net.toUri
 import io.github.toyota32k.lib.media.editor.model.AmeGlobal
 import io.github.toyota32k.media.lib.converter.AndroidFile
 import java.io.File
-import java.io.OutputStream
 
+/**
+ * MediaStore (API29+) または、External Storage (API28-) へのメディアファイル保存用ヘルパークラス
+ */
 object AndroidMediaFile {
     val logger = AmeGlobal.logger
 
@@ -75,6 +77,7 @@ object AndroidMediaFile {
     }
 
 
+    @Suppress("unused")
     fun AndroidFile.expose(context: Context) {
         if(Build.VERSION.SDK_INT< Build.VERSION_CODES.Q) {
             // ACTION_MEDIA_SCANNER_SCAN_FILEは、
@@ -84,6 +87,22 @@ object AndroidMediaFile {
             val uri = this.uri ?: this.path?.toUri() ?: return
             @Suppress("DEPRECATION")
             context.sendBroadcast(Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, uri))
+        }
+    }
+
+    fun AndroidFile.saveBitmap(bitmap: Bitmap, format:Bitmap.CompressFormat, quality:Int) {
+        fileOutputStream { outputStream ->
+            bitmap.compress(format, quality, outputStream)
+            outputStream.flush()
+        }
+    }
+    fun AndroidFile.safeSaveBitmap(bitmap: Bitmap, format:Bitmap.CompressFormat, quality:Int):Boolean {
+        return try {
+            saveBitmap(bitmap, format, quality)
+            true
+        } catch (e: Throwable) {
+            AmeGlobal.logger.error(e)
+            false
         }
     }
 }

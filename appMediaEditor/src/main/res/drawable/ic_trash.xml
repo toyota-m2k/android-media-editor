@@ -1,0 +1,5 @@
+<!-- drawable/filmstrip.xml -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:height="24dp" android:width="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#000000" android:pathData="M 9 3V 4H 4V 6H 5V 19A 2,2,0,0,0,7,21H 17A 2,2,0,0,0,19,19V 6H 20V 4H 15V 3H 9M 7 6H 17V 19H 7V 6M 9 8V 17H 11V 8H 9M 13 8V 17H 15V 8H 13Z" />
+</vector>

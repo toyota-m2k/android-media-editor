@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical"
+    android:paddingVertical="20dp"
+    android:paddingHorizontal="40dp">
+
+    <com.google.android.material.button.MaterialButtonToggleGroup
+        android:id="@+id/radio_group_targets"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        app:singleSelection="true"
+        app:selectionRequired="true"
+        android:layout_gravity="center"
+        android:layout_marginBottom="15dp"
+        >
+        <Button
+            android:id="@+id/radio_wallpaper"
+            android:text="@string/wallpaper"
+            android:layout_width="120dp"
+            android:layout_height="wrap_content"
+            style="?attr/materialButtonOutlinedStyle"
+            />
+        <Button
+            android:id="@+id/radio_file"
+            android:text="@string/file"
+            android:layout_width="120dp"
+            android:layout_height="wrap_content"
+            style="?attr/materialButtonOutlinedStyle"
+            />
+    </com.google.android.material.button.MaterialButtonToggleGroup>
+
+    <!-- File Options -->
+    <RadioGroup
+        android:id="@+id/file_radio_group"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        >
+        <androidx.appcompat.widget.AppCompatRadioButton
+            android:id="@+id/save_file"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/save_as_file"
+            />
+        <androidx.appcompat.widget.AppCompatRadioButton
+            android:id="@+id/save_in_album"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/save_to_album"
+            />
+    </RadioGroup>
+
+    <EditText
+        android:id="@+id/file_name"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="@string/file_name"
+        android:layout_marginStart="30dp"
+        />
+
+    <!-- Wallpaper Options -->
+
+    <CheckBox
+        android:id="@+id/lock_screen"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/wallpaper_lock_screen"
+        />
+    <CheckBox
+        android:id="@+id/home_screen"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/wallpaper_home_screen"
+        />
+    <androidx.appcompat.widget.SwitchCompat
+        android:id="@+id/use_crop_hint"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/set_clop_hint"
+        />
+
+
+</LinearLayout>

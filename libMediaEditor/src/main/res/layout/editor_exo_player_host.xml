@@ -12,7 +12,7 @@
         android:id="@+id/exp_playerContainer"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_gravity="center_horizontal|top"
+        android:layout_gravity="center"
         >
         <androidx.media3.ui.PlayerView
             android:layout_width="match_parent"

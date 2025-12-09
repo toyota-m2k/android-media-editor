@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.View
 import io.github.toyota32k.binder.IIDValueResolver
 import io.github.toyota32k.binder.checkBinding
+import io.github.toyota32k.binder.clickBinding
 import io.github.toyota32k.binder.enableBinding
 import io.github.toyota32k.binder.multiEnableBinding
 import io.github.toyota32k.binder.radioGroupBinding
@@ -11,6 +12,7 @@ import io.github.toyota32k.binder.sliderBinding
 import io.github.toyota32k.binder.textBinding
 import io.github.toyota32k.dialog.UtDialogEx
 import io.github.toyota32k.dialog.task.UtDialogViewModel
+import io.github.toyota32k.dialog.task.UtImmortalTask
 import io.github.toyota32k.dialog.task.UtImmortalTaskBase
 import io.github.toyota32k.dialog.task.awaitSubTaskResult
 import io.github.toyota32k.dialog.task.createViewModel
@@ -26,25 +28,25 @@ import kotlin.math.roundToLong
 import kotlin.ranges.coerceAtLeast
 import kotlin.ranges.coerceIn
 
-data class SplitParams(
+data class SliderPartition(
     val enabled:Boolean,
     val duration:Long,
     val span:Long) {
     companion object {
-        fun fromModel(model: RangedPlayModel): SplitParams {
-            return SplitParams(true, model.duration, model.spanLength)
+        fun fromModel(model: RangedPlayModel?, duration: Long): SliderPartition {
+            return if (model!=null) SliderPartition( true, model.duration, model.spanLength) else create(duration)
         }
-        fun create(duration: Long): SplitParams {
-            return SplitParams(true, duration, 3)
+        fun create(duration: Long): SliderPartition {
+            return SliderPartition( true, duration, 3)
         }
     }
     fun toModel(): RangedPlayModel? {
-        return if(enabled) RangedPlayModel(duration, span) else null
+        return if (enabled ) RangedPlayModel(duration, span) else null
     }
 }
 
-class SelectRangeDialog: UtDialogEx() {
-    class RangeModeViewModel: UtDialogViewModel() {
+class SliderPartitionDialog: UtDialogEx() {
+    class SliderPartitionViewModel: UtDialogViewModel() {
         object SpanResolver : IIDValueResolver<Int> {
             override fun id2value(id: Int): Int? {
                 return when(id) {
@@ -68,17 +70,19 @@ class SelectRangeDialog: UtDialogEx() {
             }
         }
 
+        var reset = false
         var naturalDuration: Long = 0L
             private set
         val minSpan = 1 // min
         val maxSpan get() = ((naturalDuration - minSpan)/60000).toInt().coerceAtLeast(minSpan+1)
-        val enablePartialMode = MutableStateFlow(true)
+//        val enablePartialMode = MutableStateFlow(true)
         val presetSpan = MutableStateFlow(3)
         val customSpan = MutableStateFlow(1f)
 
-        fun initWith(params:SplitParams) {
+        fun initWith(params:SliderPartition?) {
+            if (params == null) return
             naturalDuration = params.duration
-            enablePartialMode.value = params.enabled
+//            enablePartialMode.value = params.enabled
             val spanInMin = (params.span/60000f).toInt()
             val id = SpanResolver.value2id(spanInMin)
             if(id == R.id.radio_span_custom) {
@@ -88,9 +92,9 @@ class SelectRangeDialog: UtDialogEx() {
             }
         }
 
-        fun toSplitParams(): SplitParams {
-            return SplitParams(
-                enablePartialMode.value,
+        fun toSliderPartition(): SliderPartition {
+            return SliderPartition(
+                !reset,
                 naturalDuration,
                 if(SpanResolver.isCustom(presetSpan.value)) customSpan.value.roundToLong()*60000 else presetSpan.value*60000L)
         }
@@ -110,7 +114,7 @@ class SelectRangeDialog: UtDialogEx() {
         }
     }
 
-    val viewModel: RangeModeViewModel by lazy { getViewModel() }
+    val viewModel: SliderPartitionViewModel by lazy { getViewModel() }
     lateinit var controls: DialogSelectRangeBinding
 
     override fun preCreateBodyView() {
@@ -121,6 +125,7 @@ class SelectRangeDialog: UtDialogEx() {
         gravityOption = GravityOption.CENTER
         leftButtonType = ButtonType.CANCEL
         rightButtonType = ButtonType.OK
+        setOptionButton("Reset", false)
     }
 
     override fun createBodyView(savedInstanceState: Bundle?, inflater: IViewInflater): View {
@@ -132,24 +137,25 @@ class SelectRangeDialog: UtDialogEx() {
             "${it.roundToInt()} min"
         }
         binder
-            .checkBinding(controls.checkEnablePartialMode, viewModel.enablePartialMode)
-            .multiEnableBinding(arrayOf(controls.radioSpan3min, controls.radioSpan5min, controls.radioSpan10min, controls.radioSpanCustom), viewModel.enablePartialMode)
-            .radioGroupBinding(controls.radioSpanSelection, viewModel.presetSpan, RangeModeViewModel.SpanResolver)
-            .enableBinding(controls.spanSlider, combine(viewModel.enablePartialMode, viewModel.presetSpan) { e, s -> e && s == 0 })
+            .radioGroupBinding(controls.radioSpanSelection, viewModel.presetSpan, SliderPartitionViewModel.SpanResolver)
             .textBinding(controls.spanValue, combine(viewModel.presetSpan, viewModel.customSpan) { p, c ->
                 if (p == 0) "${c.roundToLong()} min" else "$p min"
             })
             .sliderBinding(controls.spanSlider, viewModel.customSpan)
+            .clickBinding(optionButton!!) { v->
+                viewModel.reset = true
+                onPositive()
+            }
         return controls.root
     }
 
     companion object {
         const val MIN_DURATION = 60*2*1000L     // 2分以上ないとSliderが作れない
-        suspend fun show(task: UtImmortalTaskBase, currentParams: SplitParams): SplitParams? {
-            return task.awaitSubTaskResult {
-                val vm = createViewModel<RangeModeViewModel> { initWith(currentParams) }
-                if(showDialog(taskName) { SelectRangeDialog() }.status.ok) {
-                    vm.toSplitParams()
+        suspend fun show(currentParams: SliderPartition?): SliderPartition? {
+            return UtImmortalTask.awaitTaskResult(this::class.java.name) {
+                val vm = createViewModel<SliderPartitionViewModel> { initWith(currentParams) }
+                if(showDialog(taskName) { SliderPartitionDialog() }.status.ok) {
+                    vm.toSliderPartition()
                 } else {
                     null
                 }
