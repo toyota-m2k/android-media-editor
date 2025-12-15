@@ -13,8 +13,8 @@ import io.github.toyota32k.lib.media.editor.handler.split.GenericSplitHandler
 import io.github.toyota32k.lib.player.model.IMediaSource
 import io.github.toyota32k.lib.player.model.IPlayerModel
 import io.github.toyota32k.lib.player.model.PlayerControllerModel
-import io.github.toyota32k.media.lib.converter.IOutputFileSelector
-import io.github.toyota32k.media.lib.utils.RangeMs
+import io.github.toyota32k.media.lib.legacy.converter.IOutputFileSelector
+import io.github.toyota32k.media.lib.types.RangeMs
 import io.github.toyota32k.utils.IUtPropOwner
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -42,7 +42,7 @@ open class MediaEditorModel(
     val cropHandler:ICropHandler,
     val splitHandler: ISplitHandler,
     val saveFileHandler: ISaveFileHandler,
-    val outputFileSelectorResolver:((IMediaSource)->IOutputFileSelector?)?,
+    val outputFileSelectorResolver:((IMediaSource)-> IOutputFileSelector?)?,
     val outputFileProviderResolver:((IMediaSource)-> IOutputFileProvider?)?,
     ) : IUtPropOwner, Closeable
 {

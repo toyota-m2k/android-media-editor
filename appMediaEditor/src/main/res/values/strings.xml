@@ -11,4 +11,6 @@
     <string name="wallpaper_home_screen">Home Screen</string>
     <string name="save_to_album">Save in album</string>
     <string name="file_name">Display Name</string>
+    <string name="open_as_project">Open as Project</string>
+    <string name="show_detail">Show Detail</string>
 </resources>

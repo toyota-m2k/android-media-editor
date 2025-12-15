@@ -22,11 +22,11 @@ import io.github.toyota32k.dialog.task.launchSubTask
 import io.github.toyota32k.lib.media.editor.R
 import io.github.toyota32k.lib.media.editor.databinding.DialogSelectQualityBinding
 import io.github.toyota32k.lib.media.editor.model.ConvertHelper
-import io.github.toyota32k.media.lib.converter.ConvertResult
 import io.github.toyota32k.media.lib.strategy.IVideoStrategy
 import io.github.toyota32k.media.lib.strategy.PresetAudioStrategies
 import io.github.toyota32k.media.lib.strategy.PresetVideoStrategies
 import io.github.toyota32k.media.lib.strategy.PresetVideoStrategies.isValid
+import io.github.toyota32k.media.lib.types.ConvertResult
 import io.github.toyota32k.utils.TimeSpan
 import io.github.toyota32k.utils.lifecycle.ConstantLiveData
 import kotlinx.coroutines.flow.MutableStateFlow

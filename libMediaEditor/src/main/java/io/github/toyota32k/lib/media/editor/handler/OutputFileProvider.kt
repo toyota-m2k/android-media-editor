@@ -10,8 +10,8 @@ import io.github.toyota32k.lib.media.editor.dialog.SaveOptionDialog
 import io.github.toyota32k.lib.media.editor.model.AmeGlobal
 import io.github.toyota32k.lib.media.editor.model.ICommonOutputFileProvider
 import io.github.toyota32k.lib.media.editor.model.IOutputFileProvider
-import io.github.toyota32k.media.lib.converter.AndroidFile
-import io.github.toyota32k.media.lib.converter.toAndroidFile
+import io.github.toyota32k.media.lib.io.AndroidFile
+import io.github.toyota32k.media.lib.io.toAndroidFile
 import java.io.File
 
 object FileUtil {
@@ -43,7 +43,7 @@ object FileUtil {
 //        return contentType2Ext(file.getContentType()?:"")
 //    }
 
-    fun getBaseName(file:AndroidFile):String? {
+    fun getBaseName(file: AndroidFile):String? {
         val originalName = file.getFileName() ?: return null
         val dotIndex = originalName.lastIndexOf('.')
         return if (dotIndex > 0) originalName.take(dotIndex) else originalName

@@ -44,6 +44,7 @@ import io.github.toyota32k.lib.media.editor.model.IMediaSourceWithMutableChapter
 import io.github.toyota32k.lib.media.editor.model.MaskCoreParams
 import io.github.toyota32k.lib.media.editor.model.MediaEditorModel
 import io.github.toyota32k.lib.media.editor.handler.save.GenericSaveFileHandler
+import io.github.toyota32k.lib.media.editor.handler.save.SaveVideoResult
 import io.github.toyota32k.lib.media.editor.handler.split.GenericSplitHandler
 import io.github.toyota32k.lib.player.model.IMutableChapterList
 import io.github.toyota32k.lib.player.model.Range
@@ -52,14 +53,15 @@ import io.github.toyota32k.logger.UtLog
 import io.github.toyota32k.logger.UtLogConfig
 import io.github.toyota32k.media.editor.MainActivity.MediaSource.Companion.getType
 import io.github.toyota32k.media.editor.databinding.ActivityMainBinding
+import io.github.toyota32k.media.editor.dialog.DetailMessageDialog
 import io.github.toyota32k.media.editor.dialog.ProjectManagerDialog
 import io.github.toyota32k.media.editor.dialog.SnapshotDialog
 import io.github.toyota32k.media.editor.project.Project
 import io.github.toyota32k.media.editor.project.ProjectDB
 import io.github.toyota32k.media.editor.providers.CustomExportToDirectoryFileSelector
 import io.github.toyota32k.media.editor.providers.CustomInteractiveOutputFileProvider
-import io.github.toyota32k.media.lib.converter.AndroidFile
-import io.github.toyota32k.media.lib.converter.toAndroidFile
+import io.github.toyota32k.media.lib.io.AndroidFile
+import io.github.toyota32k.media.lib.io.toAndroidFile
 import io.github.toyota32k.utils.TimeSpan
 import io.github.toyota32k.utils.android.CompatBackKeyDispatcher
 import io.github.toyota32k.utils.android.PackageUtil
@@ -83,7 +85,7 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
     private lateinit var controls: ActivityMainBinding
     private val compatBackKeyDispatcher = CompatBackKeyDispatcher()
 
-    class MediaSource private constructor(val file:AndroidFile, override val type:String) : IMediaSourceWithMutableChapterList {
+    class MediaSource private constructor(val file: AndroidFile, override val type:String) : IMediaSourceWithMutableChapterList {
         override val id: String
             get() = file.safeUri.toString()
         override val name: String
@@ -458,9 +460,26 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
                 enableGestureManager(!it)
             }
             .add(viewModel.editorModel.saveFileHandler.listener.addOnSavedListener(this){ result->
-                if (result.failed) {
+                if (result.succeeded) {
+                    UtImmortalTask.launchTask("save.succeeded") {
+                        val target = result.outputFile as? AndroidFile
+                        val name = target?.getFileName() ?: "unknown"
+                        val message = "Saved in $name"
+                        if (result is SaveVideoResult) {
+                            val uri = target?.uri
+                            if (DetailMessageDialog.showMessage("Completed", message, result.convertResult.report?.toString(), uri?.toString(), null)) {
+                                if (uri!=null) {
+                                    viewModel.setNewTargetMediaFile(uri)
+                                }
+                            }
+                        } else {
+                            showConfirmMessageBox("Completed", message)
+                        }
+                    }
+                }
+                else if (result.failed) {
                     UtImmortalTask.launchTask("save.error") {
-                        showConfirmMessageBox("File Save", result.errorMessage?:result.error?.message?:"Unknown Error")
+                        showConfirmMessageBox("Save Error", result.errorMessage?:result.error?.message?:"Unknown Error")
                     }
                 }
             })

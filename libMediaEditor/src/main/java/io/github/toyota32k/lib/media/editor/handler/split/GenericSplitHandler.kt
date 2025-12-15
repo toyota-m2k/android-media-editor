@@ -10,25 +10,25 @@ import io.github.toyota32k.lib.media.editor.model.AmeGlobal
 import io.github.toyota32k.lib.media.editor.model.ISourceInfo
 import io.github.toyota32k.lib.media.editor.model.ISplitHandler
 import io.github.toyota32k.lib.media.editor.model.IVideoSourceInfo
-import io.github.toyota32k.media.lib.converter.IMultiSplitResult
-import io.github.toyota32k.media.lib.converter.IOutputFileSelector
-import io.github.toyota32k.media.lib.converter.Rotation
-import io.github.toyota32k.media.lib.converter.Splitter
-import io.github.toyota32k.media.lib.converter.toAndroidFile
+import io.github.toyota32k.media.lib.io.toAndroidFile
+import io.github.toyota32k.media.lib.legacy.converter.IMultiSplitResult
+import io.github.toyota32k.media.lib.legacy.converter.IOutputFileSelector
+import io.github.toyota32k.media.lib.legacy.converter.Splitter
 import io.github.toyota32k.media.lib.processor.Processor
 import io.github.toyota32k.media.lib.processor.ProcessorOptions
 import io.github.toyota32k.media.lib.processor.contract.ICancellable
 import io.github.toyota32k.media.lib.processor.optimizer.OptimizerOptions
 import io.github.toyota32k.media.lib.strategy.PresetAudioStrategies
 import io.github.toyota32k.media.lib.strategy.PresetVideoStrategies
-import io.github.toyota32k.media.lib.utils.RangeMs
+import io.github.toyota32k.media.lib.types.RangeMs
+import io.github.toyota32k.media.lib.types.Rotation
 import kotlinx.coroutines.flow.MutableStateFlow
 
 
 abstract class AbstractSplitHandler(showSplitButton:Boolean) : ISplitHandler {
     val logger = AmeGlobal.logger
     override val showSplitButton = MutableStateFlow(showSplitButton)
-    override val listener = SaveTaskListenerImpl<ISourceInfo,IMultiSplitResult>()
+    override val listener = SaveTaskListenerImpl<ISourceInfo, IMultiSplitResult>()
     companion object {
         const val MIN_RANGE = 100L // 100ms
     }
@@ -82,7 +82,7 @@ class GenericSplitHandler(
         if (!fileSelector.initialize(ranges)) {
             return Splitter.MultiResult().cancel()
         }
-        val processor = Processor.DEFAULT
+        val processor = Processor()
         val processorOptionsBuilder = ProcessorOptions.Builder()
             .videoStrategy(PresetVideoStrategies.InvalidStrategy)
             .audioStrategy(PresetAudioStrategies.AACDefault)
@@ -163,7 +163,7 @@ class GenericSplitHandler(
         val ranges = sourceInfo.trimmingRanges
 
         fileSelector.initialize(ranges)
-        val processor = Processor.DEFAULT
+        val processor = Processor()
         val processorOptionsBuilder = ProcessorOptions.Builder()
             .videoStrategy(PresetVideoStrategies.InvalidStrategy)
             .audioStrategy(PresetAudioStrategies.AACDefault)

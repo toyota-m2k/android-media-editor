@@ -12,11 +12,11 @@ import io.github.toyota32k.lib.player.model.IMediaSource
 import io.github.toyota32k.lib.player.model.IMediaSourceWithChapter
 import io.github.toyota32k.lib.player.model.IMutableChapterList
 import io.github.toyota32k.lib.player.model.Range
-import io.github.toyota32k.media.lib.converter.AndroidFile
-import io.github.toyota32k.media.lib.converter.IMultiSplitResult
-import io.github.toyota32k.media.lib.converter.IOutputFileSelector
-import io.github.toyota32k.media.lib.converter.IOutputMediaFile
-import io.github.toyota32k.media.lib.utils.RangeMs
+import io.github.toyota32k.media.lib.io.AndroidFile
+import io.github.toyota32k.media.lib.io.IOutputMediaFile
+import io.github.toyota32k.media.lib.legacy.converter.IMultiSplitResult
+import io.github.toyota32k.media.lib.legacy.converter.IOutputFileSelector
+import io.github.toyota32k.media.lib.types.RangeMs
 import io.github.toyota32k.utils.IDisposable
 import kotlinx.coroutines.flow.Flow
 

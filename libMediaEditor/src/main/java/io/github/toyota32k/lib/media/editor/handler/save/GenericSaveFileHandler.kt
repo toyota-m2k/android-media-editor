@@ -12,12 +12,9 @@ import io.github.toyota32k.lib.media.editor.model.ISaveResult
 import io.github.toyota32k.lib.media.editor.model.ISourceInfo
 import io.github.toyota32k.lib.media.editor.model.IVideoSourceInfo
 import io.github.toyota32k.logger.UtLog
-import io.github.toyota32k.media.lib.converter.ConvertResult
-import io.github.toyota32k.media.lib.converter.IConvertResult
-import io.github.toyota32k.media.lib.converter.IInputMediaFile
-import io.github.toyota32k.media.lib.converter.IOutputMediaFile
-import io.github.toyota32k.media.lib.converter.Rotation
-import io.github.toyota32k.media.lib.converter.toAndroidFile
+import io.github.toyota32k.media.lib.io.IInputMediaFile
+import io.github.toyota32k.media.lib.io.IOutputMediaFile
+import io.github.toyota32k.media.lib.io.toAndroidFile
 import io.github.toyota32k.media.lib.processor.Processor
 import io.github.toyota32k.media.lib.processor.ProcessorOptions
 import io.github.toyota32k.media.lib.processor.contract.ICancellable
@@ -27,6 +24,9 @@ import io.github.toyota32k.media.lib.processor.optimizer.OptimizingProcessorPhas
 import io.github.toyota32k.media.lib.strategy.IAudioStrategy
 import io.github.toyota32k.media.lib.strategy.IVideoStrategy
 import io.github.toyota32k.media.lib.strategy.PresetAudioStrategies
+import io.github.toyota32k.media.lib.types.ConvertResult
+import io.github.toyota32k.media.lib.types.IConvertResult
+import io.github.toyota32k.media.lib.types.Rotation
 import kotlinx.coroutines.flow.MutableStateFlow
 
 /**
@@ -220,7 +220,7 @@ open class GenericSaveFileHandler(
         val optimizerOptions = OptimizerOptions(applicationContext) { progress->
             task.progressSink?.onProgress(progress)
         }
-        val processor = Processor.DEFAULT
+        val processor = Processor()
         task.onStart(processor)
         listener.onSaveTaskStarted(sourceInfo)
         val result = processor.execute(processorOptions, optimizerOptions)

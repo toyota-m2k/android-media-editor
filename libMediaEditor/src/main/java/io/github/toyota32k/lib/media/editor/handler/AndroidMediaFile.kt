@@ -9,7 +9,7 @@ import android.os.Environment
 import android.provider.MediaStore
 import androidx.core.net.toUri
 import io.github.toyota32k.lib.media.editor.model.AmeGlobal
-import io.github.toyota32k.media.lib.converter.AndroidFile
+import io.github.toyota32k.media.lib.io.AndroidFile
 import java.io.File
 
 /**
