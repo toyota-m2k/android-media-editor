@@ -19,7 +19,7 @@ class InteractiveVideoStrategySelector() : IVideoStrategyAndHdrSelector {
 
     override suspend fun getVideoStrategy(inputFile: IInputMediaFile, sourceInfo: IVideoSourceInfo): IVideoStrategy? {
         return UtImmortalTask.awaitTaskResult("SelectVideoStrategy") {
-            val helper = ConvertHelper(inputFile, null, true, Rotation(sourceInfo.rotation, true), sourceInfo.trimmingRanges, sourceInfo.durationMs)
+            val helper = ConvertHelper(inputFile,  true, Rotation(sourceInfo.rotation, true), sourceInfo.cropRect, sourceInfo.trimmingRanges, sourceInfo.durationMs)
             SelectQualityDialog.show(true, helper, sourceInfo.positionMs)?.run {
                 mKeepHdr = keepHdr
                 quality.strategy

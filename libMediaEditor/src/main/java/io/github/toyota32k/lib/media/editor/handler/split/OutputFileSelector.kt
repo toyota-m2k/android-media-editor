@@ -8,7 +8,7 @@ import io.github.toyota32k.lib.media.editor.model.AmeGlobal
 import io.github.toyota32k.media.lib.converter.AndroidFile
 import io.github.toyota32k.media.lib.converter.IOutputFileSelector
 import io.github.toyota32k.media.lib.converter.IOutputMediaFile
-import io.github.toyota32k.media.lib.converter.RangeMs
+import io.github.toyota32k.media.lib.utils.RangeMs
 import io.github.toyota32k.utils.TimeSpan
 import java.text.DateFormat
 import java.text.SimpleDateFormat

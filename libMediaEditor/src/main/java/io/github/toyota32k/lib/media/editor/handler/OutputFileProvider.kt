@@ -227,16 +227,16 @@ open class InteractiveOutputFileProvider(outputFileSuffix:String, val subFolder:
         return NamedMediaFileProvider(targetName, subFolder)
     }
     open fun getOverwriteFileProvider() : IOutputFileProvider{
-        return OverwriteFileProvider()
+        return OverwriteFileProvider(showConfirmMessage = false)    // 確認メッセージは SaveOptionDialog で表示済み
     }
 
     override suspend fun getOutputFile(mimeType: String, inputFile: AndroidFile): AndroidFile? {
         val initialName = initialFileName(mimeType, inputFile) ?: return null
         val option = SaveOptionDialog.show(initialName) ?: return null
         val provider = when(option.targetType) {
-            SaveOptionDialog.SaveOptionViewModel.TargetType.OVERWRITE -> getExportFileProvider()
+            SaveOptionDialog.SaveOptionViewModel.TargetType.OVERWRITE -> getOverwriteFileProvider()
             SaveOptionDialog.SaveOptionViewModel.TargetType.SAVE_MEDIA_FILE_AS -> getNamedMediaFileProvider(option.targetName)
-            SaveOptionDialog.SaveOptionViewModel.TargetType.EXPORT_FILE -> getOverwriteFileProvider()
+            SaveOptionDialog.SaveOptionViewModel.TargetType.EXPORT_FILE -> getExportFileProvider()
         }
         return provider.getOutputFile(mimeType, inputFile)
     }

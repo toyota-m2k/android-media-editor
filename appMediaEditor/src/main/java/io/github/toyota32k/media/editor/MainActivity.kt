@@ -36,6 +36,7 @@ import io.github.toyota32k.dialog.mortal.UtMortalActivity
 import io.github.toyota32k.dialog.task.UtImmortalTask
 import io.github.toyota32k.dialog.task.UtImmortalTaskBase
 import io.github.toyota32k.dialog.task.UtImmortalTaskManager
+import io.github.toyota32k.dialog.task.showConfirmMessageBox
 import io.github.toyota32k.dialog.task.showYesNoMessageBox
 import io.github.toyota32k.lib.media.editor.dialog.NameDialog
 import io.github.toyota32k.lib.media.editor.handler.FileUtil
@@ -456,6 +457,13 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
                 }
                 enableGestureManager(!it)
             }
+            .add(viewModel.editorModel.saveFileHandler.listener.addOnSavedListener(this){ result->
+                if (result.failed) {
+                    UtImmortalTask.launchTask("save.error") {
+                        showConfirmMessageBox("File Save", result.errorMessage?:result.error?.message?:"Unknown Error")
+                    }
+                }
+            })
         controls.editorPlayerView.bindViewModel(viewModel.editorModel, binder)
         window.addFlags(
             WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON  // スリープしない

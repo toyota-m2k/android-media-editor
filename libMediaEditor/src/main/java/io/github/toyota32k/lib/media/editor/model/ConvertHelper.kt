@@ -1,6 +1,7 @@
 package io.github.toyota32k.lib.media.editor.model
 
 import android.content.Context
+import android.graphics.Rect
 import io.github.toyota32k.dialog.task.UtImmortalTask
 import io.github.toyota32k.dialog.task.createViewModel
 import io.github.toyota32k.dialog.task.launchSubTask
@@ -11,14 +12,15 @@ import io.github.toyota32k.media.lib.converter.ConvertResult
 import io.github.toyota32k.media.lib.converter.Converter
 import io.github.toyota32k.media.lib.converter.IConvertResult
 import io.github.toyota32k.media.lib.converter.IInputMediaFile
-import io.github.toyota32k.media.lib.converter.RangeMs
 import io.github.toyota32k.media.lib.converter.Rotation
 import io.github.toyota32k.media.lib.converter.Splitter
-import io.github.toyota32k.media.lib.converter.format
 import io.github.toyota32k.media.lib.converter.toAndroidFile
+import io.github.toyota32k.media.lib.processor.contract.format
 import io.github.toyota32k.media.lib.report.Report
 import io.github.toyota32k.media.lib.strategy.IVideoStrategy
 import io.github.toyota32k.media.lib.strategy.PresetAudioStrategies
+import io.github.toyota32k.media.lib.strategy.PresetVideoStrategies
+import io.github.toyota32k.media.lib.utils.RangeMs
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -27,11 +29,12 @@ import kotlin.time.Duration.Companion.seconds
 
 class ConvertHelper(
     val inputFile: IInputMediaFile,
-    var videoStrategy: IVideoStrategy?,
     var keepHdr: Boolean,
     val rotation: Rotation,
+    val cropRect: Rect?,
     val trimmingRanges: List<RangeMs>,
-    val durationMs:Long
+    val durationMs:Long,
+    var videoStrategy: IVideoStrategy = PresetVideoStrategies.InvalidStrategy,
 ) {
     val logger = UtLog("CH", AmeGlobal.logger)
     var trimFileName: String = "trim"
@@ -49,7 +52,9 @@ class ConvertHelper(
         get() = calcTrimmedDuration(durationMs, trimmingRanges)
 
     private suspend fun convert(applicationContext: Context, limitDuration:Long, ranges: List<RangeMs>?): File {
-        val videoStrategy = this.videoStrategy ?: return trim(applicationContext, ranges?:trimmingRanges)
+        val videoStrategy = videoStrategy.takeIf { cropRect!=null || it !is PresetVideoStrategies.InvalidStrategy }
+            ?: return trim(applicationContext, ranges?:trimmingRanges)
+
         return UtImmortalTask.awaitTaskResult("ConvertHelper") {
             val vm = createViewModel<ProgressDialog.ProgressViewModel>()
             vm.message.value = "Trimming Now..."
@@ -60,6 +65,7 @@ class ConvertHelper(
                 .output(trimFile)
                 .audioStrategy(PresetAudioStrategies.AACDefault)
                 .videoStrategy(videoStrategy)
+                .crop(cropRect)
                 .keepHDR(keepHdr)
                 .rotate(rotation)
                 .trimming {
@@ -209,7 +215,7 @@ class ConvertHelper(
 
 
     suspend fun tryConvert(applicationContext: Context, convertFrom:Long, limitDuration:Long=10.seconds.inWholeMilliseconds): File? {
-        assert(videoStrategy != null) { "tryConvert: videoStrategy is null" }
+//        assert(videoStrategy != null) { "tryConvert: videoStrategy is null" }
         val duration = calcTrimmedDuration(durationMs, trimmingRanges)
         val ranges = if (duration<=limitDuration) {
             // トリミング後の再生時間が既定時間(limitDuration)に満たない場合は、convertFromは無視して先頭から

@@ -14,7 +14,7 @@ import io.github.toyota32k.lib.player.model.IMediaSource
 import io.github.toyota32k.lib.player.model.IPlayerModel
 import io.github.toyota32k.lib.player.model.PlayerControllerModel
 import io.github.toyota32k.media.lib.converter.IOutputFileSelector
-import io.github.toyota32k.media.lib.converter.RangeMs
+import io.github.toyota32k.media.lib.utils.RangeMs
 import io.github.toyota32k.utils.IUtPropOwner
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow

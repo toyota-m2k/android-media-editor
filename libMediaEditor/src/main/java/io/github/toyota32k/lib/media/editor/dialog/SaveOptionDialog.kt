@@ -2,6 +2,7 @@ package io.github.toyota32k.lib.media.editor.dialog
 
 import android.os.Bundle
 import android.view.View
+import androidx.lifecycle.viewModelScope
 import io.github.toyota32k.binder.IIDValueResolver
 import io.github.toyota32k.binder.editTextBinding
 import io.github.toyota32k.binder.enableBinding
@@ -11,6 +12,7 @@ import io.github.toyota32k.dialog.task.UtDialogViewModel
 import io.github.toyota32k.dialog.task.UtImmortalTask
 import io.github.toyota32k.dialog.task.createViewModel
 import io.github.toyota32k.dialog.task.getViewModel
+import io.github.toyota32k.dialog.task.showYesNoMessageBox
 import io.github.toyota32k.lib.media.editor.R
 import io.github.toyota32k.lib.media.editor.databinding.DialogSaveOptionBinding
 import io.github.toyota32k.lib.media.editor.dialog.SaveOptionDialog.SaveOptionViewModel.TargetType
@@ -21,6 +23,7 @@ import io.github.toyota32k.lib.media.editor.handler.OverwriteFileProvider
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
 class SaveOptionDialog : UtDialogEx() {
     class SaveOptionViewModel : UtDialogViewModel() {
@@ -29,7 +32,7 @@ class SaveOptionDialog : UtDialogEx() {
             SAVE_MEDIA_FILE_AS(R.id.radio_save_as),
             EXPORT_FILE(R.id.radio_export),
             ;
-            ;
+
             object IDResolver: IIDValueResolver<TargetType> {
                 override fun id2value(id:Int) : TargetType {
                     return valueOf(id)
@@ -55,6 +58,7 @@ class SaveOptionDialog : UtDialogEx() {
         val targetType = MutableStateFlow<TargetType>(TargetType.EXPORT_FILE)
         val isSaveAs = targetType.map { it == TargetType.SAVE_MEDIA_FILE_AS }
         val targetName = MutableStateFlow<String>("")
+        var showConfirmMessageOnOverwrite:Boolean = true
     }
 
     val viewModel: SaveOptionViewModel by lazy { getViewModel<SaveOptionViewModel>() }
@@ -76,6 +80,19 @@ class SaveOptionDialog : UtDialogEx() {
             .radioGroupBinding(controls.radioGroupOptions, viewModel.targetType, TargetType.IDResolver)
             .dialogRightButtonEnable(combine(viewModel.targetType, viewModel.targetName) { type, name-> type!=TargetType.SAVE_MEDIA_FILE_AS || name.isNotBlank() })
         return controls.root
+    }
+
+    override fun onPositive() {
+        if (viewModel.targetType.value == TargetType.OVERWRITE && viewModel.showConfirmMessageOnOverwrite) {
+            viewModel.viewModelScope.launch {
+                val confirm = UtImmortalTask.awaitTaskResult(this::class.java.name) {
+                    showYesNoMessageBox("Overwrite", "Are you sure to overwrite the file?")
+                }
+                if (confirm) super.onPositive()
+            }
+        } else {
+            super.onPositive()
+        }
     }
 
     companion object {

@@ -13,14 +13,17 @@ import io.github.toyota32k.lib.media.editor.model.ISourceInfo
 import io.github.toyota32k.lib.media.editor.model.IVideoSourceInfo
 import io.github.toyota32k.logger.UtLog
 import io.github.toyota32k.media.lib.converter.ConvertResult
-import io.github.toyota32k.media.lib.converter.ICancellable
 import io.github.toyota32k.media.lib.converter.IConvertResult
 import io.github.toyota32k.media.lib.converter.IInputMediaFile
-import io.github.toyota32k.media.lib.converter.IMultiPhaseProgress
 import io.github.toyota32k.media.lib.converter.IOutputMediaFile
 import io.github.toyota32k.media.lib.converter.Rotation
-import io.github.toyota32k.media.lib.converter.TrimOptimizer
 import io.github.toyota32k.media.lib.converter.toAndroidFile
+import io.github.toyota32k.media.lib.processor.Processor
+import io.github.toyota32k.media.lib.processor.ProcessorOptions
+import io.github.toyota32k.media.lib.processor.contract.ICancellable
+import io.github.toyota32k.media.lib.processor.contract.IMultiPhaseProgress
+import io.github.toyota32k.media.lib.processor.optimizer.OptimizerOptions
+import io.github.toyota32k.media.lib.processor.optimizer.OptimizingProcessorPhase
 import io.github.toyota32k.media.lib.strategy.IAudioStrategy
 import io.github.toyota32k.media.lib.strategy.IVideoStrategy
 import io.github.toyota32k.media.lib.strategy.PresetAudioStrategies
@@ -30,7 +33,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
  * IMultiPhaseProgress を受け取る i/f
  */
 interface IProgressSink {
-    fun onProgress(progress: IMultiPhaseProgress)
+    fun onProgress(progress: IMultiPhaseProgress<OptimizingProcessorPhase>)
     fun complete()
 }
 
@@ -201,29 +204,51 @@ open class GenericSaveFileHandler(
         val inFile = source.uri.toUri().toAndroidFile(applicationContext)
         val outFile = outputFileProvider.getOutputFile("video/mp4", inFile) ?: return false
 
-        val trimOptimizer = TrimOptimizer.Builder(applicationContext)
+        val processorOptions = ProcessorOptions.Builder()
             .input(inFile)
             .output(outFile)
-            .deleteOutputOnError(true)
             .videoStrategy(videoStrategy)
             .audioStrategy(audioStrategy)
             .keepHDR(task.keepHdr)
-            .fastStart(true)
-            .removeFreeOnFastStart(true)
             .trimming {
                 addRangesMs(sourceInfo.trimmingRanges)
             }
             .rotate(Rotation.relative(sourceInfo.rotation))
             .crop(sourceInfo.cropRect)
             .brightness(sourceInfo.brightness)
-            .setProgressHandler { progress->
-                task.progressSink?.onProgress(progress)
-            }
             .build()
-
-        task.onStart(trimOptimizer)
+        val optimizerOptions = OptimizerOptions(applicationContext) { progress->
+            task.progressSink?.onProgress(progress)
+        }
+        val processor = Processor.DEFAULT
+        task.onStart(processor)
         listener.onSaveTaskStarted(sourceInfo)
-        val result = trimOptimizer.execute()
+        val result = processor.execute(processorOptions, optimizerOptions)
+
+
+//        val trimOptimizer = TrimOptimizer.Builder(applicationContext)
+//            .input(inFile)
+//            .output(outFile)
+//            .deleteOutputOnError(true)
+//            .videoStrategy(videoStrategy)
+//            .audioStrategy(audioStrategy)
+//            .keepHDR(task.keepHdr)
+//            .fastStart(true)
+//            .removeFreeOnFastStart(true)
+//            .trimming {
+//                addRangesMs(sourceInfo.trimmingRanges)
+//            }
+//            .rotate(Rotation.relative(sourceInfo.rotation))
+//            .crop(sourceInfo.cropRect)
+//            .brightness(sourceInfo.brightness)
+//            .setProgressHandler { progress->
+//                task.progressSink?.onProgress(progress)
+//            }
+//            .build()
+//        task.onStart(trimOptimizer)
+//        listener.onSaveTaskStarted(sourceInfo)
+//        val result = trimOptimizer.execute()
+
         outputFileProvider.finalize(result.succeeded, inFile, outFile)
         listener.onSaveTaskCompleted(SaveVideoResult.fromResult(sourceInfo,result))
         task.onEnd()

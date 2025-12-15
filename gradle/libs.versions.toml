@@ -1,5 +1,5 @@
 [versions]
-agp = "8.13.1"
+agp = "8.13.2"
 kotlin = "2.2.21"
 # room compiler で使用。
 # ksp のバージョンは、kotlin_version と同じ世代のものを指定する必要がある。
@@ -15,7 +15,7 @@ material = "1.13.0"
 activity = "1.12.1"
 constraintlayout = "2.2.1"
 media3ExoplayerVersion = "1.8.0"
-androidMediaProcessor = "3.0.0"
+androidMediaProcessor = "LOCAL"
 androidMediaPlayer = "4.0.0"
 androidDialog = "6.3.1"
 androidBinding = "1.10.1"

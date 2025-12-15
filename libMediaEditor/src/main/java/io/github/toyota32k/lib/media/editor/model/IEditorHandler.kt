@@ -16,7 +16,7 @@ import io.github.toyota32k.media.lib.converter.AndroidFile
 import io.github.toyota32k.media.lib.converter.IMultiSplitResult
 import io.github.toyota32k.media.lib.converter.IOutputFileSelector
 import io.github.toyota32k.media.lib.converter.IOutputMediaFile
-import io.github.toyota32k.media.lib.converter.RangeMs
+import io.github.toyota32k.media.lib.utils.RangeMs
 import io.github.toyota32k.utils.IDisposable
 import kotlinx.coroutines.flow.Flow
 
@@ -249,7 +249,7 @@ interface ISourceInfo {
  * 動画用メディアソース情報 i/f
  */
 interface IVideoSourceInfo : ISourceInfo {
-    val trimmingRanges:List<RangeMs>
+    val trimmingRanges: List<RangeMs>
     val rotation:Int /*in degree*/
     val cropRect:Rect?
     val brightness:Float?

@@ -10,16 +10,18 @@ import io.github.toyota32k.lib.media.editor.model.AmeGlobal
 import io.github.toyota32k.lib.media.editor.model.ISourceInfo
 import io.github.toyota32k.lib.media.editor.model.ISplitHandler
 import io.github.toyota32k.lib.media.editor.model.IVideoSourceInfo
-import io.github.toyota32k.media.lib.converter.ICancellable
 import io.github.toyota32k.media.lib.converter.IMultiSplitResult
 import io.github.toyota32k.media.lib.converter.IOutputFileSelector
-import io.github.toyota32k.media.lib.converter.RangeMs
 import io.github.toyota32k.media.lib.converter.Rotation
 import io.github.toyota32k.media.lib.converter.Splitter
-import io.github.toyota32k.media.lib.converter.TrimOptimizer
 import io.github.toyota32k.media.lib.converter.toAndroidFile
+import io.github.toyota32k.media.lib.processor.Processor
+import io.github.toyota32k.media.lib.processor.ProcessorOptions
+import io.github.toyota32k.media.lib.processor.contract.ICancellable
+import io.github.toyota32k.media.lib.processor.optimizer.OptimizerOptions
 import io.github.toyota32k.media.lib.strategy.PresetAudioStrategies
 import io.github.toyota32k.media.lib.strategy.PresetVideoStrategies
+import io.github.toyota32k.media.lib.utils.RangeMs
 import kotlinx.coroutines.flow.MutableStateFlow
 
 
@@ -80,41 +82,69 @@ class GenericSplitHandler(
         if (!fileSelector.initialize(ranges)) {
             return Splitter.MultiResult().cancel()
         }
-        val builder = TrimOptimizer.Builder(applicationContext)
+        val processor = Processor.DEFAULT
+        val processorOptionsBuilder = ProcessorOptions.Builder()
             .videoStrategy(PresetVideoStrategies.InvalidStrategy)
             .audioStrategy(PresetAudioStrategies.AACDefault)
             .input(inFile)
-            .deleteOutputOnError(true)
             .keepHDR(true)
             .keepVideoProfile(true)
-            .fastStart(optimize)
-            .removeFreeOnFastStart(optimize)
             .trimming {
                 addRangesMs(sourceInfo.trimmingRanges)
             }
             .rotate(Rotation.relative(sourceInfo.rotation))
             .crop(sourceInfo.cropRect)
             .brightness(sourceInfo.brightness)
-            .setProgressHandler { progress->
-                task.progressSink?.onProgress(progress)
-            }
-
+        val optimizerOptions = OptimizerOptions(applicationContext) { progress->
+            task.progressSink?.onProgress(progress)
+        }
         val cancellerWrapper = CancellerWrapper()
         val multiResult = Splitter.MultiResult()
         task.onStart(cancellerWrapper)
         listener.onSaveTaskStarted(sourceInfo)
+
+//        val result = processor.execute(processorOptions, optimizerOptions)
+
+//        val builder = TrimOptimizer.Builder(applicationContext)
+//            .videoStrategy(PresetVideoStrategies.InvalidStrategy)
+//            .audioStrategy(PresetAudioStrategies.AACDefault)
+//            .input(inFile)
+//            .deleteOutputOnError(true)
+//            .keepHDR(true)
+//            .keepVideoProfile(true)
+//            .fastStart(optimize)
+//            .removeFreeOnFastStart(optimize)
+//            .trimming {
+//                addRangesMs(sourceInfo.trimmingRanges)
+//            }
+//            .rotate(Rotation.relative(sourceInfo.rotation))
+//            .crop(sourceInfo.cropRect)
+//            .brightness(sourceInfo.brightness)
+//            .setProgressHandler { progress->
+//                task.progressSink?.onProgress(progress)
+//            }
+
+//        val cancellerWrapper = CancellerWrapper()
+//        val multiResult = Splitter.MultiResult()
+//        task.onStart(cancellerWrapper)
+//        listener.onSaveTaskStarted(sourceInfo)
         for (range in ranges) {
             val outFile = fileSelector.selectOutputFile(ranges.indexOf(range), range.startMs) ?: return multiResult.add(Splitter.Result.cancelled)
             if (inFile == outFile) throw IllegalStateException("cannot overwrite input file on splitting file.")
-            val trimOptimizer = builder
+//            val trimOptimizer = builder
+//                .output(outFile)
+//                .trimming {
+//                    startFromMs(range.startMs)
+//                    endAtMs(range.endMs)
+//                }
+//                .build()
+            val processorOptions = processorOptionsBuilder
                 .output(outFile)
-                .trimming {
-                    startFromMs(range.startMs)
-                    endAtMs(range.endMs)
-                }
+                .clipStartMs(range.startMs)
+                .clipEndMs(range.endMs)
                 .build()
-            cancellerWrapper.setCanceller(trimOptimizer)
-            val result = trimOptimizer.execute()
+            cancellerWrapper.setCanceller(processor)
+            val result = processor.execute(processorOptions, optimizerOptions)
             multiResult.add(result)
         }
         listener.onSaveTaskCompleted(multiResult)
@@ -133,21 +163,34 @@ class GenericSplitHandler(
         val ranges = sourceInfo.trimmingRanges
 
         fileSelector.initialize(ranges)
-        val builder = TrimOptimizer.Builder(applicationContext)
+        val processor = Processor.DEFAULT
+        val processorOptionsBuilder = ProcessorOptions.Builder()
             .videoStrategy(PresetVideoStrategies.InvalidStrategy)
             .audioStrategy(PresetAudioStrategies.AACDefault)
             .input(inFile)
-            .deleteOutputOnError(true)
             .keepHDR(true)
             .keepVideoProfile(true)
-            .fastStart(optimize)
-            .removeFreeOnFastStart(optimize)
             .rotate(Rotation.relative(sourceInfo.rotation))
             .crop(sourceInfo.cropRect)
             .brightness(sourceInfo.brightness)
-            .setProgressHandler { progress->
+        val optimizerOptions = OptimizerOptions(applicationContext) { progress->
                 task.progressSink?.onProgress(progress)
-            }
+        }
+//        val builder = TrimOptimizer.Builder(applicationContext)
+//            .videoStrategy(PresetVideoStrategies.InvalidStrategy)
+//            .audioStrategy(PresetAudioStrategies.AACDefault)
+//            .input(inFile)
+//            .deleteOutputOnError(true)
+//            .keepHDR(true)
+//            .keepVideoProfile(true)
+//            .fastStart(optimize)
+//            .removeFreeOnFastStart(optimize)
+//            .rotate(Rotation.relative(sourceInfo.rotation))
+//            .crop(sourceInfo.cropRect)
+//            .brightness(sourceInfo.brightness)
+//            .setProgressHandler { progress->
+//                task.progressSink?.onProgress(progress)
+//            }
 
         val cancellerWrapper = CancellerWrapper()
         val multiResult = Splitter.MultiResult()
@@ -156,15 +199,15 @@ class GenericSplitHandler(
         for (range in ranges) {
             val outFile = fileSelector.selectOutputFile(ranges.indexOf(range), range.startMs) ?: return multiResult.add(Splitter.Result.cancelled)
             if (inFile == outFile) throw IllegalStateException("cannot overwrite input file on splitting file.")
-            val trimOptimizer = builder
+            val processorOptions = processorOptionsBuilder
                 .output(outFile)
                 .trimming {
                     reset()
                     addRangeMs(range)
                 }
                 .build()
-            cancellerWrapper.setCanceller(trimOptimizer)
-            val result = trimOptimizer.execute()
+            cancellerWrapper.setCanceller(processor)
+            val result = processor.execute(processorOptions, optimizerOptions)
             multiResult.add(result)
         }
         fileSelector.terminate()

@@ -15,9 +15,10 @@ import io.github.toyota32k.dialog.task.createViewModel
 import io.github.toyota32k.dialog.task.getViewModel
 import io.github.toyota32k.lib.media.editor.databinding.DialogProgressBinding
 import io.github.toyota32k.lib.media.editor.handler.save.IProgressSink
-import io.github.toyota32k.media.lib.converter.ICancellable
-import io.github.toyota32k.media.lib.converter.IMultiPhaseProgress
-import io.github.toyota32k.media.lib.converter.format
+import io.github.toyota32k.media.lib.processor.contract.ICancellable
+import io.github.toyota32k.media.lib.processor.contract.IMultiPhaseProgress
+import io.github.toyota32k.media.lib.processor.contract.format
+import io.github.toyota32k.media.lib.processor.optimizer.OptimizingProcessorPhase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.filterNotNull
@@ -40,7 +41,7 @@ class ProgressDialog : UtDialogEx() {
             }
         }
 
-        override fun onProgress(progress: IMultiPhaseProgress) {
+        override fun onProgress(progress: IMultiPhaseProgress<OptimizingProcessorPhase>) {
             viewModel.message.update(progress.phase.description)
             viewModel.progress.update(progress.percentage)
             viewModel.progressText.update(progress.format())
