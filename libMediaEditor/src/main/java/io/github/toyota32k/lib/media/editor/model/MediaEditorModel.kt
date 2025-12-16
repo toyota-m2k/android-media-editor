@@ -10,11 +10,12 @@ import io.github.toyota32k.lib.media.editor.handler.ExportFileProvider
 import io.github.toyota32k.lib.media.editor.handler.save.GenericSaveFileHandler
 import io.github.toyota32k.lib.media.editor.handler.split.ExportToDirectoryFileSelector
 import io.github.toyota32k.lib.media.editor.handler.split.GenericSplitHandler
+import io.github.toyota32k.lib.player.model.IChapter
 import io.github.toyota32k.lib.player.model.IMediaSource
 import io.github.toyota32k.lib.player.model.IPlayerModel
 import io.github.toyota32k.lib.player.model.PlayerControllerModel
-import io.github.toyota32k.media.lib.legacy.converter.IOutputFileSelector
 import io.github.toyota32k.media.lib.types.RangeMs
+import io.github.toyota32k.media.lib.types.RangeUs
 import io.github.toyota32k.utils.IUtPropOwner
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -85,6 +86,7 @@ open class MediaEditorModel(
     class VideoSourceInfoImpl(
         override val source: IMediaSource,
         override val trimmingRanges: List<RangeMs>,
+        override val chapters: List<IChapter>,
         override val rotation: Int,
         override val cropRect: Rect?,
         override val brightness: Float?,
@@ -100,7 +102,7 @@ open class MediaEditorModel(
                 val cropRect = if (model.cropHandler.maskViewModel.isCropped.value) model.cropHandler.maskViewModel.cropRect(size.width, size.height).asRect else null
                 val positionMs = model.playerModel.currentPosition
                 val durationMs = model.playerModel.naturalDuration.value
-                return VideoSourceInfoImpl(source, ranges, rotation, cropRect, null/*for future*/, positionMs, durationMs)
+                return VideoSourceInfoImpl(source, ranges, model.chapterEditorHandler.getChapterList().chapters, rotation, cropRect, null/*for future*/, positionMs, durationMs)
             }
             fun fromModel(model: MediaEditorModel, mode:SaveMode): VideoSourceInfoImpl? {
                 if (model.playerModel.isCurrentSourcePhoto.value) return null
@@ -133,7 +135,32 @@ open class MediaEditorModel(
                 if (ranges.isEmpty() && mode!= SaveMode.ALL) return null
                 val rotation = model.playerModel.rotation.value
                 val cropRect = if (model.cropHandler.maskViewModel.isCropped.value) model.cropHandler.maskViewModel.cropRect(size.width, size.height).asRect else null
-                return VideoSourceInfoImpl(source, ranges, rotation, cropRect, null/*for future*/, positionMs, durationMs)
+                return VideoSourceInfoImpl(source, ranges, model.chapterEditorHandler.getChapterList().chapters, rotation, cropRect, null/*for future*/, positionMs, durationMs)
+            }
+
+            /**
+             * （有効な）ChapterをRangeUsのリストとして取得
+             */
+            fun List<IChapter>.toRangeMsList(durationMs:Long=Long.MAX_VALUE):List<RangeMs> {
+                var prev = -1L
+                return mutableListOf<RangeMs>().also { list ->
+                    this.forEach { chapter ->
+                        if (prev >= 0L && chapter.position-prev>1000) { // 1秒以下の区間は無視する（有効区間が続くなら、後ろの区間にマージする）
+                            list.add(RangeMs(prev, chapter.position))
+                            prev = -1L
+                        }
+                        if (chapter.skip) {
+                            prev = -1L
+                        } else {
+                            if (prev==-1L) {
+                                prev = chapter.position
+                            }
+                        }
+                    }
+                    if (prev >= 0 && durationMs-prev>1000) {
+                        list.add(RangeMs(prev, durationMs))
+                    }
+                }
             }
         }
     }

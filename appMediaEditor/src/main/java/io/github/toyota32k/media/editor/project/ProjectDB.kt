@@ -8,9 +8,14 @@ import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
 import androidx.room.Room
 import io.github.toyota32k.logger.UtLog
+import io.github.toyota32k.media.editor.MainActivity.MediaSource.Companion.getType
+import io.github.toyota32k.media.lib.io.AndroidFile
+import io.github.toyota32k.media.lib.io.toAndroidFile
 import io.github.toyota32k.utils.UtLazyResetableValue
 import java.io.File
+import java.text.SimpleDateFormat
 import java.util.Date
+import java.util.Locale
 
 class ProjectDB(val application: Application, val dbFileName:String="AME.db") : AutoCloseable {
     val logger = UtLog(dbFileName)
@@ -33,6 +38,13 @@ class ProjectDB(val application: Application, val dbFileName:String="AME.db") : 
         }
     }
 
+    fun safeGetDocumentId(uri: Uri):String {
+        return try {
+            DocumentsContract.getDocumentId(uri)
+        } catch (e: Throwable) {
+            uri.toString()
+        }
+    }
 
 //    fun register(project:Project) {
 //        db.projectTable().insert(project)
@@ -43,7 +55,7 @@ class ProjectDB(val application: Application, val dbFileName:String="AME.db") : 
         return db.projectTable().get(documentId) != null
     }
     fun isRegistered(uri: Uri): Boolean {
-        return isRegistered(DocumentsContract.getDocumentId(uri))
+        return isRegistered(safeGetDocumentId(uri))
     }
 
     fun normalizeUriForComparison(uri: Uri): Uri {
@@ -68,9 +80,11 @@ class ProjectDB(val application: Application, val dbFileName:String="AME.db") : 
         try {
             application.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
         } catch (e: SecurityException) {
+            logger.warn("cannot take read/write permission for $uri")
             try {
                 application.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
             } catch (e: SecurityException) {
+                logger.error("cannot take read permission for $uri")
                 return false
             }
         }
@@ -97,17 +111,38 @@ class ProjectDB(val application: Application, val dbFileName:String="AME.db") : 
         uri: String,
         type: String,
         serializedChapters: String?,
-        serializedCropParams: String?):Project? {
-        val uriObj = uri.toUri()
-        val documentId = DocumentsContract.getDocumentId(uriObj) ?: return null
+        serializedCropParams: String?,
+        resolution: Int,
+        ):Project? {
+        var uriObj = uri.toUri()
+        var saveUri = uri
+        var documentId = safeGetDocumentId(uriObj)
         val now = Date().time
-        val timestamp = timestamp(uriObj)?:Date().time
+        var timestamp = timestamp(uriObj)?:now
         val oldProject = db.projectTable().get(documentId)
         logger.debug("saving")
         return if (oldProject == null) {
-            persistPermission(uriObj)
+            var copied = false
+            if (!persistPermission(uriObj)) {
+                logger.info("no permission is persisted for the document: $documentId")
+                val src = uriObj.toAndroidFile(application)
+                val type = src.getType()
+                if (type==null) {
+                    logger.info("cannot register the document: file of unknown type")
+                    return null
+                }
+                val dst = File(application.filesDir, "${SimpleDateFormat("yyyy.MM.dd-HH:mm:ss", Locale.US).format(Date())}.${type}").toAndroidFile()
+                dst.copyFrom(src)
+                copied = true
+                saveUri = dst.safeUri.toString()
+                documentId = saveUri
+                uriObj = saveUri.toUri()
+                if (timestamp==0L) {
+                    timestamp = timestamp(uriObj) ?: now
+                }
+            }
             logger.debug("permission persisted for new document: $documentId")
-            Project(0, name, documentId, type.lowercase(), uri, serializedChapters, serializedCropParams, timestamp, now)
+            Project(0, name, documentId, type.lowercase(), saveUri, copied, serializedChapters, serializedCropParams, resolution,timestamp, now)
                 .also {
                     db.projectTable().insert(it)
                     logger.debug("inserted: $documentId ${it.uri}")
@@ -115,7 +150,7 @@ class ProjectDB(val application: Application, val dbFileName:String="AME.db") : 
             // id を含む登録済みProjectインスタンスを返す
             getProject(uriObj)
         } else {
-            oldProject.modified(name, uri, serializedChapters, serializedCropParams)
+            oldProject.modified(name, saveUri, serializedChapters, serializedCropParams, resolution)
                 ?.also {
                     db.projectTable().update(it)
                     logger.debug("updated: $documentId ${it.uri}")
@@ -127,12 +162,21 @@ class ProjectDB(val application: Application, val dbFileName:String="AME.db") : 
     }
 
     fun unregisterProject(project:Project) {
-        application.contentResolver.releasePersistableUriPermission(project.uri.toUri(), Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+        if (project.copied) {
+            logger.assertStrongly(project.uri.startsWith("file:"))
+            runCatching { File(project.uri.toUri().path!!).delete() }
+        } else {
+            try {
+                application.contentResolver.releasePersistableUriPermission(project.uri.toUri(), Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+            } catch(e:Throwable) {
+                logger.error(e)
+            }
+        }
         db.projectTable().delete(project)
     }
 
     fun getProject(uri:Uri) : Project? {
-        val documentId = DocumentsContract.getDocumentId(uri) ?: return null
+        val documentId = safeGetDocumentId(uri) ?: return null
         return db.projectTable().get(documentId)
     }
     fun getProject(id:Int) : Project? {
@@ -146,8 +190,8 @@ class ProjectDB(val application: Application, val dbFileName:String="AME.db") : 
     fun checkPoint() {
         db.openHelper.writableDatabase.execSQL("PRAGMA wal_checkpoint(full);");
     }
-    companion object {
-        val Uri.documentId:String? get() = DocumentsContract.getDocumentId(this)
-    }
+//    companion object {
+//        val Uri.documentId:String? get() = DocumentsContract.getDocumentId(this)
+//    }
 }
 

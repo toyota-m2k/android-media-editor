@@ -2,6 +2,7 @@ package io.github.toyota32k.media.editor
 
 import android.Manifest
 import android.app.Application
+import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
@@ -109,8 +110,8 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
                     else-> return null
                 }
             }
-            fun fromFile(file:AndroidFile):MediaSource? {
-                val type = file.getType() ?: return null
+            fun fromFile(file:AndroidFile, type:String):MediaSource? {
+//                val type = file.getType() ?: return null
                 return MediaSource(file, type)
             }
         }
@@ -162,13 +163,11 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
 
         val commandOpenFile = LiteUnitCommand {
             UtImmortalTask.launchTask("commandOpenFile") {
-                UtImmortalTask.launchTask {
-                    val file = withActivity<MainActivity,Uri?> { activity->
-                        activity.activityBrokers.openFilePicker.selectFile(arrayOf("video/*", "image/*"))
-                    }
-                    if (file != null) {
-                        setNewTargetMediaFile(file)
-                    }
+                val file = withActivity<MainActivity,Uri?> { activity->
+                    activity.activityBrokers.openFilePicker.selectFile(arrayOf("video/*", "image/*"))
+                }
+                if (file != null) {
+                    setNewTargetMediaFile(file)
                 }
             }
         }
@@ -180,6 +179,9 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
                 val project = result.selectedProject
                 if (result.removeCurrentProject) {
                     closeCurrentProject()
+                    if (project==null) {
+                        return@launchTask
+                    }
                 }
 
                 if (project!=null) {
@@ -240,22 +242,38 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
             }
         }.stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.Eagerly, ViewState.FULL)
 
-        suspend fun setNewTargetMediaFile(fileUri:Uri) {
+        fun showErrorMessage(message:String) {
+            UtImmortalTask.launchTask("error.message") {
+                showConfirmMessageBox("Error", message)
+            }
+        }
+        fun <T> handleError(message:String, ret:T):T {
+            UtImmortalTask.launchTask("error.message") {
+                showConfirmMessageBox("Error", message)
+            }
+            return ret
+        }
+
+        suspend fun setNewTargetMediaFile(fileUri:Uri):Boolean {
             val project = withContext(Dispatchers.IO) { projectDb.getProject(fileUri) }
-            if (project!=null) {
+            return if (project!=null) {
                 // reopen
-                setTargetMediaFile(project)
+                setTargetMediaFile(project) ?: showErrorMessage("Cannot open media file.")
+                true
             } else {
                 // new file
                 val file = fileUri.toAndroidFile(application)
-                val name = FileUtil.getBaseName(file).takeIf { !it.isNullOrBlank() } ?: file.getFileName() ?: "noname"
-                val projectName = NameDialog.show(name, "New Project", "Project Name") ?: return
-                val project = withContext(Dispatchers.IO) { projectDb.registerProject(
-                    projectName,
-                    fileUri.toString(),
-                    file.getType() ?: "mp4",
-                    null, null) } ?: return
-                setTargetMediaFile(project)
+                val name = FileUtil.getBaseName(file).takeIf { !it.isNullOrBlank() } ?: "noname"
+                val projectName = NameDialog.show(name, "New Project", "Project Name") ?: return false
+                val project = withContext(Dispatchers.IO) {
+                    projectDb.registerProject(
+                        projectName,
+                        fileUri.toString(),
+                        file.getType() ?: "mp4",
+                        null, null, 0)
+                } ?: return handleError("Cannot register uri.",false)
+                setTargetMediaFile(project) ?: showErrorMessage("Cannot create project.")
+                true
             }
         }
 
@@ -265,7 +283,7 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
             val fileUri = project.uri.toUri()
             val orgSource = targetMediaSource.value
             if (orgSource?.file?.uri == fileUri) return orgSource
-            val source = MediaSource.fromFile(fileUri.toAndroidFile(getApplication()))?.apply {
+            val source = MediaSource.fromFile(fileUri.toAndroidFile(getApplication()), project.type)?.apply {
                 if (!isPhoto) {
                     chapterList.deserialize(project.serializedChapters)
                 }
@@ -293,7 +311,8 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
                         source.uri,
                         source.type,
                         source.chapterList.serialize(),
-                        editorModel.cropHandler.maskViewModel.getParams().serialize()
+                        editorModel.cropHandler.maskViewModel.getParams().serialize(),
+                                editorModel.cropHandler.resolutionInt
                     )
                 }
             }
@@ -492,8 +511,32 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
             activityBrokers.multiPermissionBroker.Request()
                 .addIf(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q, Manifest.permission.WRITE_EXTERNAL_STORAGE)
                 .execute()
-            viewModel.restoreFromLocalData()
+            if (!acceptIncomingData()) {
+                viewModel.restoreFromLocalData()
+            }
         }
+    }
+
+    private suspend fun acceptIncomingData():Boolean {
+        if (intent?.action == Intent.ACTION_SEND) {
+            // 外部アプリから「送る」られた
+            if (intent.type?.startsWith("image/") == false && intent.type?.startsWith("video/") == false) return false
+            val uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                intent.getParcelableExtra(Intent.EXTRA_STREAM, android.net.Uri::class.java) ?: return false
+            } else {
+                @Suppress("DEPRECATION")
+                intent.getParcelableExtra<android.net.Uri>(Intent.EXTRA_STREAM)
+            } ?: return false
+
+            try {
+                // URIから画像を読み込む
+                return viewModel.setNewTargetMediaFile(uri)
+            } catch (e: Throwable) {
+                logger.error(e)
+                return false
+            }
+        }
+        return false
     }
 
     private fun updateButtonPanel(): MainViewModel.ViewState {

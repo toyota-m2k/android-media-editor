@@ -12,6 +12,8 @@ import io.github.toyota32k.media.lib.io.IInputMediaFile
 import io.github.toyota32k.media.lib.io.toAndroidFile
 import io.github.toyota32k.media.lib.legacy.converter.Converter
 import io.github.toyota32k.media.lib.legacy.converter.Splitter
+import io.github.toyota32k.media.lib.processor.Processor
+import io.github.toyota32k.media.lib.processor.ProcessorOptions
 import io.github.toyota32k.media.lib.processor.contract.format
 import io.github.toyota32k.media.lib.report.Report
 import io.github.toyota32k.media.lib.strategy.IVideoStrategy
@@ -59,8 +61,9 @@ class ConvertHelper(
             val vm = createViewModel<ProgressDialog.ProgressViewModel>()
             vm.message.value = "Trimming Now..."
             val trimFile = File(applicationContext.cacheDir ?: throw IllegalStateException("no cacheDir"), trimFileName)
-            val converter = Converter
-                .builder
+
+            val processor = Processor()
+            val processorOptions = ProcessorOptions.Builder()
                 .input(inputFile)
                 .output(trimFile)
                 .audioStrategy(PresetAudioStrategies.AACDefault)
@@ -72,17 +75,18 @@ class ConvertHelper(
                     addRangesMs(ranges ?: trimmingRanges)
                 }
                 .limitDuration(limitDuration)
-                .setProgressHandler {
+                .onProgress {
                     vm.progress.value = it.percentage
                     vm.progressText.value = it.format()
                 }
                 .build()
-            vm.cancelCommand.bindForever { converter.cancel() }
+
+            vm.cancelCommand.bindForever { processor.cancel() }
             launchSubTask { showDialog("ConvertHelper.ProgressDialog") { ProgressDialog() } }
 
             withContext(Dispatchers.IO) {
                 try {
-                    val r = converter.execute().apply { result = this }
+                    val r = processor.execute(processorOptions).apply { result = this }
                     if (!r.succeeded) {
                         if (r.cancelled) {
                             throw CancellationException("conversion cancelled")

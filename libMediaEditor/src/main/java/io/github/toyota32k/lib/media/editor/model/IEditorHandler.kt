@@ -7,6 +7,7 @@ import androidx.lifecycle.LifecycleOwner
 import com.google.android.material.slider.Slider
 import io.github.toyota32k.binder.Binder
 import io.github.toyota32k.binder.command.IUnitCommand
+import io.github.toyota32k.lib.player.model.IChapter
 import io.github.toyota32k.lib.player.model.IChapterList
 import io.github.toyota32k.lib.player.model.IMediaSource
 import io.github.toyota32k.lib.player.model.IMediaSourceWithChapter
@@ -14,8 +15,8 @@ import io.github.toyota32k.lib.player.model.IMutableChapterList
 import io.github.toyota32k.lib.player.model.Range
 import io.github.toyota32k.media.lib.io.AndroidFile
 import io.github.toyota32k.media.lib.io.IOutputMediaFile
-import io.github.toyota32k.media.lib.legacy.converter.IMultiSplitResult
-import io.github.toyota32k.media.lib.legacy.converter.IOutputFileSelector
+import io.github.toyota32k.media.lib.types.IConvertResult
+import io.github.toyota32k.media.lib.types.IResultBase
 import io.github.toyota32k.media.lib.types.RangeMs
 import io.github.toyota32k.utils.IDisposable
 import kotlinx.coroutines.flow.Flow
@@ -42,6 +43,8 @@ interface ICropHandler : IDisposable {
 
     val maskViewModel: CropMaskViewModel
     var cropImageModel: CropImageModel
+
+    var resolutionInt: Int
 
     // endregion
 
@@ -199,6 +202,20 @@ interface IChapterEditorHandler {
 }
 
 /**
+ * 複数範囲一括分割の結果 i/f
+ */
+interface IMultiSplitResult : IResultBase {
+    val results: List<IConvertResult>
+}
+
+interface IOutputFileSelector {
+    suspend fun initialize(trimmedRangeMsList:List<RangeMs>):Boolean
+    suspend fun selectOutputFile(index:Int, positionMs:Long): IOutputMediaFile?
+    suspend fun terminate()
+}
+
+
+/**
  * 動画分割用ハンドラーi/f
  */
 interface ISplitHandler {
@@ -250,14 +267,12 @@ interface ISourceInfo {
  */
 interface IVideoSourceInfo : ISourceInfo {
     val trimmingRanges: List<RangeMs>
+    val chapters: List<IChapter>
     val rotation:Int /*in degree*/
     val cropRect:Rect?
     val brightness:Float?
     val positionMs: Long
     val durationMs: Long
-
-    @Suppress("unused")
-    val needsReEncoding get() = cropRect != null && brightness != null
 }
 
 /**
