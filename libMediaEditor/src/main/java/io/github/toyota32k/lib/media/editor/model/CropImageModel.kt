@@ -21,7 +21,7 @@ class CropImageModel(val maskViewModel: CropMaskViewModel): IDisposable {
     }
 
     fun crop(): Bitmap? {
-        val bitmap = bitmapScaler.bitmap.value ?: return null
+        val bitmap = bitmapScaler.bitmap.value ?: bitmapScaler.sourceBitmap ?: return null
         return bitmapStore.detach(maskViewModel.cropBitmap(bitmap))
     }
 

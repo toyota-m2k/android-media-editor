@@ -47,7 +47,8 @@ class RealTimeBitmapScaler(val bitmapStore: BitmapStore): IUtPropOwner {
     val isDirty:Boolean get() = longSideLength.value != orgLongSideLength.value
     var tryAgain = false
 
-    private var sourceBitmap:Bitmap? = null
+    var sourceBitmap:Bitmap? = null
+        private set
 
     private var enabled:Boolean = false
 
