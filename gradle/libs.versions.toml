@@ -1,10 +1,10 @@
 [versions]
 agp = "8.13.2"
-kotlin = "2.2.21"
+kotlin = "2.3.0"
 # room compiler で使用。
 # ksp のバージョンは、kotlin_version と同じ世代のものを指定する必要がある。
 # https://github.com/google/ksp/releases で確認する。
-ksp = "2.2.21-2.0.4"
+ksp = "2.3.4"
 
 coreKtx = "1.17.0"
 junit = "4.13.2"
