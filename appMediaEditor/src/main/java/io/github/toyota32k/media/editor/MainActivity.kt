@@ -118,11 +118,33 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
     }
 
     class MainViewModel(application: Application): AndroidViewModel(application) {
+        /**
+         * OpenInで渡されたUriを保持するクラス
+         * デバイスを回転するたびにインポート処理が
+         */
+        class OpenInInfo {
+            var uri:Uri? = null
+                private set
+            var result:Boolean = false
+                private set
+            fun reset() {
+                uri = null
+                result = false
+            }
+            fun set(uri:Uri, result:Boolean) {
+                this.uri = uri
+                this.result = result
+            }
+            fun isHandled(uri:Uri):Boolean {
+                return uri == this.uri
+            }
+        }
         val logger = UtLog("VM")
         val localData = LocalData(application)
         val projectDb = ProjectDB(application)
         val targetMediaSource = MutableStateFlow<MediaSource?>(null)
         val isEditing = targetMediaSource.map { it!=null }
+        var openInInfo = OpenInInfo()
         val requestShowPanel = MutableStateFlow(true)
         val projectName = MutableStateFlow<String>("")
         val editorModel = MediaEditorModel.Builder(application, viewModelScope) {
@@ -520,22 +542,37 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
     private suspend fun acceptIncomingData():Boolean {
         if (intent?.action == Intent.ACTION_SEND) {
             // 外部アプリから「送る」られた
-            if (intent.type?.startsWith("image/") == false && intent.type?.startsWith("video/") == false) return false
-            val uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                intent.getParcelableExtra(Intent.EXTRA_STREAM, android.net.Uri::class.java) ?: return false
-            } else {
-                @Suppress("DEPRECATION")
-                intent.getParcelableExtra<android.net.Uri>(Intent.EXTRA_STREAM)
-            } ?: return false
+            // intentからUriを取り出す。
+            val uri = if (intent.type?.startsWith("image/") == true || intent.type?.startsWith("video/") == true) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    intent.getParcelableExtra(Intent.EXTRA_STREAM, android.net.Uri::class.java)
+                } else {
+                    @Suppress("DEPRECATION")
+                    intent.getParcelableExtra<android.net.Uri>(Intent.EXTRA_STREAM)
+                }
+            } else null
 
+            if (uri==null) {
+                // 処理対象のUriではなかった
+                viewModel.openInInfo.reset()
+                return false
+            }
+
+            if (viewModel.openInInfo.isHandled(uri)) {
+                // すでに処理済みのUri
+                return viewModel.openInInfo.result
+            }
             try {
-                // URIから画像を読み込む
-                return viewModel.setNewTargetMediaFile(uri)
+                // URIから動画・画像をプロジェクトとして読み込む
+                viewModel.setNewTargetMediaFile(uri).apply {
+                    viewModel.openInInfo.set(uri, this)
+                }
             } catch (e: Throwable) {
                 logger.error(e)
                 return false
             }
         }
+        viewModel.openInInfo.reset()
         return false
     }
 
