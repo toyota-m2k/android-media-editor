@@ -66,6 +66,7 @@ import io.github.toyota32k.media.lib.io.toAndroidFile
 import io.github.toyota32k.utils.TimeSpan
 import io.github.toyota32k.utils.android.CompatBackKeyDispatcher
 import io.github.toyota32k.utils.android.PackageUtil
+import io.github.toyota32k.utils.android.dp
 import io.github.toyota32k.utils.android.setLayoutWidth
 import io.github.toyota32k.utils.gesture.Direction
 import io.github.toyota32k.utils.gesture.UtScaleGestureManager
@@ -372,6 +373,7 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
 
     private val viewModel by viewModels<MainViewModel>()
     private lateinit var gestureManager: UtScaleGestureManager
+    val halfPanelWidth:Int by lazy { 300.dp.px(this) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -379,7 +381,8 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
 
         enableEdgeToEdge()
         controls = ActivityMainBinding.inflate(layoutInflater)
-        controls.appName.text = "${getString(R.string.app_name)} - v${PackageUtil.getVersion(this)?:"?"}${if(BuildConfig.DEBUG) " (D)" else ""}"
+//        controls.appName.text = "${getString(R.string.app_name)} - v${PackageUtil.getVersion(this)?:"?"}${if(BuildConfig.DEBUG) " (D)" else ""}"
+        controls.appVersion.text = "${if (BuildConfig.DEBUG) "D" else "v"}${PackageUtil.getVersion(this)}"
         setContentView(controls.root)
 
         setupWindowInsetsListener(controls.root)
@@ -460,7 +463,7 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
                     }
 
                     MainViewModel.ViewState.HALF -> {
-                        controls.buttonPane.setLayoutWidth(ViewGroup.LayoutParams.WRAP_CONTENT)
+                        controls.buttonPane.setLayoutWidth(halfPanelWidth)
                         controls.buttonPane.animate()
                             .x(controls.root.paddingStart.toFloat())
                             .setDuration(AnimDuration)
@@ -471,7 +474,7 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
                     }
 
                     MainViewModel.ViewState.NONE -> {
-                        controls.buttonPane.setLayoutWidth(ViewGroup.LayoutParams.WRAP_CONTENT)
+                        controls.buttonPane.setLayoutWidth(halfPanelWidth)
                         controls.buttonPane.animate()
                             .x(-controls.buttonPane.width.toFloat())
                             .setDuration(AnimDuration)
@@ -585,11 +588,11 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
                     controls.buttonPane.x = controls.root.paddingStart.toFloat()
                 }
                 MainViewModel.ViewState.HALF -> {
-                    controls.buttonPane.setLayoutWidth(ViewGroup.LayoutParams.WRAP_CONTENT)
+                    controls.buttonPane.setLayoutWidth(halfPanelWidth)
                     controls.buttonPane.x = controls.root.paddingStart.toFloat()
                 }
                 MainViewModel.ViewState.NONE -> {
-                    controls.buttonPane.setLayoutWidth(ViewGroup.LayoutParams.WRAP_CONTENT)
+                    controls.buttonPane.setLayoutWidth(halfPanelWidth)
                     controls.buttonPane.x = -controls.buttonPane.width.toFloat()
                 }
 

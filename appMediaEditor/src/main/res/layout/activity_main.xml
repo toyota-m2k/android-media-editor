@@ -34,28 +34,47 @@
         android:background="?attr/colorSecondaryContainer"
         tools:visibility="visible">
 
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:background="?attr/colorPrimary"
+            android:paddingHorizontal="10dp"
+            >
+            <TextView
+                android:id="@+id/app_name"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/app_name"
+                android:layout_gravity="center"
+                android:textStyle="bold"
+                android:textSize="20dp"
+                android:textColor="?attr/colorOnPrimary"
+                android:textAlignment="center"
+                />
+
+            <TextView
+                android:id="@+id/app_version"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical|end"
+                android:text="VERSION"
+                android:textAlignment="center"
+                android:textColor="?attr/colorOnPrimaryFixedVariant"
+                android:textSize="12sp" />
+
+
+        </FrameLayout>
+
         <LinearLayout
             android:orientation="vertical"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="match_parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
+            android:paddingHorizontal="10dp"
             android:layout_gravity="center"
             android:gravity="center">
-            <TextView
-                android:id="@+id/app_name"
-                android:layout_width="200dp"
-                android:layout_height="wrap_content"
-                android:text="@string/app_name"
-                android:layout_gravity="center_horizontal"
-                android:textStyle="bold"
-                android:textSize="18dp"
-                android:background="?attr/colorTertiary"
-                android:textColor="?attr/colorOnTertiary"
-                android:padding="8dp"
-                android:textAlignment="center"
-                android:layout_marginBottom="30dp"
-                />
             <TextView
                 android:id="@+id/project_name_label"
                 android:layout_width="wrap_content"
@@ -66,7 +85,7 @@
                 />
             <EditText
                 android:id="@+id/project_name_edit"
-                android:layout_width="200dp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="20dp"
                 />
@@ -96,10 +115,14 @@
 
     <ImageButton
         android:id="@+id/menu_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:src="@android:drawable/ic_menu_sort_by_size"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        app:srcCompat="@drawable/ic_menu"
         android:contentDescription="Open Button Pane"
-        android:layout_margin="16dp"/>
+        android:layout_marginHorizontal="4dp"
+        android:layout_marginVertical="2dp"
+        android:background="@drawable/ripple_background_primary"
+        android:tint="?attr/colorOnPrimary"
+        />
 
 </FrameLayout>
