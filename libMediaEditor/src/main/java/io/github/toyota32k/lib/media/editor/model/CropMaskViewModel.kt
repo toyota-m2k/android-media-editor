@@ -1,11 +1,11 @@
 package io.github.toyota32k.lib.media.editor.model
 
-import android.graphics.Bitmap
 import android.graphics.Rect
 import android.util.Size
 import io.github.toyota32k.dialog.task.UtImmortalTaskManager
-import io.github.toyota32k.logger.UtLog
 import io.github.toyota32k.lib.media.editor.view.CropMaskView
+import io.github.toyota32k.logger.UtLog
+import io.github.toyota32k.utils.android.RefBitmap
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import org.json.JSONObject
@@ -451,7 +451,7 @@ class CropMaskViewModel {
             ((rey-rsy) * height.toFloat()).roundToInt(),
         )
     }
-    fun cropRect(bitmap:Bitmap):CropRect {
+    fun cropRect(bitmap:RefBitmap):CropRect {
         return cropRect(bitmap.width, bitmap.height)
     }
 
@@ -461,10 +461,10 @@ class CropMaskViewModel {
      * @param bitmap ソース画像
      * @return 切り出した画像 (cropWidth x cropHeight)
      */
-    fun cropBitmap(bitmap:Bitmap):Bitmap {
+    fun cropBitmap(bitmap:RefBitmap): RefBitmap {
         val crop = cropRect(bitmap)
         if (crop.sx==0 && crop.sy == 0 && crop.width == bitmap.width && crop.height == bitmap.height) return bitmap
-        return Bitmap.createBitmap(bitmap, crop.sx, crop.sy, crop.width, crop.height)
+        return bitmap.crop( crop.sx, crop.sy, crop.width, crop.height)
     }
 
     fun getParams():MaskCoreParams {

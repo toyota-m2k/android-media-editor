@@ -10,6 +10,7 @@ import android.provider.MediaStore
 import androidx.core.net.toUri
 import io.github.toyota32k.lib.media.editor.model.AmeGlobal
 import io.github.toyota32k.media.lib.io.AndroidFile
+import io.github.toyota32k.utils.android.RefBitmap
 import java.io.File
 
 /**
@@ -90,13 +91,15 @@ object AndroidMediaFile {
         }
     }
 
-    fun AndroidFile.saveBitmap(bitmap: Bitmap, format:Bitmap.CompressFormat, quality:Int) {
+    fun AndroidFile.saveBitmap(bitmap: RefBitmap, format:Bitmap.CompressFormat, quality:Int) {
         fileOutputStream { outputStream ->
-            bitmap.compress(format, quality, outputStream)
+            bitmap.use { bmp ->
+                bmp.compress(format, quality, outputStream)
+            }
             outputStream.flush()
         }
     }
-    fun AndroidFile.safeSaveBitmap(bitmap: Bitmap, format:Bitmap.CompressFormat, quality:Int):Boolean {
+    fun AndroidFile.safeSaveBitmap(bitmap: RefBitmap, format:Bitmap.CompressFormat, quality:Int):Boolean {
         return try {
             saveBitmap(bitmap, format, quality)
             true

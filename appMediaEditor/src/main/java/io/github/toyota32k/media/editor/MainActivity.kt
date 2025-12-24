@@ -3,7 +3,6 @@ package io.github.toyota32k.media.editor
 import android.Manifest
 import android.app.Application
 import android.content.Intent
-import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -66,6 +65,7 @@ import io.github.toyota32k.media.lib.io.toAndroidFile
 import io.github.toyota32k.utils.TimeSpan
 import io.github.toyota32k.utils.android.CompatBackKeyDispatcher
 import io.github.toyota32k.utils.android.PackageUtil
+import io.github.toyota32k.utils.android.RefBitmap
 import io.github.toyota32k.utils.android.dp
 import io.github.toyota32k.utils.android.setLayoutWidth
 import io.github.toyota32k.utils.gesture.Direction
@@ -168,11 +168,11 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
             .enableBuiltInMagnifySlider()
             .build()
 
-        fun snapshot(pos:Long, bmp: Bitmap) {
+        fun snapshot(pos:Long, bitmap: RefBitmap) {
             viewModelScope.launch {
                 val time = if (pos>0) TimeSpan(pos).run { if(hours>0) "$hours.$minutes.$seconds}" else "$minutes.$seconds"} else ""
                 val initialName = projectName.value.takeIf { it.lowercase().startsWith("img-") } ?: "img-${projectName.value}-$time"
-                runCatching { SnapshotDialog.showBitmap(bmp, initialName = projectName.value, autoRecycle = true, editorModel.cropHandler.maskViewModel.getParams()) }.onFailure { e-> logger.error(e) }
+                runCatching { SnapshotDialog.showBitmap(bitmap, initialName = projectName.value, autoRecycle = true, editorModel.cropHandler.maskViewModel.getParams()) }.onFailure { e-> logger.error(e) }
             }
         }
 
@@ -382,7 +382,7 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
         enableEdgeToEdge()
         controls = ActivityMainBinding.inflate(layoutInflater)
 //        controls.appName.text = "${getString(R.string.app_name)} - v${PackageUtil.getVersion(this)?:"?"}${if(BuildConfig.DEBUG) " (D)" else ""}"
-        controls.appVersion.text = "${if (BuildConfig.DEBUG) "D" else "v"}${PackageUtil.getVersion(this)}"
+        controls.appVersion.text = "${if (BuildConfig.DEBUG) "D." else "v"}${PackageUtil.getVersion(this)}"
         setContentView(controls.root)
 
         setupWindowInsetsListener(controls.root)

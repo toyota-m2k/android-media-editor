@@ -1,7 +1,6 @@
 package io.github.toyota32k.lib.media.editor.model
 
 import android.content.Context
-import android.graphics.Bitmap
 import android.graphics.Rect
 import com.google.common.primitives.Longs.min
 import io.github.toyota32k.lib.media.editor.dialog.SliderPartition
@@ -15,8 +14,8 @@ import io.github.toyota32k.lib.player.model.IMediaSource
 import io.github.toyota32k.lib.player.model.IPlayerModel
 import io.github.toyota32k.lib.player.model.PlayerControllerModel
 import io.github.toyota32k.media.lib.types.RangeMs
-import io.github.toyota32k.media.lib.types.RangeUs
 import io.github.toyota32k.utils.IUtPropOwner
+import io.github.toyota32k.utils.android.RefBitmap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -77,8 +76,16 @@ open class MediaEditorModel(
      */
     class ImageSourceInfoImpl(
         override val source: IMediaSource,
-        override val editedBitmap: Bitmap
-    ) : IImageSourceInfo
+        override val editedBitmap: RefBitmap
+    ) : IImageSourceInfo {
+        init {
+            editedBitmap.addRef()
+        }
+
+        override fun close() {
+            editedBitmap.release()
+        }
+    }
 
     /**
      * 動画ソース情報
@@ -163,6 +170,10 @@ open class MediaEditorModel(
                 }
             }
         }
+
+        override fun close() {
+            // empty
+        }
     }
 
     /**
@@ -230,11 +241,13 @@ open class MediaEditorModel(
         return try {
             if (item.isPhoto) {
                 val bitmap = cropHandler.cropImageModel.crop() ?: return false
-                val sourceInfo = ImageSourceInfoImpl(item, bitmap)
-                saveFileHandler.saveImage(sourceInfo, provider)
+                ImageSourceInfoImpl(item, bitmap).use { sourceInfo ->
+                    saveFileHandler.saveImage(sourceInfo, provider)
+                }
             } else if (item.type.lowercase() == "mp4") {
-                val sourceInfo = VideoSourceInfoImpl.fromModel(this) ?: return false
-                saveFileHandler.saveVideo(sourceInfo, provider)
+                VideoSourceInfoImpl.fromModel(this)?.use { sourceInfo ->
+                    saveFileHandler.saveVideo(sourceInfo, provider)
+                } ?: false
             } else {
                 false
             }

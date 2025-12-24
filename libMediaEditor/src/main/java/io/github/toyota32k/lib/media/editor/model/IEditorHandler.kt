@@ -19,7 +19,9 @@ import io.github.toyota32k.media.lib.types.IConvertResult
 import io.github.toyota32k.media.lib.types.IResultBase
 import io.github.toyota32k.media.lib.types.RangeMs
 import io.github.toyota32k.utils.IDisposable
+import io.github.toyota32k.utils.android.RefBitmap
 import kotlinx.coroutines.flow.Flow
+import java.io.Closeable
 
 /**
  * 切り抜き編集用 Aspect定義
@@ -258,7 +260,7 @@ interface ISaveListener<S,E> {
 /**
  * メディアソース情報基底i/f
  */
-interface ISourceInfo {
+interface ISourceInfo: Closeable {
     val source: IMediaSource
 }
 
@@ -279,7 +281,7 @@ interface IVideoSourceInfo : ISourceInfo {
  * 画像用メディアソース情報 i/f
  */
 interface IImageSourceInfo : ISourceInfo {
-    val editedBitmap: Bitmap
+    val editedBitmap: RefBitmap
 }
 // endregion
 
