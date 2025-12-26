@@ -159,7 +159,7 @@ class ProjectManagerDialog : UtDialogEx() {
                             }
                     },
                     autoScroll = RecyclerViewBinding.AutoScrollMode.NONE,
-                    gestureParams = RecyclerViewBinding.GestureParams(swipeToDelete = true, dragToMove = false, deletionHandler = viewModel::onDeletingItem)
+                    gestureParams = RecyclerViewBinding.GestureParams(swipeToDelete = true, dragToMove = false, deletionHandler = RecyclerViewBinding.SimpleDeletionHandler<Project>(viewModel::onDeletingItem))
                 )
             }
             .dialogOptionButtonCommand(LiteUnitCommand {

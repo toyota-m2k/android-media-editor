@@ -49,9 +49,7 @@ import kotlinx.coroutines.launch
 class SnapshotDialog : UtDialogEx() {
     class SnapshotViewModel : UtDialogViewModel() {
         var defaultFileName:String = "image"
-//        val bitmapStore = BitmapStore()
         lateinit var bitmapScaler: RealTimeBitmapScaler
-        val deflating = MutableStateFlow(false)
         val croppedBitmapFlow = RefBitmapFlow(null)
         var cropBitmap: RefBitmap?
             get() = croppedBitmapFlow.value
@@ -90,7 +88,7 @@ class SnapshotDialog : UtDialogEx() {
         }
 
         private val disposer = Disposer()
-        fun setup(bitmap: RefBitmap, initialName:String, autoRecycle:Boolean, maskParams: MaskCoreParams?): SnapshotViewModel {
+        fun setup(bitmap: RefBitmap, initialName:String, maskParams: MaskCoreParams?): SnapshotViewModel {
             bitmapScaler = RealTimeBitmapScaler()
             bitmapScaler.setSource(bitmap)
             if (maskParams!=null) {
@@ -147,7 +145,7 @@ class SnapshotDialog : UtDialogEx() {
                 val cropRect = maskViewModel.cropRect(srcBitmap)
                 return setWallpaper(srcBitmap, vm.lockScreen.value, vm.homeScreen.value, cropRect.asRect)
             }
-                return saveRawBitmap(vm, maskViewModel.cropBitmap(srcBitmap))
+            return saveRawBitmap(vm, maskViewModel.cropBitmap(srcBitmap))
         }
 
 //        private suspend fun saveImageAsFile(bitmap:Bitmap, activity: MainActivity):Boolean? {
@@ -342,10 +340,9 @@ class SnapshotDialog : UtDialogEx() {
         suspend fun showBitmap(
             source: RefBitmap,
             initialName: String,
-            autoRecycle:Boolean = true,
             maskParams: MaskCoreParams?=null) {
             UtImmortalTask.awaitTaskResult(this::class.java.name) {
-                createViewModel<SnapshotViewModel> { setup(source, initialName, autoRecycle, maskParams) }
+                createViewModel<SnapshotViewModel> { setup(source, initialName, maskParams) }
                 showDialog(taskName) { SnapshotDialog() }
             }
         }

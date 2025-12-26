@@ -44,7 +44,7 @@ import io.github.toyota32k.lib.media.editor.model.IMediaSourceWithMutableChapter
 import io.github.toyota32k.lib.media.editor.model.MaskCoreParams
 import io.github.toyota32k.lib.media.editor.model.MediaEditorModel
 import io.github.toyota32k.lib.media.editor.handler.save.GenericSaveFileHandler
-import io.github.toyota32k.lib.media.editor.handler.save.SaveVideoResult
+import io.github.toyota32k.lib.media.editor.handler.save.VideoSaveResult
 import io.github.toyota32k.lib.media.editor.handler.split.GenericSplitHandler
 import io.github.toyota32k.lib.player.model.IMutableChapterList
 import io.github.toyota32k.lib.player.model.Range
@@ -172,7 +172,7 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
             viewModelScope.launch {
                 val time = if (pos>0) TimeSpan(pos).run { if(hours>0) "$hours.$minutes.$seconds}" else "$minutes.$seconds"} else ""
                 val initialName = projectName.value.takeIf { it.lowercase().startsWith("img-") } ?: "img-${projectName.value}-$time"
-                runCatching { SnapshotDialog.showBitmap(bitmap, initialName = projectName.value, autoRecycle = true, editorModel.cropHandler.maskViewModel.getParams()) }.onFailure { e-> logger.error(e) }
+                runCatching { SnapshotDialog.showBitmap(bitmap, initialName = projectName.value,  editorModel.cropHandler.maskViewModel.getParams()) }.onFailure { e-> logger.error(e) }
             }
         }
 
@@ -509,7 +509,7 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
                         val target = result.outputFile as? AndroidFile
                         val name = target?.getFileName() ?: "unknown"
                         val message = "Saved in $name"
-                        if (result is SaveVideoResult) {
+                        if (result is VideoSaveResult) {
                             val uri = target?.uri
                             if (DetailMessageDialog.showMessage("Completed", message, result.convertResult.report?.toString(), uri?.toString(), null)) {
                                 if (uri!=null) {

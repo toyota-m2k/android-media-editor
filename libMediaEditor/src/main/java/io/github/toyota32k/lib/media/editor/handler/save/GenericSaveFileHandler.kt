@@ -10,6 +10,7 @@ import io.github.toyota32k.lib.media.editor.model.IOutputFileProvider
 import io.github.toyota32k.lib.media.editor.model.ISaveFileHandler
 import io.github.toyota32k.lib.media.editor.model.ISaveResult
 import io.github.toyota32k.lib.media.editor.model.ISourceInfo
+import io.github.toyota32k.lib.media.editor.model.IVideoSaveResult
 import io.github.toyota32k.lib.media.editor.model.IVideoSourceInfo
 import io.github.toyota32k.logger.UtLog
 import io.github.toyota32k.media.lib.io.IInputMediaFile
@@ -17,16 +18,18 @@ import io.github.toyota32k.media.lib.io.IOutputMediaFile
 import io.github.toyota32k.media.lib.io.toAndroidFile
 import io.github.toyota32k.media.lib.processor.Processor
 import io.github.toyota32k.media.lib.processor.ProcessorOptions
+import io.github.toyota32k.media.lib.processor.contract.IActualSoughtMap
 import io.github.toyota32k.media.lib.processor.contract.ICancellable
+import io.github.toyota32k.media.lib.processor.contract.IConvertResult
 import io.github.toyota32k.media.lib.processor.contract.IMultiPhaseProgress
 import io.github.toyota32k.media.lib.processor.optimizer.OptimizerOptions
 import io.github.toyota32k.media.lib.processor.optimizer.OptimizingProcessorPhase
+import io.github.toyota32k.media.lib.report.Report
 import io.github.toyota32k.media.lib.strategy.IAudioStrategy
 import io.github.toyota32k.media.lib.strategy.IVideoStrategy
 import io.github.toyota32k.media.lib.strategy.PresetAudioStrategies
-import io.github.toyota32k.media.lib.types.ConvertResult
-import io.github.toyota32k.media.lib.types.IConvertResult
 import io.github.toyota32k.media.lib.types.Rotation
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 
 /**
@@ -40,18 +43,18 @@ interface IProgressSink {
 /**
  * ISaveResultの画像用実装
  */
-class ImageSaveResult(override val outputFile: IOutputMediaFile?, override val status: ISaveResult.Status, override val sourceInfo:ISourceInfo, override val error:Throwable?, override val errorMessage:String?): ISaveResult {
+class ImageSaveResult(override val inputFile: IInputMediaFile?, override val outputFile: IOutputMediaFile?, override val status: ISaveResult.Status, override val sourceInfo:ISourceInfo, override val error:Throwable?, override val errorMessage:String?): ISaveResult {
     companion object {
-        fun succeeded(sourceInfo:ISourceInfo,outputFile: IOutputMediaFile):ImageSaveResult = ImageSaveResult(outputFile,ISaveResult.Status.SUCCESS, sourceInfo,null, null)
+        fun succeeded(sourceInfo:ISourceInfo, inputFile:IInputMediaFile, outputFile: IOutputMediaFile):ImageSaveResult = ImageSaveResult(inputFile, outputFile,ISaveResult.Status.SUCCESS, sourceInfo,null, null)
 //        fun cancelled(sourceInfo:ISourceInfo): ImageSaveResult = ImageSaveResult(null, ISaveResult.Status.CANCELLED, sourceInfo,null, null)
-        fun error(sourceInfo:ISourceInfo, error:Throwable, message:String? = null) = ImageSaveResult(null,ISaveResult.Status.ERROR, sourceInfo,error, message)
+        fun error(sourceInfo:ISourceInfo, inputFile: IInputMediaFile?, error:Throwable, message:String? = null) = ImageSaveResult(inputFile,null,ISaveResult.Status.ERROR, sourceInfo,error, message)
     }
 }
 
 /**
  * ISaveResultの動画用実装
  */
-class SaveVideoResult private constructor (override val sourceInfo:ISourceInfo, val convertResult: IConvertResult): ISaveResult {
+class VideoSaveResult private constructor (override val sourceInfo:ISourceInfo, override val convertResult: IConvertResult): IVideoSaveResult {
     override val status: ISaveResult.Status
         get() = when {
             convertResult.succeeded -> ISaveResult.Status.SUCCESS
@@ -65,11 +68,13 @@ class SaveVideoResult private constructor (override val sourceInfo:ISourceInfo, 
 
     override val outputFile: IOutputMediaFile?
         get() = convertResult.outputFile
+    override val inputFile: IInputMediaFile?
+        get() = convertResult.inputFile
 
     companion object {
         //            fun error(error:Throwable, message:String? = null) = SaveVideoResult( null, ConvertResult.error(error, message))
-        fun cancel(sourceInfo:ISourceInfo) = SaveVideoResult(sourceInfo, ConvertResult.cancelled)
-        fun fromResult(sourceInfo:ISourceInfo, result: IConvertResult) = SaveVideoResult(sourceInfo,result)
+        fun cancel(sourceInfo:ISourceInfo, inputFile: IInputMediaFile?) = VideoSaveResult(sourceInfo, CancelResult(inputFile))
+        fun fromResult(sourceInfo:ISourceInfo, result: IConvertResult) = VideoSaveResult(sourceInfo,result)
     }
 }
 
@@ -181,12 +186,12 @@ open class GenericSaveFileHandler(
             task.onStart(null)  // image does not support cancellation
             listener.onSaveTaskStarted(sourceInfo)
             outputFile.saveBitmap(sourceInfo.editedBitmap, imageFormat, quality)
-            ImageSaveResult.succeeded(sourceInfo,outputFile)
+            ImageSaveResult.succeeded(sourceInfo, inputFile, outputFile)
         } catch(e:Throwable) {
             logger.error(e)
-            ImageSaveResult.error(sourceInfo,e)
+            ImageSaveResult.error(sourceInfo, inputFile,e)
         }
-        outputFileProvider.finalize(result.succeeded, inputFile, outputFile)
+        outputFileProvider.finalize(result)
         listener.onSaveTaskCompleted(result)
         task.onEnd()
         return result.succeeded
@@ -249,10 +254,19 @@ open class GenericSaveFileHandler(
 //        listener.onSaveTaskStarted(sourceInfo)
 //        val result = trimOptimizer.execute()
 
-        outputFileProvider.finalize(result.succeeded, inFile, outFile)
-        listener.onSaveTaskCompleted(SaveVideoResult.fromResult(sourceInfo,result))
+        val saveResult = VideoSaveResult.fromResult(sourceInfo,result)
+        outputFileProvider.finalize(saveResult)
+        listener.onSaveTaskCompleted(saveResult)
         task.onEnd()
         return result.succeeded
     }
 }
 
+class CancelResult(override val inputFile: IInputMediaFile?) : IConvertResult {
+    override val outputFile: IOutputMediaFile? = null
+    override val actualSoughtMap: IActualSoughtMap? = null
+    override val report: Report? = null
+    override val succeeded: Boolean = false
+    override val exception: Throwable = CancellationException()
+    override val errorMessage: String? = null
+}

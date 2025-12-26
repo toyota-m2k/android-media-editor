@@ -10,6 +10,7 @@ import io.github.toyota32k.lib.media.editor.dialog.SaveOptionDialog
 import io.github.toyota32k.lib.media.editor.model.AmeGlobal
 import io.github.toyota32k.lib.media.editor.model.ICommonOutputFileProvider
 import io.github.toyota32k.lib.media.editor.model.IOutputFileProvider
+import io.github.toyota32k.lib.media.editor.model.ISaveResult
 import io.github.toyota32k.media.lib.io.AndroidFile
 import io.github.toyota32k.media.lib.io.toAndroidFile
 import java.io.File
@@ -113,9 +114,9 @@ abstract class AbstractNamedFileProvider(val outputFileSuffix:String) : IOutputF
         return FileUtil.createInitialFileName(getBaseFileName(inputFile), outputFileSuffix, FileUtil.contentType2Ext(mimeType))
     }
 
-    override fun finalize(succeeded: Boolean, inFile:AndroidFile, outFile:AndroidFile) {
-        if (!succeeded) {
-            outFile.safeDelete()
+    override suspend fun finalize(result: ISaveResult) {
+        if (!result.succeeded) {
+            result.outputFile?.safeDelete()
         }
     }
 }
@@ -205,10 +206,14 @@ open class OverwriteFileProvider(val showConfirmMessage:Boolean=true, val workSu
         return FileUtil.createWorkFile(workSubFolder)
     }
 
-    override fun finalize(succeeded: Boolean, inFile:AndroidFile, outFile:AndroidFile) {
-        if (succeeded) {
-            inFile.copyFrom(outFile)
-        } else {
+    override suspend fun finalize(result: ISaveResult) {
+        val outFile = result.outputFile as? AndroidFile ?: return
+        val inputFile = result.inputFile as? AndroidFile ?: return
+        try {
+            if (result.succeeded) {
+                inputFile.copyFrom(outFile)
+            }
+        } finally {
             outFile.safeDelete()
         }
     }
@@ -252,9 +257,9 @@ class WorkFileProvider(val workSubFolder:String?=null) : IOutputFileProvider {
         return FileUtil.createWorkFile(workSubFolder)
     }
 
-    override fun finalize(succeeded: Boolean, inFile: AndroidFile, outFile: AndroidFile) {
-        if (!succeeded) {
-            outFile.safeDelete()
+    override suspend fun finalize(result: ISaveResult) {
+        if (!result.succeeded) {
+            result.outputFile?.safeDelete()
         }
     }
 }

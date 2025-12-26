@@ -3,25 +3,26 @@ package io.github.toyota32k.lib.media.editor.handler.split
 import android.content.Context
 import androidx.core.net.toUri
 import io.github.toyota32k.lib.media.editor.handler.save.AbstractProgressSaveFileTask
+import io.github.toyota32k.lib.media.editor.handler.save.CancelResult
 import io.github.toyota32k.lib.media.editor.handler.save.IProgressSinkProvider
 import io.github.toyota32k.lib.media.editor.handler.save.ISaveFileTask
 import io.github.toyota32k.lib.media.editor.handler.save.SaveTaskListenerImpl
 import io.github.toyota32k.lib.media.editor.model.AmeGlobal
 import io.github.toyota32k.lib.media.editor.model.IMultiSplitResult
-import io.github.toyota32k.lib.media.editor.model.IOutputFileSelector
+import io.github.toyota32k.lib.media.editor.model.IMultiOutputFileSelector
 import io.github.toyota32k.lib.media.editor.model.ISourceInfo
 import io.github.toyota32k.lib.media.editor.model.ISplitHandler
 import io.github.toyota32k.lib.media.editor.model.IVideoSourceInfo
 import io.github.toyota32k.lib.media.editor.model.MediaEditorModel.VideoSourceInfoImpl.Companion.toRangeMsList
+import io.github.toyota32k.media.lib.io.IInputMediaFile
 import io.github.toyota32k.media.lib.io.toAndroidFile
 import io.github.toyota32k.media.lib.processor.Processor
 import io.github.toyota32k.media.lib.processor.ProcessorOptions
 import io.github.toyota32k.media.lib.processor.contract.ICancellable
+import io.github.toyota32k.media.lib.processor.contract.IConvertResult
 import io.github.toyota32k.media.lib.processor.optimizer.OptimizerOptions
 import io.github.toyota32k.media.lib.strategy.PresetAudioStrategies
 import io.github.toyota32k.media.lib.strategy.PresetVideoStrategies
-import io.github.toyota32k.media.lib.types.ConvertResult
-import io.github.toyota32k.media.lib.types.IConvertResult
 import io.github.toyota32k.media.lib.types.RangeMs
 import io.github.toyota32k.media.lib.types.Rotation
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -79,12 +80,12 @@ class GenericSplitHandler(
             results.add(result)
         }
 
-        fun cancel(): MultiResult = apply {
-            add(ConvertResult.cancelled)
+        fun cancel(inputFile: IInputMediaFile?): MultiResult = apply {
+            add(CancelResult(inputFile))
         }
 
-        fun error(e: Throwable, msg: String? = null): MultiResult = apply {
-            add(ConvertResult.error(e,msg))
+        fun error(inputFile: IInputMediaFile?, e: Throwable, msg: String? = null): MultiResult = apply {
+            add(Processor.ErrorResult(inputFile, e,msg))
         }
     }
 
@@ -93,11 +94,11 @@ class GenericSplitHandler(
      * UI上で指定されたトリミングを反映した状態で、カーソル位置で２つに分割する。
      * 分割位置によっては、左側、あるいは、右側が空になる可能性があり、必ずしも２つのファイルが生成するとは限らない。
      */
-    override suspend fun splitAtCurrentPosition(sourceInfo: IVideoSourceInfo, optimize:Boolean, fileSelector: IOutputFileSelector): IMultiSplitResult {
-        val task = startSplitTask() ?: return MultiResult().cancel()
+    override suspend fun splitAtCurrentPosition(sourceInfo: IVideoSourceInfo, optimize:Boolean, fileSelector: IMultiOutputFileSelector): IMultiSplitResult {
+        val task = startSplitTask() ?: return MultiResult().cancel(null)
         if (sourceInfo.positionMs<MIN_RANGE||sourceInfo.durationMs-MIN_RANGE < sourceInfo.durationMs) {
             logger.warn("requested range is too short.")
-            return MultiResult().error(IllegalArgumentException("requested range is too short."))
+            return MultiResult().error(null, IllegalArgumentException("requested range is too short."))
         }
         val inFile = sourceInfo.source.uri.toUri().toAndroidFile(applicationContext)
         val ranges = mutableListOf(
@@ -105,7 +106,7 @@ class GenericSplitHandler(
             RangeMs(sourceInfo.positionMs, sourceInfo.durationMs)
         )
         if (!fileSelector.initialize(ranges)) {
-            return MultiResult().cancel()
+            return MultiResult().cancel(inFile)
         }
         val processor = Processor()
         val processorOptionsBuilder = ProcessorOptions.Builder()
@@ -129,7 +130,7 @@ class GenericSplitHandler(
         listener.onSaveTaskStarted(sourceInfo)
 
         for (range in ranges) {
-            val outFile = fileSelector.selectOutputFile(ranges.indexOf(range), range.startMs) ?: return multiResult.add(ConvertResult.cancelled)
+            val outFile = fileSelector.selectOutputFile(ranges.indexOf(range), range.startMs) ?: return multiResult.add(CancelResult(inFile))
             if (inFile == outFile) throw IllegalStateException("cannot overwrite input file on splitting file.")
             val processorOptions = processorOptionsBuilder
                 .output(outFile)
@@ -142,7 +143,7 @@ class GenericSplitHandler(
         }
         listener.onSaveTaskCompleted(multiResult)
         task.onEnd()
-        fileSelector.terminate()
+        fileSelector.finalize(multiResult)
         return multiResult
     }
 
@@ -150,8 +151,8 @@ class GenericSplitHandler(
      * トリミング範囲リスト（有効範囲のリスト）の各範囲毎（つまり、有効なチャプター毎）に分割する。
      * 有効範囲の数（sourceInfo.trimmingRanges.size)と出力ファイル数が一致する。
      */
-    override suspend fun splitByChapters(sourceInfo: IVideoSourceInfo, optimize:Boolean, fileSelector: IOutputFileSelector): IMultiSplitResult {
-        val task = startSplitTask() ?: return MultiResult().cancel()
+    override suspend fun splitByChapters(sourceInfo: IVideoSourceInfo, optimize:Boolean, fileSelector: IMultiOutputFileSelector): IMultiSplitResult {
+        val task = startSplitTask() ?: return MultiResult().cancel(null)
         val inFile = sourceInfo.source.uri.toUri().toAndroidFile(applicationContext)
         val ranges = sourceInfo.chapters.toRangeMsList(sourceInfo.durationMs)
 
@@ -175,7 +176,7 @@ class GenericSplitHandler(
         task.onStart(cancellerWrapper)
         listener.onSaveTaskStarted(sourceInfo)
         for (range in ranges) {
-            val outFile = fileSelector.selectOutputFile(ranges.indexOf(range), range.startMs) ?: return multiResult.add(ConvertResult.cancelled)
+            val outFile = fileSelector.selectOutputFile(ranges.indexOf(range), range.startMs) ?: return multiResult.add(CancelResult(inFile))
             if (inFile == outFile) throw IllegalStateException("cannot overwrite input file on splitting file.")
             val processorOptions = processorOptionsBuilder
                 .output(outFile)
@@ -188,7 +189,7 @@ class GenericSplitHandler(
             val result = processor.execute(processorOptions, optimizerOptions)
             multiResult.add(result)
         }
-        fileSelector.terminate()
+        fileSelector.finalize(multiResult)
         listener.onSaveTaskCompleted(multiResult)
         task.onEnd()
         return multiResult

@@ -1,6 +1,5 @@
 package io.github.toyota32k.lib.media.editor.model
 
-import android.graphics.Bitmap
 import android.graphics.Rect
 import android.widget.Button
 import androidx.lifecycle.LifecycleOwner
@@ -14,9 +13,11 @@ import io.github.toyota32k.lib.player.model.IMediaSourceWithChapter
 import io.github.toyota32k.lib.player.model.IMutableChapterList
 import io.github.toyota32k.lib.player.model.Range
 import io.github.toyota32k.media.lib.io.AndroidFile
+import io.github.toyota32k.media.lib.io.IInputMediaFile
 import io.github.toyota32k.media.lib.io.IOutputMediaFile
-import io.github.toyota32k.media.lib.types.IConvertResult
-import io.github.toyota32k.media.lib.types.IResultBase
+import io.github.toyota32k.media.lib.processor.contract.IActualSoughtMap
+import io.github.toyota32k.media.lib.processor.contract.IConvertResult
+import io.github.toyota32k.media.lib.processor.contract.IResultBase
 import io.github.toyota32k.media.lib.types.RangeMs
 import io.github.toyota32k.utils.IDisposable
 import io.github.toyota32k.utils.android.RefBitmap
@@ -179,6 +180,13 @@ interface IChapterEditorHandler {
      */
     val isDirty:Boolean
 
+    fun clearDirty()
+
+    /**
+     * actualSoughtMap にしたがって、編集中の chapterList を補正する。
+     */
+    fun correctChapterList(actualSoughtMap: IActualSoughtMap): List<IChapter>
+
     // endregion
 
     // region Commands
@@ -210,10 +218,10 @@ interface IMultiSplitResult : IResultBase {
     val results: List<IConvertResult>
 }
 
-interface IOutputFileSelector {
+interface IMultiOutputFileSelector {
     suspend fun initialize(trimmedRangeMsList:List<RangeMs>):Boolean
     suspend fun selectOutputFile(index:Int, positionMs:Long): IOutputMediaFile?
-    suspend fun terminate()
+    suspend fun finalize(result:IMultiSplitResult)
 }
 
 
@@ -236,11 +244,11 @@ interface ISplitHandler {
     /**
      * 現在のカーソル位置（再生位置）で２つのファイルに分割する
      */
-    suspend fun splitAtCurrentPosition(sourceInfo:IVideoSourceInfo, optimize:Boolean, fileSelector: IOutputFileSelector): IMultiSplitResult?
+    suspend fun splitAtCurrentPosition(sourceInfo:IVideoSourceInfo, optimize:Boolean, fileSelector: IMultiOutputFileSelector): IMultiSplitResult?
     /**
      * チャプター毎に分割する。
      */
-    suspend fun splitByChapters(sourceInfo:IVideoSourceInfo, optimize:Boolean, fileSelector: IOutputFileSelector): IMultiSplitResult?
+    suspend fun splitByChapters(sourceInfo:IVideoSourceInfo, optimize:Boolean, fileSelector: IMultiOutputFileSelector): IMultiSplitResult?
 }
 
 /**
@@ -305,6 +313,7 @@ interface ISaveResult {
         CANCELLED
     }
     val sourceInfo: ISourceInfo
+
     val status: Status
     val error:Throwable?
     val errorMessage:String?
@@ -315,7 +324,12 @@ interface ISaveResult {
     @Suppress("unused")
     val failed:Boolean get() = status == Status.ERROR
 
+    val inputFile: IInputMediaFile?
     val outputFile: IOutputMediaFile?
+}
+
+interface IVideoSaveResult : ISaveResult {
+    val convertResult: IConvertResult
 }
 
 /**
@@ -330,7 +344,7 @@ interface IMediaSourceWithMutableChapterList : IMediaSourceWithChapter {
  */
 interface IOutputFileProvider {
     suspend fun getOutputFile(mimeType: String, inputFile: AndroidFile): AndroidFile?
-    fun finalize(succeeded: Boolean, inFile: AndroidFile, outFile: AndroidFile)
+    suspend fun finalize(result:ISaveResult)
 }
 
 /**

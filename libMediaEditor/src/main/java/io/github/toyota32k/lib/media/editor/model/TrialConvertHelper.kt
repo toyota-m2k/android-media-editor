@@ -9,18 +9,14 @@ import io.github.toyota32k.dialog.task.showConfirmMessageBox
 import io.github.toyota32k.lib.media.editor.dialog.ProgressDialog
 import io.github.toyota32k.logger.UtLog
 import io.github.toyota32k.media.lib.io.IInputMediaFile
-import io.github.toyota32k.media.lib.io.toAndroidFile
-import io.github.toyota32k.media.lib.legacy.converter.Converter
-import io.github.toyota32k.media.lib.legacy.converter.Splitter
 import io.github.toyota32k.media.lib.processor.Processor
 import io.github.toyota32k.media.lib.processor.ProcessorOptions
+import io.github.toyota32k.media.lib.processor.contract.IConvertResult
 import io.github.toyota32k.media.lib.processor.contract.format
 import io.github.toyota32k.media.lib.report.Report
 import io.github.toyota32k.media.lib.strategy.IVideoStrategy
 import io.github.toyota32k.media.lib.strategy.PresetAudioStrategies
 import io.github.toyota32k.media.lib.strategy.PresetVideoStrategies
-import io.github.toyota32k.media.lib.types.ConvertResult
-import io.github.toyota32k.media.lib.types.IConvertResult
 import io.github.toyota32k.media.lib.types.RangeMs
 import io.github.toyota32k.media.lib.types.Rotation
 import kotlinx.coroutines.CancellationException
@@ -29,7 +25,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import kotlin.time.Duration.Companion.seconds
 
-class ConvertHelper(
+class TrialConvertHelper(
     val inputFile: IInputMediaFile,
     var keepHdr: Boolean,
     val rotation: Rotation,
@@ -45,7 +41,7 @@ class ConvertHelper(
     lateinit var result: IConvertResult
         private set
     @Suppress("unused")
-    val report: Report? get() = (result as? ConvertResult)?.report
+    val report: Report? get() = result.report
 
     /**
      * トリミング実行後の再生時間
@@ -54,9 +50,6 @@ class ConvertHelper(
         get() = calcTrimmedDuration(durationMs, trimmingRanges)
 
     private suspend fun convert(applicationContext: Context, limitDuration:Long, ranges: List<RangeMs>?): File {
-        val videoStrategy = videoStrategy.takeIf { cropRect!=null || it !is PresetVideoStrategies.InvalidStrategy }
-            ?: return trim(applicationContext, ranges?:trimmingRanges)
-
         return UtImmortalTask.awaitTaskResult("ConvertHelper") {
             val vm = createViewModel<ProgressDialog.ProgressViewModel>()
             vm.message.value = "Trimming Now..."
@@ -110,41 +103,6 @@ class ConvertHelper(
                 delete()
             }
         } catch (_:Throwable) {}
-    }
-
-    private suspend fun trim(applicationContext: Context, ranges: List<RangeMs>): File {
-        return UtImmortalTask.awaitTaskResult("ConvertHelper.trim") {
-            val vm = createViewModel<ProgressDialog.ProgressViewModel>()
-            vm.message.value = "Trimming Now..."
-            val trimFile = File(applicationContext.cacheDir ?: throw IllegalStateException("no cacheDir"), trimFileName)
-            val splitter = Splitter
-                .builder
-                .rotate(rotation)
-                .setProgressHandler {
-                    vm.progress.value = it.percentage
-                    vm.progressText.value = it.format()
-                }
-                .build()
-            vm.cancelCommand.bindForever { splitter.cancel() }
-            launchSubTask { showDialog("ConvertHelper.trim.ProgressDialog") { ProgressDialog() } }
-
-            withContext(Dispatchers.IO) {
-                try {
-                    val outFile = trimFile.toAndroidFile()
-                    val r = splitter.trim(inputFile, outFile, ranges)
-                    if (!r.succeeded) {
-                        throw r.exception ?: IllegalStateException("unknown error")
-                    }
-                    result = ConvertResult(succeeded = true, outFile, r.requestedRangeMs, adjustedTrimmingRangeList = splitter.adjustedRangeList(ranges), report = null, cancelled = false, errorMessage = null,  exception = null)
-                    trimFile
-                } catch (e: Throwable) {
-                    trimFile.safeDelete()
-                    throw e
-                } finally {
-                    withContext(Dispatchers.Main) { vm.closeCommand.invoke(true) }
-                }
-            }
-        }
     }
 
     private suspend fun safeConvert(applicationContext: Context, limitDuration: Long, ranges: List<RangeMs>?=null): File? {
@@ -216,7 +174,6 @@ class ConvertHelper(
             }
         }
     }
-
 
     suspend fun tryConvert(applicationContext: Context, convertFrom:Long, limitDuration:Long=10.seconds.inWholeMilliseconds): File? {
 //        assert(videoStrategy != null) { "tryConvert: videoStrategy is null" }

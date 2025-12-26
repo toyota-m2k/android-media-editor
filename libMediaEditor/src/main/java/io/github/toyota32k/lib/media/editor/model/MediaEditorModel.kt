@@ -42,7 +42,7 @@ open class MediaEditorModel(
     val cropHandler:ICropHandler,
     val splitHandler: ISplitHandler,
     val saveFileHandler: ISaveFileHandler,
-    val outputFileSelectorResolver:((IMediaSource)-> IOutputFileSelector?)?,
+    val outputFileSelectorResolver:((IMediaSource)-> IMultiOutputFileSelector?)?,
     val outputFileProviderResolver:((IMediaSource)-> IOutputFileProvider?)?,
     ) : IUtPropOwner, Closeable
 {
@@ -227,7 +227,7 @@ open class MediaEditorModel(
     private fun resolveFileProvider(outputFileProvider:IOutputFileProvider?, item:IMediaSource) : IOutputFileProvider {
         return outputFileProvider ?: outputFileProviderResolver?.invoke(item) ?: ExportFileProvider("-EDITED")
     }
-    private fun resolveFileSelector(outputFileSelector:IOutputFileSelector?, item:IMediaSource) : IOutputFileSelector {
+    private fun resolveFileSelector(outputFileSelector:IMultiOutputFileSelector?, item:IMediaSource) : IMultiOutputFileSelector {
         return outputFileSelector ?: outputFileSelectorResolver?.invoke(item) ?: ExportToDirectoryFileSelector()
     }
 
@@ -279,10 +279,10 @@ open class MediaEditorModel(
      * 3. 上記どちらも設定されていなければ、ExportToDirectoryFileSelector
      *
      * @param mode 保存モード
-     * @param IOutputFileSelector 保存先ファイル選択用
+     * @param IMultiOutputFileSelector 保存先ファイル選択用
      * @return 保存に成功すれば true
      */
-    suspend fun splitVideo(mode:SplitMode, outputFileSelector: IOutputFileSelector?=null):Boolean {
+    suspend fun splitVideo(mode:SplitMode, outputFileSelector: IMultiOutputFileSelector?=null):Boolean {
         val item = playerModel.currentSource.value ?: return false
         if (item.isPhoto) return false
         savingNow.mutable.value = true
@@ -328,7 +328,7 @@ open class MediaEditorModel(
         private var mSplitRequired = false
 
         private var mOutputFileProviderResolver: ((IMediaSource) -> IOutputFileProvider?)? = null
-        private var mOutputFileSelectorResolver: ((IMediaSource) -> IOutputFileSelector?)? = null
+        private var mOutputFileSelectorResolver: ((IMediaSource) -> IMultiOutputFileSelector?)? = null
 
         /**
          * ファイル保存ハンドラのデフォルトの設定、
@@ -383,14 +383,14 @@ open class MediaEditorModel(
         /**
          * 動画ファイルの時間分割で使用する IOutputFileSelector を設定する。
          */
-        fun setOutputFileSelector(selector: IOutputFileSelector) = apply {
+        fun setOutputFileSelector(selector: IMultiOutputFileSelector) = apply {
             mOutputFileSelectorResolver = { selector }
         }
         /**
          * 動画ファイルの時間分割で使用する IOutputFileSelector を動的に取得するためのリゾルバを設定する。
          */
         @Suppress("unused")
-        fun setOutputFileSelector(resolver: (IMediaSource)->IOutputFileSelector) = apply {
+        fun setOutputFileSelector(resolver: (IMediaSource)->IMultiOutputFileSelector) = apply {
             mOutputFileSelectorResolver = resolver
         }
 

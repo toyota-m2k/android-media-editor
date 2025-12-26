@@ -21,12 +21,11 @@ import io.github.toyota32k.dialog.task.getViewModel
 import io.github.toyota32k.dialog.task.launchSubTask
 import io.github.toyota32k.lib.media.editor.R
 import io.github.toyota32k.lib.media.editor.databinding.DialogSelectQualityBinding
-import io.github.toyota32k.lib.media.editor.model.ConvertHelper
+import io.github.toyota32k.lib.media.editor.model.TrialConvertHelper
 import io.github.toyota32k.media.lib.strategy.IVideoStrategy
 import io.github.toyota32k.media.lib.strategy.PresetAudioStrategies
 import io.github.toyota32k.media.lib.strategy.PresetVideoStrategies
 import io.github.toyota32k.media.lib.strategy.PresetVideoStrategies.isValid
-import io.github.toyota32k.media.lib.types.ConvertResult
 import io.github.toyota32k.utils.TimeSpan
 import io.github.toyota32k.utils.lifecycle.ConstantLiveData
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -170,7 +169,7 @@ class SelectQualityDialog : UtDialogEx() {
             }
         }
 
-        lateinit var convertHelper: ConvertHelper private set
+        lateinit var trialConvertHelper: TrialConvertHelper private set
         lateinit var durationText:String private set
 
         var convertFrom:Long = 0L
@@ -186,11 +185,11 @@ class SelectQualityDialog : UtDialogEx() {
             VideoQuality.Low to MutableStateFlow(0L),
         )
 
-        fun setConvertHelper(helper:ConvertHelper) {
-            convertHelper = helper
-            val trimmedDuration = convertHelper.trimmedDuration
+        fun setConvertHelper(helper:TrialConvertHelper) {
+            trialConvertHelper = helper
+            val trimmedDuration = trialConvertHelper.trimmedDuration
             estimatedSizes.forEach { (quality, flow) ->
-                flow.value = quality.estimateSize(trimmedDuration) ?: (convertHelper.inputFile.getLength() * convertHelper.trimmedDuration / convertHelper.durationMs)
+                flow.value = quality.estimateSize(trimmedDuration) ?: (trialConvertHelper.inputFile.getLength() * trialConvertHelper.trimmedDuration / trialConvertHelper.durationMs)
             }
             durationText = TimeSpan(trimmedDuration).formatAuto()
         }
@@ -210,20 +209,20 @@ class SelectQualityDialog : UtDialogEx() {
             if (cached!=null) {
                 return cached
             }
-            convertHelper.trimFileName = trialCache.fileNameOf(quality.value, keepHdr.value) ?: return null
-            convertHelper.keepHdr = keepHdr.value && sourceHdr.value
-            convertHelper.videoStrategy = quality.value.strategy
-            return convertHelper.tryConvert(getApplication(), convertFrom)?.apply {
+            trialConvertHelper.trimFileName = trialCache.fileNameOf(quality.value, keepHdr.value) ?: return null
+            trialConvertHelper.keepHdr = keepHdr.value && sourceHdr.value
+            trialConvertHelper.videoStrategy = quality.value.strategy
+            return trialConvertHelper.tryConvert(getApplication(), convertFrom)?.apply {
                 trialCache.put(quality.value, keepHdr.value, this)
-                val report = (convertHelper.result as? ConvertResult)?.report
-                if (convertHelper.result.succeeded && report!=null) {
+                val report = trialConvertHelper.report
+                if (trialConvertHelper.result.succeeded && report!=null) {
                     var bitRate = report.output.videoSummary?.bitRate
                     if (bitRate!=null && bitRate > 0) {
                         val audioBitRate = report.output.audioSummary?.bitRate
                         if (audioBitRate != null && audioBitRate > 0) {
                             bitRate += audioBitRate
                         }
-                        estimatedSizes[quality.value]?.value = bitRate * convertHelper.trimmedDuration / 8000
+                        estimatedSizes[quality.value]?.value = bitRate * trialConvertHelper.trimmedDuration / 8000
                     }
                 }
             }
@@ -291,7 +290,7 @@ class SelectQualityDialog : UtDialogEx() {
 
     companion object {
         data class Result(val quality: VideoQuality, val keepHdr: Boolean)
-        suspend fun show(hdr:Boolean, helper:ConvertHelper, pos:Long):Result? {
+        suspend fun show(hdr:Boolean, helper:TrialConvertHelper, pos:Long):Result? {
             return UtImmortalTask.awaitTaskResult(this::class.java.name) {
                 val vm = createAndroidViewModel<QualityViewModel>().apply {
                     setConvertHelper(helper)
