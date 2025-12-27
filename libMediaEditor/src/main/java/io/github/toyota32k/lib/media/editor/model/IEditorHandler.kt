@@ -18,6 +18,7 @@ import io.github.toyota32k.media.lib.io.IOutputMediaFile
 import io.github.toyota32k.media.lib.processor.contract.IActualSoughtMap
 import io.github.toyota32k.media.lib.processor.contract.IConvertResult
 import io.github.toyota32k.media.lib.processor.contract.IResultBase
+import io.github.toyota32k.media.lib.processor.contract.ISoughtMap
 import io.github.toyota32k.media.lib.types.RangeMs
 import io.github.toyota32k.utils.IDisposable
 import io.github.toyota32k.utils.android.RefBitmap
@@ -185,7 +186,7 @@ interface IChapterEditorHandler {
     /**
      * actualSoughtMap にしたがって、編集中の chapterList を補正する。
      */
-    fun correctChapterList(actualSoughtMap: IActualSoughtMap): List<IChapter>
+    fun correctChapterList(soughtMap: ISoughtMap): List<IChapter>
 
     // endregion
 

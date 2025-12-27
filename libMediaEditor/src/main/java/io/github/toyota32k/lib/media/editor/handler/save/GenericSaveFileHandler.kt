@@ -22,6 +22,7 @@ import io.github.toyota32k.media.lib.processor.contract.IActualSoughtMap
 import io.github.toyota32k.media.lib.processor.contract.ICancellable
 import io.github.toyota32k.media.lib.processor.contract.IConvertResult
 import io.github.toyota32k.media.lib.processor.contract.IMultiPhaseProgress
+import io.github.toyota32k.media.lib.processor.contract.ISoughtMap
 import io.github.toyota32k.media.lib.processor.optimizer.OptimizerOptions
 import io.github.toyota32k.media.lib.processor.optimizer.OptimizingProcessorPhase
 import io.github.toyota32k.media.lib.report.Report
@@ -264,7 +265,9 @@ open class GenericSaveFileHandler(
 
 class CancelResult(override val inputFile: IInputMediaFile?) : IConvertResult {
     override val outputFile: IOutputMediaFile? = null
+    @Deprecated("use soughtMap")
     override val actualSoughtMap: IActualSoughtMap? = null
+    override val soughtMap: ISoughtMap? = null
     override val report: Report? = null
     override val succeeded: Boolean = false
     override val exception: Throwable = CancellationException()
