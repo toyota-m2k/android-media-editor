@@ -96,7 +96,7 @@ class GenericSplitHandler(
      */
     override suspend fun splitAtCurrentPosition(sourceInfo: IVideoSourceInfo, optimize:Boolean, fileSelector: IMultiOutputFileSelector): IMultiSplitResult {
         val task = startSplitTask() ?: return MultiResult().cancel(null)
-        if (sourceInfo.positionMs<MIN_RANGE||sourceInfo.durationMs-MIN_RANGE < sourceInfo.durationMs) {
+        if (sourceInfo.positionMs<MIN_RANGE||sourceInfo.durationMs-MIN_RANGE < sourceInfo.positionMs) {
             logger.warn("requested range is too short.")
             return MultiResult().error(null, IllegalArgumentException("requested range is too short."))
         }
