@@ -27,10 +27,3 @@ if (!isJitpack) {
     include(":appMediaEditor")
 }
 include(":libMediaEditor")
-
-
-
-
-rootProject.name = "android-media-editor"
-include(":appMediaEditor")
-include(":libMediaEditor")
