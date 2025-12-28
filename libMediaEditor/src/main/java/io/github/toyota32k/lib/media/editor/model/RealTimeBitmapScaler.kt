@@ -1,8 +1,6 @@
 package io.github.toyota32k.lib.media.editor.model
 
-import android.graphics.Bitmap
 import android.widget.Button
-import androidx.core.graphics.scale
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.slider.Slider
 import io.github.toyota32k.binder.Binder
@@ -13,11 +11,13 @@ import io.github.toyota32k.binder.sliderBinding
 import io.github.toyota32k.utils.GenericDisposable
 import io.github.toyota32k.utils.IDisposable
 import io.github.toyota32k.utils.IUtPropOwner
+import io.github.toyota32k.utils.android.RefBitmap
+import io.github.toyota32k.utils.android.RefBitmapFlow
+import io.github.toyota32k.utils.android.RefBitmapHolder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -28,17 +28,17 @@ import kotlin.math.roundToInt
 /**
  * 画像の解像度変更操作用に、スケールされたビットマップをリアルタイムに生成するクラス
  */
-class RealTimeBitmapScaler(val bitmapStore: BitmapStore): IUtPropOwner {
+class RealTimeBitmapScaler : IUtPropOwner, IDisposable {
     companion object {
         const val MIN_LENGTH = 100f // px
     }
-    private val busy = AtomicBoolean(false)
-    private var scaledBitmap: Bitmap? = null
-        set(v) { field = bitmapStore.replaceNullable(field, v) }
 
+    var sourceBitmap:RefBitmap? by RefBitmapHolder()
+    val bitmap: RefBitmapFlow = RefBitmapFlow()
+
+    private val busy = AtomicBoolean(false)
     private var scaledWidth:Int = 0
     private var scaledHeight:Int = 0
-    val bitmap: StateFlow<Bitmap?> = MutableStateFlow(null)
     private val orgLongSideLength = MutableStateFlow(MIN_LENGTH+1f)
     val longSideLength = MutableStateFlow(0f)
     val isResolutionChanged = longSideLength.map {
@@ -47,7 +47,6 @@ class RealTimeBitmapScaler(val bitmapStore: BitmapStore): IUtPropOwner {
     val isDirty:Boolean get() = longSideLength.value != orgLongSideLength.value
     var tryAgain = false
 
-    private var sourceBitmap:Bitmap? = null
 
     private var enabled:Boolean = false
 
@@ -63,12 +62,11 @@ class RealTimeBitmapScaler(val bitmapStore: BitmapStore): IUtPropOwner {
         enabled = false
     }
 
-    fun setSourceBitmap(sourceBitmap:Bitmap?) {
-        if (this.sourceBitmap == sourceBitmap) return
+    fun setSource(sourceBitmap:RefBitmap?) {
+        if (this.sourceBitmap === sourceBitmap) return
 
-        bitmap.mutable.value = sourceBitmap
+        bitmap.value = sourceBitmap
         this.sourceBitmap = sourceBitmap
-        this.scaledBitmap = null
         if (sourceBitmap != null) {
             orgLongSideLength.value = max(sourceBitmap.width, sourceBitmap.height).toFloat()
             longSideLength.value = orgLongSideLength.value
@@ -124,14 +122,13 @@ class RealTimeBitmapScaler(val bitmapStore: BitmapStore): IUtPropOwner {
 
     private suspend fun deflateBitmap(newScale:Float) {
         if (!enabled) {
-            scaledBitmap = null
             this.bitmap.mutable.value = null
             scaledWidth = 0
             scaledHeight = 0
             AmeGlobal.logger.debug("Scaler: longSideLength=${longSideLength.value}")
             return
         }
-        val sourceBitmap = this.sourceBitmap ?: return
+        val sourceBitmap = this.sourceBitmap?.takeIf { it.hasBitmap } ?: return
         if (!busy.getAndSet(true)) {
             var s = newScale
             try {
@@ -141,12 +138,10 @@ class RealTimeBitmapScaler(val bitmapStore: BitmapStore): IUtPropOwner {
                     val h = (sourceBitmap.height * s).toInt()
                     if (w != scaledWidth || h != scaledHeight) {
                         if (w == sourceBitmap.width && h == sourceBitmap.height) {
-                            scaledBitmap = null
-                            bitmap.mutable.value = sourceBitmap
+                            bitmap.value = sourceBitmap
                         } else {
                             val bmp = withContext(Dispatchers.IO) { sourceBitmap.scale(w, h) }
-                            bitmap.mutable.value = bmp
-                            scaledBitmap = bmp
+                            bitmap.value = bmp
                         }
                         scaledWidth = w
                         scaledHeight = h
@@ -160,5 +155,10 @@ class RealTimeBitmapScaler(val bitmapStore: BitmapStore): IUtPropOwner {
         } else {
             tryAgain = true
         }
+    }
+
+    override fun dispose() {
+        sourceBitmap = null
+        bitmap.value = null
     }
 }

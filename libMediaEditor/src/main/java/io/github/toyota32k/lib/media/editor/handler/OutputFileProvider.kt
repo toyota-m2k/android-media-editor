@@ -10,8 +10,9 @@ import io.github.toyota32k.lib.media.editor.dialog.SaveOptionDialog
 import io.github.toyota32k.lib.media.editor.model.AmeGlobal
 import io.github.toyota32k.lib.media.editor.model.ICommonOutputFileProvider
 import io.github.toyota32k.lib.media.editor.model.IOutputFileProvider
-import io.github.toyota32k.media.lib.converter.AndroidFile
-import io.github.toyota32k.media.lib.converter.toAndroidFile
+import io.github.toyota32k.lib.media.editor.model.ISaveResult
+import io.github.toyota32k.media.lib.io.AndroidFile
+import io.github.toyota32k.media.lib.io.toAndroidFile
 import java.io.File
 
 object FileUtil {
@@ -43,7 +44,7 @@ object FileUtil {
 //        return contentType2Ext(file.getContentType()?:"")
 //    }
 
-    fun getBaseName(file:AndroidFile):String? {
+    fun getBaseName(file: AndroidFile):String? {
         val originalName = file.getFileName() ?: return null
         val dotIndex = originalName.lastIndexOf('.')
         return if (dotIndex > 0) originalName.take(dotIndex) else originalName
@@ -113,9 +114,9 @@ abstract class AbstractNamedFileProvider(val outputFileSuffix:String) : IOutputF
         return FileUtil.createInitialFileName(getBaseFileName(inputFile), outputFileSuffix, FileUtil.contentType2Ext(mimeType))
     }
 
-    override fun finalize(succeeded: Boolean, inFile:AndroidFile, outFile:AndroidFile) {
-        if (!succeeded) {
-            outFile.safeDelete()
+    override suspend fun finalize(result: ISaveResult) {
+        if (!result.succeeded) {
+            result.outputFile?.safeDelete()
         }
     }
 }
@@ -205,10 +206,14 @@ open class OverwriteFileProvider(val showConfirmMessage:Boolean=true, val workSu
         return FileUtil.createWorkFile(workSubFolder)
     }
 
-    override fun finalize(succeeded: Boolean, inFile:AndroidFile, outFile:AndroidFile) {
-        if (succeeded) {
-            inFile.copyFrom(outFile)
-        } else {
+    override suspend fun finalize(result: ISaveResult) {
+        val outFile = result.outputFile as? AndroidFile ?: return
+        val inputFile = result.inputFile as? AndroidFile ?: return
+        try {
+            if (result.succeeded) {
+                inputFile.copyFrom(outFile)
+            }
+        } finally {
             outFile.safeDelete()
         }
     }
@@ -227,16 +232,16 @@ open class InteractiveOutputFileProvider(outputFileSuffix:String, val subFolder:
         return NamedMediaFileProvider(targetName, subFolder)
     }
     open fun getOverwriteFileProvider() : IOutputFileProvider{
-        return OverwriteFileProvider()
+        return OverwriteFileProvider(showConfirmMessage = false)    // 確認メッセージは SaveOptionDialog で表示済み
     }
 
     override suspend fun getOutputFile(mimeType: String, inputFile: AndroidFile): AndroidFile? {
         val initialName = initialFileName(mimeType, inputFile) ?: return null
         val option = SaveOptionDialog.show(initialName) ?: return null
         val provider = when(option.targetType) {
-            SaveOptionDialog.SaveOptionViewModel.TargetType.OVERWRITE -> getExportFileProvider()
+            SaveOptionDialog.SaveOptionViewModel.TargetType.OVERWRITE -> getOverwriteFileProvider()
             SaveOptionDialog.SaveOptionViewModel.TargetType.SAVE_MEDIA_FILE_AS -> getNamedMediaFileProvider(option.targetName)
-            SaveOptionDialog.SaveOptionViewModel.TargetType.EXPORT_FILE -> getOverwriteFileProvider()
+            SaveOptionDialog.SaveOptionViewModel.TargetType.EXPORT_FILE -> getExportFileProvider()
         }
         return provider.getOutputFile(mimeType, inputFile)
     }
@@ -252,9 +257,9 @@ class WorkFileProvider(val workSubFolder:String?=null) : IOutputFileProvider {
         return FileUtil.createWorkFile(workSubFolder)
     }
 
-    override fun finalize(succeeded: Boolean, inFile: AndroidFile, outFile: AndroidFile) {
-        if (!succeeded) {
-            outFile.safeDelete()
+    override suspend fun finalize(result: ISaveResult) {
+        if (!result.succeeded) {
+            result.outputFile?.safeDelete()
         }
     }
 }

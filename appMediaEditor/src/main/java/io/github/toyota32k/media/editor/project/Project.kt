@@ -24,21 +24,24 @@ data class Project(
     val documentId: String,
     val type: String,
     val uri: String,
+    val copied:Boolean,
     val serializedChapters: String?,
-    var serializedCropParams: String?,
+    val serializedCropParams: String?,
+    val resolution:Int,
     val fileTimestamp: Long,
-    val lastAccessTime:Long
+    val lastAccessTime:Long,
     ) {
     fun modified(
         name: String = this.name,
         uri: String = this.uri,
         serializedChapters: String? = this.serializedChapters,
-        serializedCropParams: String? = this.serializedCropParams ) : Project? {
-        if (name==this.name && uri == this.uri && serializedChapters == this.serializedChapters && serializedCropParams == this.serializedCropParams) {
+        serializedCropParams: String? = this.serializedCropParams,
+        resolution: Int = this.resolution) : Project? {
+        if (name==this.name && uri == this.uri && serializedChapters == this.serializedChapters && serializedCropParams == this.serializedCropParams && this.resolution == resolution) {
             return null // 変更がなければ null を返す
         }
         UtLog("DB").debug("ORG=$this")
-        return Project(id, name, documentId, type, uri, serializedChapters, serializedCropParams, fileTimestamp, Date().time).apply {UtLog("DB").debug("NEW=$this")}
+        return Project(id, name, documentId, type, uri, copied, serializedChapters, serializedCropParams, resolution, fileTimestamp, Date().time).apply {UtLog("DB").debug("NEW=$this")}
     }
     val isPhoto:Boolean
         get() = when (type) {

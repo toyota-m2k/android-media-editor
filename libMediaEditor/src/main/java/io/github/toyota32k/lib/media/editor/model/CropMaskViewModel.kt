@@ -1,11 +1,12 @@
 package io.github.toyota32k.lib.media.editor.model
 
-import android.graphics.Bitmap
 import android.graphics.Rect
 import android.util.Size
 import io.github.toyota32k.dialog.task.UtImmortalTaskManager
-import io.github.toyota32k.logger.UtLog
 import io.github.toyota32k.lib.media.editor.view.CropMaskView
+import io.github.toyota32k.lib.player.model.VisibleAreaParams
+import io.github.toyota32k.logger.UtLog
+import io.github.toyota32k.utils.android.RefBitmap
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import org.json.JSONObject
@@ -13,52 +14,54 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 
-/**
- * CropMaskView の位置情報を表すデータクラス
- *
- * rsx, rsy: mask の左上の位置 (0.0～1.0)
- * rex, rey: mask の右下の位置 (0.0～1.0)
- */
-data class MaskCoreParams(
-    val rsx:Float,
-    val rsy:Float,
-    val rex:Float,
-    val rey:Float,
-) {
-    companion object {
-        @Suppress("unused")
-        fun fromSize(sourceWidth:Int, sourceHeight:Int, sx:Float, sy:Float, w:Float, h:Float):MaskCoreParams {
-            return MaskCoreParams(
-                (sx / sourceWidth.toFloat()).coerceIn(0f, 1f),
-                (sy / sourceHeight.toFloat()).coerceIn(0f, 1f),
-                ((sx+w) / sourceWidth.toFloat()).coerceIn(0f, 1f),
-                ((sy+h) / sourceHeight.toFloat()).coerceIn(0f, 1f),
-            )
-        }
-        val IDENTITY:MaskCoreParams = MaskCoreParams(0f, 0f, 1f, 1f)
-        fun fromJson(json:String?):MaskCoreParams {
-            if (json==null) return IDENTITY
-            val obj = JSONObject(json)
-            return MaskCoreParams(
-                obj.getDouble("rsx").toFloat(),
-                obj.getDouble("rsy").toFloat(),
-                obj.getDouble("rex").toFloat(),
-                obj.getDouble("rey").toFloat(),
-            )
-        }
-    }
-    val isIdentity:Boolean get() {
-        return rsx==0f && rsy==0f && rex==1f && rey==1f
-    }
-    fun serialize():String {
-        return JSONObject().apply {
-            put("rsx", rsx)
-            put("rsy", rsy)
-            put("rex", rex)
-            put("rey", rey)
-        }.toString()
-    }
-}
+typealias MaskCoreParams = VisibleAreaParams
+
+///**
+// * CropMaskView の位置情報を表すデータクラス
+// *
+// * rsx, rsy: mask の左上の位置 (0.0～1.0)
+// * rex, rey: mask の右下の位置 (0.0～1.0)
+// */
+//data class MaskCoreParams(
+//    val rsx:Float,
+//    val rsy:Float,
+//    val rex:Float,
+//    val rey:Float,
+//) {
+//    companion object {
+//        @Suppress("unused")
+//        fun fromSize(sourceWidth:Int, sourceHeight:Int, sx:Float, sy:Float, w:Float, h:Float):MaskCoreParams {
+//            return MaskCoreParams(
+//                (sx / sourceWidth.toFloat()).coerceIn(0f, 1f),
+//                (sy / sourceHeight.toFloat()).coerceIn(0f, 1f),
+//                ((sx+w) / sourceWidth.toFloat()).coerceIn(0f, 1f),
+//                ((sy+h) / sourceHeight.toFloat()).coerceIn(0f, 1f),
+//            )
+//        }
+//        val IDENTITY:MaskCoreParams = MaskCoreParams(0f, 0f, 1f, 1f)
+//        fun fromJson(json:String?):MaskCoreParams {
+//            if (json==null) return IDENTITY
+//            val obj = JSONObject(json)
+//            return MaskCoreParams(
+//                obj.getDouble("rsx").toFloat(),
+//                obj.getDouble("rsy").toFloat(),
+//                obj.getDouble("rex").toFloat(),
+//                obj.getDouble("rey").toFloat(),
+//            )
+//        }
+//    }
+//    val isIdentity:Boolean get() {
+//        return rsx==0f && rsy==0f && rex==1f && rey==1f
+//    }
+//    fun serialize():String {
+//        return JSONObject().apply {
+//            put("rsx", rsx)
+//            put("rsy", rsy)
+//            put("rex", rex)
+//            put("rey", rey)
+//        }.toString()
+//    }
+//}
 
 /**
  * CropMask 用の ViewModel
@@ -451,7 +454,7 @@ class CropMaskViewModel {
             ((rey-rsy) * height.toFloat()).roundToInt(),
         )
     }
-    fun cropRect(bitmap:Bitmap):CropRect {
+    fun cropRect(bitmap:RefBitmap):CropRect {
         return cropRect(bitmap.width, bitmap.height)
     }
 
@@ -461,10 +464,10 @@ class CropMaskViewModel {
      * @param bitmap ソース画像
      * @return 切り出した画像 (cropWidth x cropHeight)
      */
-    fun cropBitmap(bitmap:Bitmap):Bitmap {
+    fun cropBitmap(bitmap:RefBitmap): RefBitmap {
         val crop = cropRect(bitmap)
         if (crop.sx==0 && crop.sy == 0 && crop.width == bitmap.width && crop.height == bitmap.height) return bitmap
-        return Bitmap.createBitmap(bitmap, crop.sx, crop.sy, crop.width, crop.height)
+        return bitmap.crop( crop.sx, crop.sy, crop.width, crop.height)
     }
 
     fun getParams():MaskCoreParams {

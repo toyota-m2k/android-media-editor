@@ -10,6 +10,7 @@ import android.view.View
 import androidx.annotation.RequiresPermission
 import androidx.core.view.setPadding
 import androidx.lifecycle.lifecycleScope
+import io.github.toyota32k.binder.bitmapBinding
 import io.github.toyota32k.binder.clickBinding
 import io.github.toyota32k.binder.combinatorialVisibilityBinding
 import io.github.toyota32k.binder.command.LiteUnitCommand
@@ -23,22 +24,20 @@ import io.github.toyota32k.dialog.task.UtImmortalTask
 import io.github.toyota32k.dialog.task.application
 import io.github.toyota32k.dialog.task.createViewModel
 import io.github.toyota32k.dialog.task.getViewModel
-import io.github.toyota32k.dialog.task.immortalTask
 import io.github.toyota32k.dialog.task.showConfirmMessageBox
 import io.github.toyota32k.lib.media.editor.handler.AndroidMediaFile.safeSaveBitmap
-import io.github.toyota32k.lib.media.editor.handler.AndroidMediaFile.saveBitmap
 import io.github.toyota32k.lib.media.editor.handler.ExportFileProvider
 import io.github.toyota32k.lib.media.editor.handler.MediaFileProvider
-import io.github.toyota32k.lib.media.editor.model.BitmapStore
 import io.github.toyota32k.lib.media.editor.model.CropMaskViewModel
 import io.github.toyota32k.lib.media.editor.model.MaskCoreParams
 import io.github.toyota32k.lib.media.editor.model.RealTimeBitmapScaler
 import io.github.toyota32k.lib.media.editor.view.EditorControlPanel
-import io.github.toyota32k.media.editor.MainActivity
 import io.github.toyota32k.media.editor.databinding.DialogSnapshotBinding
 import io.github.toyota32k.media.editor.dialog.WallpaperDialog.WallpaperViewModel.FileStore
 import io.github.toyota32k.utils.Disposer
 import io.github.toyota32k.utils.android.FitMode
+import io.github.toyota32k.utils.android.RefBitmap
+import io.github.toyota32k.utils.android.RefBitmapFlow
 import io.github.toyota32k.utils.android.UtFitter
 import io.github.toyota32k.utils.android.dp2px
 import io.github.toyota32k.utils.android.setLayoutSize
@@ -46,31 +45,21 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import java.util.concurrent.CancellationException
 
 class SnapshotDialog : UtDialogEx() {
     class SnapshotViewModel : UtDialogViewModel() {
         var defaultFileName:String = "image"
-        val bitmapStore = BitmapStore()
         lateinit var bitmapScaler: RealTimeBitmapScaler
-        val deflating = MutableStateFlow(false)
-        val croppedBitmapFlow = MutableStateFlow<Bitmap?>(null)
-        var cropBitmap: Bitmap?
+        val croppedBitmapFlow = RefBitmapFlow(null)
+        var cropBitmap: RefBitmap?
             get() = croppedBitmapFlow.value
             set(v) {
-                croppedBitmapFlow.value = bitmapStore.replaceNullable(croppedBitmapFlow.value, v)
+                croppedBitmapFlow.value = v
             }
         val isCropped = croppedBitmapFlow.map { it != null }
         val croppingNow = MutableStateFlow(true)
         val maskViewModel = CropMaskViewModel()
         private val cropFlows = maskViewModel.cropFlows
-
-        var result: CropResult? = null
-
-        data class CropResult(
-            val bitmap: Bitmap,
-            val maskParams: MaskCoreParams?
-        )
 
         private val croppedSize =
             combine(croppingNow, croppedBitmapFlow, cropFlows.cropWidth, cropFlows.cropHeight) { trimmingNow, cropped, w, h ->
@@ -99,19 +88,16 @@ class SnapshotDialog : UtDialogEx() {
         }
 
         private val disposer = Disposer()
-        fun setup(bitmap: Bitmap, initialName:String, autoRecycle:Boolean, maskParams: MaskCoreParams?): SnapshotViewModel {
-            bitmapScaler = RealTimeBitmapScaler(bitmapStore)
-            bitmapScaler.setSourceBitmap(bitmap)
-            if (autoRecycle) {
-                bitmapStore.attach(bitmap)
-            }
+        fun setup(bitmap: RefBitmap, initialName:String, maskParams: MaskCoreParams?): SnapshotViewModel {
+            bitmapScaler = RealTimeBitmapScaler()
+            bitmapScaler.setSource(bitmap)
             if (maskParams!=null) {
                 maskViewModel.setParams(maskParams)
             }
             defaultFileName = initialName
             maskViewModel.updateCropFlow(Size(bitmap.width,bitmap.height))
             disposer.register(
-                bitmapStore,
+                croppedBitmapFlow,
 //                bitmapScaler.apply {start(viewModelScope)},
 //                bitmapScaler.bitmap.disposableObserve {
 //                    maskViewModel.enableCropFlow(it.width, it.height)
@@ -138,13 +124,15 @@ class SnapshotDialog : UtDialogEx() {
 //        }
 
         @RequiresPermission(Manifest.permission.SET_WALLPAPER)
-        fun setWallpaper(bitmap: Bitmap, setLockScreen: Boolean, setHomeScreen: Boolean, hintRect:Rect?):Boolean {
+        fun setWallpaper(bitmap: RefBitmap, setLockScreen: Boolean, setHomeScreen: Boolean, hintRect:Rect?):Boolean {
             try {
                 val wallpaperManager = WallpaperManager.getInstance(application)
                 val flags = (if (setLockScreen) WallpaperManager.FLAG_LOCK else 0) or
                         (if (setHomeScreen) WallpaperManager.FLAG_SYSTEM else 0)
                 if(flags == 0) return false
-                wallpaperManager.setBitmap(bitmap, hintRect, true, flags)
+                bitmap.use { bmp ->
+                    wallpaperManager.setBitmap(bmp, hintRect, true, flags)
+                }
                 return true
             } catch (e: Throwable) {
                 logger.error(e)
@@ -152,13 +140,12 @@ class SnapshotDialog : UtDialogEx() {
             }
         }
 
-        private suspend fun cropAndSaveBitmap(vm:WallpaperDialog.WallpaperViewModel, srcBitmap: Bitmap):Boolean {
+        private suspend fun cropAndSaveBitmap(vm:WallpaperDialog.WallpaperViewModel, srcBitmap: RefBitmap):Boolean {
             if (vm.target.value == WallpaperDialog.WallpaperViewModel.Target.WALLPAPER && vm.useCropHint.value) {
                 val cropRect = maskViewModel.cropRect(srcBitmap)
                 return setWallpaper(srcBitmap, vm.lockScreen.value, vm.homeScreen.value, cropRect.asRect)
             }
-            val bitmap = maskViewModel.cropBitmap(srcBitmap)
-            return saveRawBitmap(vm, bitmap)
+            return saveRawBitmap(vm, maskViewModel.cropBitmap(srcBitmap))
         }
 
 //        private suspend fun saveImageAsFile(bitmap:Bitmap, activity: MainActivity):Boolean? {
@@ -174,7 +161,7 @@ class SnapshotDialog : UtDialogEx() {
 //            }
 //        }
 //
-        private suspend fun saveRawBitmap(vm:WallpaperDialog.WallpaperViewModel, bitmap: Bitmap):Boolean {
+        private suspend fun saveRawBitmap(vm:WallpaperDialog.WallpaperViewModel, bitmap: RefBitmap):Boolean {
             return when (vm.target.value) {
                 WallpaperDialog.WallpaperViewModel.Target.WALLPAPER -> {
                     setWallpaper(bitmap, vm.lockScreen.value, vm.homeScreen.value, null)
@@ -193,7 +180,6 @@ class SnapshotDialog : UtDialogEx() {
 
         fun saveBitmap() {
             val bitmap = cropBitmap ?: bitmapScaler.bitmap.value ?: throw IllegalStateException("no bitmap")
-            bitmapStore.detach(bitmap)
             launchSubTask {
                 val vm = createViewModel<WallpaperDialog.WallpaperViewModel> { displayName.value = defaultFileName }
                 if (showDialog(WallpaperDialog::class.java.name) { WallpaperDialog() }.status.ok) {
@@ -302,11 +288,9 @@ class SnapshotDialog : UtDialogEx() {
 //                    onPositive()
 //                }
 //            }
-            .observe(viewModel.croppedBitmapFlow)  { bmp->
-                controls.imagePreview.setImageBitmap(bmp)
-            }
+            .bitmapBinding(controls.imagePreview, viewModel.croppedBitmapFlow)
             .observe(viewModel.bitmapScaler.bitmap) {
-                controls.image.setImageBitmap(it)
+                controls.image.setImageBitmap(it?.bitmapOrNull)
                 if (it!=null) {
                     fitBitmap(it, controls.mainContainer.width, controls.mainContainer.height)
                 }
@@ -328,7 +312,7 @@ class SnapshotDialog : UtDialogEx() {
         return controls.root
     }
 
-    private fun fitBitmap(bitmap:Bitmap, containerWidth:Int, containerHeight:Int) {
+    private fun fitBitmap(bitmap:RefBitmap, containerWidth:Int, containerHeight:Int) {
 //        val paddingHorizontal = controls.image.paddingLeft + controls.image.paddingRight
 //        val paddingVertical = controls.image.paddingTop + controls.image.paddingBottom
         // image/image_preview/maskView には同じ padding が設定されている
@@ -354,17 +338,12 @@ class SnapshotDialog : UtDialogEx() {
 
     companion object {
         suspend fun showBitmap(
-            source: Bitmap,
+            source: RefBitmap,
             initialName: String,
-            autoRecycle:Boolean = true,
-            maskParams: MaskCoreParams?=null): SnapshotViewModel.CropResult? {
-            return UtImmortalTask.awaitTaskResult(this::class.java.name) {
-                val vm = createViewModel<SnapshotViewModel> { setup(source, initialName, autoRecycle, maskParams) }
-                if (showDialog(taskName) { SnapshotDialog() }.status.ok) {
-                    vm.result
-                } else {
-                    null
-                }
+            maskParams: MaskCoreParams?=null) {
+            UtImmortalTask.awaitTaskResult(this::class.java.name) {
+                createViewModel<SnapshotViewModel> { setup(source, initialName, maskParams) }
+                showDialog(taskName) { SnapshotDialog() }
             }
         }
     }

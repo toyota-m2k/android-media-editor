@@ -1,24 +1,29 @@
 package io.github.toyota32k.lib.media.editor.model
 
-import android.graphics.Bitmap
 import android.graphics.Rect
 import android.widget.Button
 import androidx.lifecycle.LifecycleOwner
 import com.google.android.material.slider.Slider
 import io.github.toyota32k.binder.Binder
 import io.github.toyota32k.binder.command.IUnitCommand
+import io.github.toyota32k.lib.player.model.IChapter
 import io.github.toyota32k.lib.player.model.IChapterList
 import io.github.toyota32k.lib.player.model.IMediaSource
 import io.github.toyota32k.lib.player.model.IMediaSourceWithChapter
 import io.github.toyota32k.lib.player.model.IMutableChapterList
 import io.github.toyota32k.lib.player.model.Range
-import io.github.toyota32k.media.lib.converter.AndroidFile
-import io.github.toyota32k.media.lib.converter.IMultiSplitResult
-import io.github.toyota32k.media.lib.converter.IOutputFileSelector
-import io.github.toyota32k.media.lib.converter.IOutputMediaFile
-import io.github.toyota32k.media.lib.converter.RangeMs
+import io.github.toyota32k.media.lib.io.AndroidFile
+import io.github.toyota32k.media.lib.io.IInputMediaFile
+import io.github.toyota32k.media.lib.io.IOutputMediaFile
+import io.github.toyota32k.media.lib.processor.contract.IActualSoughtMap
+import io.github.toyota32k.media.lib.processor.contract.IConvertResult
+import io.github.toyota32k.media.lib.processor.contract.IResultBase
+import io.github.toyota32k.media.lib.processor.contract.ISoughtMap
+import io.github.toyota32k.media.lib.types.RangeMs
 import io.github.toyota32k.utils.IDisposable
+import io.github.toyota32k.utils.android.RefBitmap
 import kotlinx.coroutines.flow.Flow
+import java.io.Closeable
 
 /**
  * 切り抜き編集用 Aspect定義
@@ -42,6 +47,8 @@ interface ICropHandler : IDisposable {
 
     val maskViewModel: CropMaskViewModel
     var cropImageModel: CropImageModel
+
+    var resolutionInt: Int
 
     // endregion
 
@@ -174,6 +181,13 @@ interface IChapterEditorHandler {
      */
     val isDirty:Boolean
 
+    fun clearDirty()
+
+    /**
+     * actualSoughtMap にしたがって、編集中の chapterList を補正する。
+     */
+    fun correctChapterList(soughtMap: ISoughtMap): List<IChapter>
+
     // endregion
 
     // region Commands
@@ -199,6 +213,20 @@ interface IChapterEditorHandler {
 }
 
 /**
+ * 複数範囲一括分割の結果 i/f
+ */
+interface IMultiSplitResult : IResultBase {
+    val results: List<IConvertResult>
+}
+
+interface IMultiOutputFileSelector {
+    suspend fun initialize(trimmedRangeMsList:List<RangeMs>):Boolean
+    suspend fun selectOutputFile(index:Int, positionMs:Long): IOutputMediaFile?
+    suspend fun finalize(result:IMultiSplitResult)
+}
+
+
+/**
  * 動画分割用ハンドラーi/f
  */
 interface ISplitHandler {
@@ -217,11 +245,11 @@ interface ISplitHandler {
     /**
      * 現在のカーソル位置（再生位置）で２つのファイルに分割する
      */
-    suspend fun splitAtCurrentPosition(sourceInfo:IVideoSourceInfo, optimize:Boolean, fileSelector: IOutputFileSelector): IMultiSplitResult?
+    suspend fun splitAtCurrentPosition(sourceInfo:IVideoSourceInfo, optimize:Boolean, fileSelector: IMultiOutputFileSelector): IMultiSplitResult?
     /**
      * チャプター毎に分割する。
      */
-    suspend fun splitByChapters(sourceInfo:IVideoSourceInfo, optimize:Boolean, fileSelector: IOutputFileSelector): IMultiSplitResult?
+    suspend fun splitByChapters(sourceInfo:IVideoSourceInfo, optimize:Boolean, fileSelector: IMultiOutputFileSelector): IMultiSplitResult?
 }
 
 /**
@@ -241,7 +269,7 @@ interface ISaveListener<S,E> {
 /**
  * メディアソース情報基底i/f
  */
-interface ISourceInfo {
+interface ISourceInfo: Closeable {
     val source: IMediaSource
 }
 
@@ -249,22 +277,20 @@ interface ISourceInfo {
  * 動画用メディアソース情報 i/f
  */
 interface IVideoSourceInfo : ISourceInfo {
-    val trimmingRanges:List<RangeMs>
+    val trimmingRanges: List<RangeMs>
+    val chapters: List<IChapter>
     val rotation:Int /*in degree*/
     val cropRect:Rect?
     val brightness:Float?
     val positionMs: Long
     val durationMs: Long
-
-    @Suppress("unused")
-    val needsReEncoding get() = cropRect != null && brightness != null
 }
 
 /**
  * 画像用メディアソース情報 i/f
  */
 interface IImageSourceInfo : ISourceInfo {
-    val editedBitmap: Bitmap
+    val editedBitmap: RefBitmap
 }
 // endregion
 
@@ -288,6 +314,7 @@ interface ISaveResult {
         CANCELLED
     }
     val sourceInfo: ISourceInfo
+
     val status: Status
     val error:Throwable?
     val errorMessage:String?
@@ -298,7 +325,12 @@ interface ISaveResult {
     @Suppress("unused")
     val failed:Boolean get() = status == Status.ERROR
 
+    val inputFile: IInputMediaFile?
     val outputFile: IOutputMediaFile?
+}
+
+interface IVideoSaveResult : ISaveResult {
+    val convertResult: IConvertResult
 }
 
 /**
@@ -313,7 +345,7 @@ interface IMediaSourceWithMutableChapterList : IMediaSourceWithChapter {
  */
 interface IOutputFileProvider {
     suspend fun getOutputFile(mimeType: String, inputFile: AndroidFile): AndroidFile?
-    fun finalize(succeeded: Boolean, inFile: AndroidFile, outFile: AndroidFile)
+    suspend fun finalize(result:ISaveResult)
 }
 
 /**

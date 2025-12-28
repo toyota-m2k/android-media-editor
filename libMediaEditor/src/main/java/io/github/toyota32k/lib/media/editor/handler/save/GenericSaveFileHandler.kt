@@ -10,45 +10,52 @@ import io.github.toyota32k.lib.media.editor.model.IOutputFileProvider
 import io.github.toyota32k.lib.media.editor.model.ISaveFileHandler
 import io.github.toyota32k.lib.media.editor.model.ISaveResult
 import io.github.toyota32k.lib.media.editor.model.ISourceInfo
+import io.github.toyota32k.lib.media.editor.model.IVideoSaveResult
 import io.github.toyota32k.lib.media.editor.model.IVideoSourceInfo
 import io.github.toyota32k.logger.UtLog
-import io.github.toyota32k.media.lib.converter.ConvertResult
-import io.github.toyota32k.media.lib.converter.ICancellable
-import io.github.toyota32k.media.lib.converter.IConvertResult
-import io.github.toyota32k.media.lib.converter.IInputMediaFile
-import io.github.toyota32k.media.lib.converter.IMultiPhaseProgress
-import io.github.toyota32k.media.lib.converter.IOutputMediaFile
-import io.github.toyota32k.media.lib.converter.Rotation
-import io.github.toyota32k.media.lib.converter.TrimOptimizer
-import io.github.toyota32k.media.lib.converter.toAndroidFile
+import io.github.toyota32k.media.lib.io.IInputMediaFile
+import io.github.toyota32k.media.lib.io.IOutputMediaFile
+import io.github.toyota32k.media.lib.io.toAndroidFile
+import io.github.toyota32k.media.lib.processor.Processor
+import io.github.toyota32k.media.lib.processor.ProcessorOptions
+import io.github.toyota32k.media.lib.processor.contract.IActualSoughtMap
+import io.github.toyota32k.media.lib.processor.contract.ICancellable
+import io.github.toyota32k.media.lib.processor.contract.IConvertResult
+import io.github.toyota32k.media.lib.processor.contract.IMultiPhaseProgress
+import io.github.toyota32k.media.lib.processor.contract.ISoughtMap
+import io.github.toyota32k.media.lib.processor.optimizer.OptimizerOptions
+import io.github.toyota32k.media.lib.processor.optimizer.OptimizingProcessorPhase
+import io.github.toyota32k.media.lib.report.Report
 import io.github.toyota32k.media.lib.strategy.IAudioStrategy
 import io.github.toyota32k.media.lib.strategy.IVideoStrategy
 import io.github.toyota32k.media.lib.strategy.PresetAudioStrategies
+import io.github.toyota32k.media.lib.types.Rotation
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 
 /**
  * IMultiPhaseProgress を受け取る i/f
  */
 interface IProgressSink {
-    fun onProgress(progress: IMultiPhaseProgress)
+    fun onProgress(progress: IMultiPhaseProgress<OptimizingProcessorPhase>)
     fun complete()
 }
 
 /**
  * ISaveResultの画像用実装
  */
-class ImageSaveResult(override val outputFile: IOutputMediaFile?, override val status: ISaveResult.Status, override val sourceInfo:ISourceInfo, override val error:Throwable?, override val errorMessage:String?): ISaveResult {
+class ImageSaveResult(override val inputFile: IInputMediaFile?, override val outputFile: IOutputMediaFile?, override val status: ISaveResult.Status, override val sourceInfo:ISourceInfo, override val error:Throwable?, override val errorMessage:String?): ISaveResult {
     companion object {
-        fun succeeded(sourceInfo:ISourceInfo,outputFile: IOutputMediaFile):ImageSaveResult = ImageSaveResult(outputFile,ISaveResult.Status.SUCCESS, sourceInfo,null, null)
+        fun succeeded(sourceInfo:ISourceInfo, inputFile:IInputMediaFile, outputFile: IOutputMediaFile):ImageSaveResult = ImageSaveResult(inputFile, outputFile,ISaveResult.Status.SUCCESS, sourceInfo,null, null)
 //        fun cancelled(sourceInfo:ISourceInfo): ImageSaveResult = ImageSaveResult(null, ISaveResult.Status.CANCELLED, sourceInfo,null, null)
-        fun error(sourceInfo:ISourceInfo, error:Throwable, message:String? = null) = ImageSaveResult(null,ISaveResult.Status.ERROR, sourceInfo,error, message)
+        fun error(sourceInfo:ISourceInfo, inputFile: IInputMediaFile?, error:Throwable, message:String? = null) = ImageSaveResult(inputFile,null,ISaveResult.Status.ERROR, sourceInfo,error, message)
     }
 }
 
 /**
  * ISaveResultの動画用実装
  */
-class SaveVideoResult private constructor (override val sourceInfo:ISourceInfo, val convertResult: IConvertResult): ISaveResult {
+class VideoSaveResult private constructor (override val sourceInfo:ISourceInfo, override val convertResult: IConvertResult): IVideoSaveResult {
     override val status: ISaveResult.Status
         get() = when {
             convertResult.succeeded -> ISaveResult.Status.SUCCESS
@@ -62,11 +69,13 @@ class SaveVideoResult private constructor (override val sourceInfo:ISourceInfo, 
 
     override val outputFile: IOutputMediaFile?
         get() = convertResult.outputFile
+    override val inputFile: IInputMediaFile?
+        get() = convertResult.inputFile
 
     companion object {
         //            fun error(error:Throwable, message:String? = null) = SaveVideoResult( null, ConvertResult.error(error, message))
-        fun cancel(sourceInfo:ISourceInfo) = SaveVideoResult(sourceInfo, ConvertResult.cancelled)
-        fun fromResult(sourceInfo:ISourceInfo, result: IConvertResult) = SaveVideoResult(sourceInfo,result)
+        fun cancel(sourceInfo:ISourceInfo, inputFile: IInputMediaFile?) = VideoSaveResult(sourceInfo, CancelResult(inputFile))
+        fun fromResult(sourceInfo:ISourceInfo, result: IConvertResult) = VideoSaveResult(sourceInfo,result)
     }
 }
 
@@ -178,12 +187,12 @@ open class GenericSaveFileHandler(
             task.onStart(null)  // image does not support cancellation
             listener.onSaveTaskStarted(sourceInfo)
             outputFile.saveBitmap(sourceInfo.editedBitmap, imageFormat, quality)
-            ImageSaveResult.succeeded(sourceInfo,outputFile)
+            ImageSaveResult.succeeded(sourceInfo, inputFile, outputFile)
         } catch(e:Throwable) {
             logger.error(e)
-            ImageSaveResult.error(sourceInfo,e)
+            ImageSaveResult.error(sourceInfo, inputFile,e)
         }
-        outputFileProvider.finalize(result.succeeded, inputFile, outputFile)
+        outputFileProvider.finalize(result)
         listener.onSaveTaskCompleted(result)
         task.onEnd()
         return result.succeeded
@@ -201,33 +210,66 @@ open class GenericSaveFileHandler(
         val inFile = source.uri.toUri().toAndroidFile(applicationContext)
         val outFile = outputFileProvider.getOutputFile("video/mp4", inFile) ?: return false
 
-        val trimOptimizer = TrimOptimizer.Builder(applicationContext)
+        val processorOptions = ProcessorOptions.Builder()
             .input(inFile)
             .output(outFile)
-            .deleteOutputOnError(true)
             .videoStrategy(videoStrategy)
             .audioStrategy(audioStrategy)
             .keepHDR(task.keepHdr)
-            .fastStart(true)
-            .removeFreeOnFastStart(true)
             .trimming {
                 addRangesMs(sourceInfo.trimmingRanges)
             }
             .rotate(Rotation.relative(sourceInfo.rotation))
             .crop(sourceInfo.cropRect)
             .brightness(sourceInfo.brightness)
-            .setProgressHandler { progress->
-                task.progressSink?.onProgress(progress)
-            }
             .build()
-
-        task.onStart(trimOptimizer)
+        val optimizerOptions = OptimizerOptions(applicationContext) { progress->
+            task.progressSink?.onProgress(progress)
+        }
+        val processor = Processor()
+        task.onStart(processor)
         listener.onSaveTaskStarted(sourceInfo)
-        val result = trimOptimizer.execute()
-        outputFileProvider.finalize(result.succeeded, inFile, outFile)
-        listener.onSaveTaskCompleted(SaveVideoResult.fromResult(sourceInfo,result))
+        val result = processor.execute(processorOptions, optimizerOptions)
+
+
+//        val trimOptimizer = TrimOptimizer.Builder(applicationContext)
+//            .input(inFile)
+//            .output(outFile)
+//            .deleteOutputOnError(true)
+//            .videoStrategy(videoStrategy)
+//            .audioStrategy(audioStrategy)
+//            .keepHDR(task.keepHdr)
+//            .fastStart(true)
+//            .removeFreeOnFastStart(true)
+//            .trimming {
+//                addRangesMs(sourceInfo.trimmingRanges)
+//            }
+//            .rotate(Rotation.relative(sourceInfo.rotation))
+//            .crop(sourceInfo.cropRect)
+//            .brightness(sourceInfo.brightness)
+//            .setProgressHandler { progress->
+//                task.progressSink?.onProgress(progress)
+//            }
+//            .build()
+//        task.onStart(trimOptimizer)
+//        listener.onSaveTaskStarted(sourceInfo)
+//        val result = trimOptimizer.execute()
+
+        val saveResult = VideoSaveResult.fromResult(sourceInfo,result)
+        outputFileProvider.finalize(saveResult)
+        listener.onSaveTaskCompleted(saveResult)
         task.onEnd()
         return result.succeeded
     }
 }
 
+class CancelResult(override val inputFile: IInputMediaFile?) : IConvertResult {
+    override val outputFile: IOutputMediaFile? = null
+    @Deprecated("use soughtMap")
+    override val actualSoughtMap: IActualSoughtMap? = null
+    override val soughtMap: ISoughtMap? = null
+    override val report: Report? = null
+    override val succeeded: Boolean = false
+    override val exception: Throwable = CancellationException()
+    override val errorMessage: String? = null
+}

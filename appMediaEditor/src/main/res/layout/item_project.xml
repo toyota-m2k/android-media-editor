@@ -20,7 +20,7 @@
             android:importantForAccessibility="no"
             android:id="@+id/type_video_icon"
             android:src="@drawable/ic_type_video"
-            app:tint="?attr/colorTertiary"
+            app:tint="@color/color_list_item_icon"
             />
         <ImageView
             android:layout_width="wrap_content"
@@ -28,7 +28,7 @@
             android:importantForAccessibility="no"
             android:id="@+id/type_photo_icon"
             android:src="@drawable/ic_type_photo"
-            app:tint="?attr/colorPrimary"
+            app:tint="@color/color_list_item_icon"
             />
     </FrameLayout>
 
@@ -53,7 +53,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         tools:text="xxxx"
-        android:textColor="?attr/colorOnSurface"
+        android:textColor="@color/color_list_item_text"
         />
     <TextView
         android:id="@+id/sub_text"
@@ -63,6 +63,6 @@
         app:layout_constraintTop_toBottomOf="@id/name_text"
         app:layout_constraintBottom_toBottomOf="parent"
         tools:text="yyy"
-        android:textColor="?attr/colorOnSurfaceVariant"
+        android:textColor="@color/color_list_item_text_variant"
         />
 </androidx.constraintlayout.widget.ConstraintLayout>

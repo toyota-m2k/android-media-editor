@@ -2,10 +2,9 @@ package io.github.toyota32k.media.editor.providers
 
 import io.github.toyota32k.lib.media.editor.handler.ExportFileProvider
 import io.github.toyota32k.lib.media.editor.handler.InteractiveOutputFileProvider
-import io.github.toyota32k.lib.media.editor.handler.MediaFileProvider
 import io.github.toyota32k.lib.media.editor.handler.OverwriteFileProvider
 import io.github.toyota32k.lib.media.editor.model.IOutputFileProvider
-import io.github.toyota32k.media.lib.converter.AndroidFile
+import io.github.toyota32k.media.lib.io.AndroidFile
 import kotlinx.coroutines.flow.StateFlow
 
 class CustomExportFileProvider(val projectName: StateFlow<String>, outputFileSuffix: String="") : ExportFileProvider(outputFileSuffix) {

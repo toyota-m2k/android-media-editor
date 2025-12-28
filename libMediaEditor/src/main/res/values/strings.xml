@@ -36,10 +36,10 @@
     <string name="keep_hdr">Keep HDR</string>
     <string name="duration_label">Duration</string>
     <string name="video_quality">Video Quality</string>
-    <string name="name_hint">Input filename</string>
-    <string name="radio_export">Export</string>
+    <string name="name_hint">Input Display Name</string>
+    <string name="radio_export">Export as File</string>
     <string name="radio_overwrite">Overwrite</string>
-    <string name="radio_save_as">Save as</string>
+    <string name="radio_save_as">Save in Media Store</string>
     <string name="file_name_label">Filename</string>
     <string name="aspect_4_3_portrait">4:3 (Portrait)</string>
     <string name="aspect_16_9_portrait">16:9 (Portrait)</string>

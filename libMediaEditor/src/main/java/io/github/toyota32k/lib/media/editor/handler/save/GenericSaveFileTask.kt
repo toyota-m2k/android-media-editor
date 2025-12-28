@@ -5,7 +5,7 @@ import io.github.toyota32k.lib.media.editor.dialog.ProgressDialog
 import io.github.toyota32k.lib.media.editor.model.AmeGlobal
 import io.github.toyota32k.lib.media.editor.model.ISaveListener
 import io.github.toyota32k.logger.UtLog
-import io.github.toyota32k.media.lib.converter.ICancellable
+import io.github.toyota32k.media.lib.processor.contract.ICancellable
 import io.github.toyota32k.utils.IDisposable
 import io.github.toyota32k.utils.lifecycle.Listeners
 

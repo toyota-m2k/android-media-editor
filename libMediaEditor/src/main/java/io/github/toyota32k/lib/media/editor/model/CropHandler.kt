@@ -10,6 +10,7 @@ import io.github.toyota32k.lib.player.model.IPlayerModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlin.math.roundToInt
 
 /**
  * ICropHandlerの標準実装
@@ -111,6 +112,14 @@ open class CropHandler(val playerModel: IPlayerModel, croppable: Boolean, showCo
     open fun onResetResolutionChanging() {
         cropImageModel.bitmapScaler.resetResolution()
     }
+
+    override var resolutionInt: Int
+        get() = if (playerModel.isCurrentSourcePhoto.value) 0 else cropImageModel.bitmapScaler.longSideLength.value.roundToInt()
+        set(value) {
+            if (playerModel.isCurrentSourcePhoto.value) {
+                cropImageModel.bitmapScaler.longSideLength.value = value.toFloat()
+            }
+        }
 
     override fun cancelMode(): Boolean {
         if (croppingNow.value) {
