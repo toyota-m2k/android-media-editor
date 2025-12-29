@@ -104,11 +104,11 @@ open class MediaEditorModel(
                 if (model.playerModel.isCurrentSourcePhoto.value) return null
                 val source = model.playerModel.currentSource.value ?: return null
                 val size = model.playerModel.videoSize.value ?: return null
-                val ranges = model.chapterEditorHandler.getEnabledRangeList().map { RangeMs(it.start, it.end) }
-                val rotation = model.playerModel.rotation.value
-                val cropRect = if (model.cropHandler.maskViewModel.isCropped.value) model.cropHandler.maskViewModel.cropRect(size.width, size.height).asRect else null
                 val positionMs = model.playerModel.currentPosition
                 val durationMs = model.playerModel.naturalDuration.value
+                val ranges = model.chapterEditorHandler.getEnabledRangeList().map { RangeMs(it.start, it.actualEnd(durationMs)) }
+                val rotation = model.playerModel.rotation.value
+                val cropRect = if (model.cropHandler.maskViewModel.isCropped.value) model.cropHandler.maskViewModel.cropRect(size.width, size.height).asRect else null
                 return VideoSourceInfoImpl(source, ranges, model.chapterEditorHandler.getChapterList().chapters, rotation, cropRect, null/*for future*/, positionMs, durationMs)
             }
             fun fromModel(model: MediaEditorModel, mode:SaveMode): VideoSourceInfoImpl? {
@@ -117,12 +117,20 @@ open class MediaEditorModel(
                 val size = model.playerModel.videoSize.value ?: return null
                 val durationMs = model.playerModel.naturalDuration.value
                 val positionMs = model.playerModel.currentPosition
-                val enabledRanges = model.chapterEditorHandler.getEnabledRangeList()
                 val ranges = when(mode) {
-                    SaveMode.ALL->enabledRanges.map { RangeMs(it.start, it.end) }
-                    SaveMode.LEFT->enabledRanges.mapNotNull { if (it.start <= positionMs) RangeMs(it.start, min(it.actualEnd(durationMs), positionMs)) else null }
-                    SaveMode.RIGHT->enabledRanges.mapNotNull { if (positionMs < it.end) RangeMs(max(it.start, positionMs), it.actualEnd(durationMs)) else null }
-                    SaveMode.CURRENT_RANGES->enabledRanges.mapNotNull { if (it.contains(positionMs)) RangeMs(positionMs, it.actualEnd(durationMs)) else null }
+                    SaveMode.ALL->model.chapterEditorHandler.getEnabledRangeList().map {
+                        RangeMs(it.start, it.actualEnd(durationMs))
+                    }
+                    SaveMode.LEFT->model.chapterEditorHandler.getEnabledRangeList().mapNotNull {
+                        if (it.start <= positionMs) RangeMs(it.start, min(it.actualEnd(durationMs), positionMs)) else null
+                    }
+                    SaveMode.RIGHT->model.chapterEditorHandler.getEnabledRangeList().mapNotNull {
+                        val end = it.actualEnd(durationMs)
+                        if (positionMs < end) RangeMs(max(it.start, positionMs), end) else null
+                    }
+                    SaveMode.CURRENT_RANGES->model.chapterEditorHandler.getEnabledRangeList().mapNotNull {
+                        if (it.contains(positionMs)) RangeMs(positionMs, it.actualEnd(durationMs)) else null
+                    }
                     SaveMode.CHAPTER-> {
                         // 現在の再生位置を含む単一チャプター（有効・無効は考慮しない）
                         val chapterList = model.chapterEditorHandler.getChapterList()

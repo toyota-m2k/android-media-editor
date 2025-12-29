@@ -210,51 +210,30 @@ open class GenericSaveFileHandler(
         val inFile = source.uri.toUri().toAndroidFile(applicationContext)
         val outFile = outputFileProvider.getOutputFile("video/mp4", inFile) ?: return false
 
-        val processorOptions = ProcessorOptions.Builder()
-            .input(inFile)
-            .output(outFile)
-            .videoStrategy(videoStrategy)
-            .audioStrategy(audioStrategy)
-            .keepHDR(task.keepHdr)
-            .trimming {
-                addRangesMs(sourceInfo.trimmingRanges)
-            }
-            .rotate(Rotation.relative(sourceInfo.rotation))
-            .crop(sourceInfo.cropRect)
-            .brightness(sourceInfo.brightness)
-            .build()
-        val optimizerOptions = OptimizerOptions(applicationContext) { progress->
-            task.progressSink?.onProgress(progress)
-        }
         val processor = Processor()
         task.onStart(processor)
         listener.onSaveTaskStarted(sourceInfo)
-        val result = processor.execute(processorOptions, optimizerOptions)
-
-
-//        val trimOptimizer = TrimOptimizer.Builder(applicationContext)
-//            .input(inFile)
-//            .output(outFile)
-//            .deleteOutputOnError(true)
-//            .videoStrategy(videoStrategy)
-//            .audioStrategy(audioStrategy)
-//            .keepHDR(task.keepHdr)
-//            .fastStart(true)
-//            .removeFreeOnFastStart(true)
-//            .trimming {
-//                addRangesMs(sourceInfo.trimmingRanges)
-//            }
-//            .rotate(Rotation.relative(sourceInfo.rotation))
-//            .crop(sourceInfo.cropRect)
-//            .brightness(sourceInfo.brightness)
-//            .setProgressHandler { progress->
-//                task.progressSink?.onProgress(progress)
-//            }
-//            .build()
-//        task.onStart(trimOptimizer)
-//        listener.onSaveTaskStarted(sourceInfo)
-//        val result = trimOptimizer.execute()
-
+        val result = try {
+            val processorOptions = ProcessorOptions.Builder()
+                .input(inFile)
+                .output(outFile)
+                .videoStrategy(videoStrategy)
+                .audioStrategy(audioStrategy)
+                .keepHDR(task.keepHdr)
+                .trimming {
+                    addRangesMs(sourceInfo.trimmingRanges)
+                }
+                .rotate(Rotation.relative(sourceInfo.rotation))
+                .crop(sourceInfo.cropRect)
+                .brightness(sourceInfo.brightness)
+                .build()
+            val optimizerOptions = OptimizerOptions(applicationContext) { progress ->
+                task.progressSink?.onProgress(progress)
+            }
+            processor.execute(processorOptions, optimizerOptions)
+        } catch(e:Throwable) {
+            Processor.ErrorResult(inFile, e)
+        }
         val saveResult = VideoSaveResult.fromResult(sourceInfo,result)
         outputFileProvider.finalize(saveResult)
         listener.onSaveTaskCompleted(saveResult)

@@ -128,22 +128,26 @@ class GenericSplitHandler(
         val multiResult = MultiResult()
         task.onStart(cancellerWrapper)
         listener.onSaveTaskStarted(sourceInfo)
-
-        for (range in ranges) {
-            val outFile = fileSelector.selectOutputFile(ranges.indexOf(range), range.startMs) ?: return multiResult.add(CancelResult(inFile))
-            if (inFile == outFile) throw IllegalStateException("cannot overwrite input file on splitting file.")
-            val processorOptions = processorOptionsBuilder
-                .output(outFile)
-                .clipStartMs(range.startMs)
-                .clipEndMs(range.endMs)
-                .build()
-            cancellerWrapper.setCanceller(processor)
-            val result = processor.execute(processorOptions, optimizerOptions)
-            multiResult.add(result)
+        try {
+            for (range in ranges) {
+                val outFile = fileSelector.selectOutputFile(ranges.indexOf(range), range.startMs) ?: return multiResult.add(CancelResult(inFile))
+                if (inFile == outFile) throw IllegalStateException("cannot overwrite input file on splitting file.")
+                val processorOptions = processorOptionsBuilder
+                    .output(outFile)
+                    .clipStartMs(range.startMs)
+                    .clipEndMs(range.endMs)
+                    .build()
+                cancellerWrapper.setCanceller(processor)
+                val result = processor.execute(processorOptions, optimizerOptions)
+                multiResult.add(result)
+            }
+        } catch(e:Throwable) {
+            logger.error(e)
+            multiResult.error(inFile, e)
         }
+        fileSelector.finalize(multiResult)
         listener.onSaveTaskCompleted(multiResult)
         task.onEnd()
-        fileSelector.finalize(multiResult)
         return multiResult
     }
 
@@ -175,19 +179,24 @@ class GenericSplitHandler(
         val multiResult = MultiResult()
         task.onStart(cancellerWrapper)
         listener.onSaveTaskStarted(sourceInfo)
-        for (range in ranges) {
-            val outFile = fileSelector.selectOutputFile(ranges.indexOf(range), range.startMs) ?: return multiResult.add(CancelResult(inFile))
-            if (inFile == outFile) throw IllegalStateException("cannot overwrite input file on splitting file.")
-            val processorOptions = processorOptionsBuilder
-                .output(outFile)
-                .trimming {
-                    reset()
-                    addRangeMs(range)
-                }
-                .build()
-            cancellerWrapper.setCanceller(processor)
-            val result = processor.execute(processorOptions, optimizerOptions)
-            multiResult.add(result)
+        try {
+            for (range in ranges) {
+                val outFile = fileSelector.selectOutputFile(ranges.indexOf(range), range.startMs) ?: return multiResult.add(CancelResult(inFile))
+                if (inFile == outFile) throw IllegalStateException("cannot overwrite input file on splitting file.")
+                val processorOptions = processorOptionsBuilder
+                    .output(outFile)
+                    .trimming {
+                        reset()
+                        addRangeMs(range)
+                    }
+                    .build()
+                cancellerWrapper.setCanceller(processor)
+                val result = processor.execute(processorOptions, optimizerOptions)
+                multiResult.add(result)
+            }
+        } catch(e:Throwable) {
+            logger.error(e)
+            multiResult.error(inFile, e)
         }
         fileSelector.finalize(multiResult)
         listener.onSaveTaskCompleted(multiResult)
