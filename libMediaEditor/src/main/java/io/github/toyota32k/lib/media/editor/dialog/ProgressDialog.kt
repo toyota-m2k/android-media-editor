@@ -17,7 +17,6 @@ import io.github.toyota32k.lib.media.editor.databinding.DialogProgressBinding
 import io.github.toyota32k.lib.media.editor.handler.save.IProgressSink
 import io.github.toyota32k.media.lib.processor.contract.ICancellable
 import io.github.toyota32k.media.lib.processor.contract.IMultiPhaseProgress
-import io.github.toyota32k.media.lib.processor.contract.format
 import io.github.toyota32k.media.lib.processor.optimizer.OptimizingProcessorPhase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow

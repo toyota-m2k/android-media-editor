@@ -122,18 +122,19 @@ open class ChapterEditorHandler(protected val playerModel: IPlayerModel, support
     companion object {
         fun correctChapterList(soughtMap: ISoughtMap, chapterList: IChapterList): List<IChapter> {
             val newList = MutableChapterList()
-            // ...|...skipped...|...enabled...|...
-            //    a             b             c
-            // のような chapter 構成の場合 aとb は結果的に同じ位置を指すことになるが、
-            // スキップされる a より、有効なチャプターである、b を優先的に採用した。
-            // MutableChapterList は一定範囲内に、２つ以上のチャプターを登録するのを禁止しているので、
-            // 近接するチャプターを追加する場合は、最初の登録が有効となる。b を a より先に登録するため、
-            // chapterリストを後ろから順に列挙して処理する。
-            for (c in chapterList.chapters.asReversed()) {
+            for (c in chapterList.chapters) {
+                if (c.skip) {
+                    logger.debug {"skipped  : ${c.position.formatAsMs()}" }
+                    continue
+                }
                 val pos = soughtMap.correctPositionUs(c.position.ms2us())
-                if (pos<0) continue
+                if (pos<0) {
+                    logger.debug {"disabled : ${c.position.formatAsMs()}" }
+                    continue
+                }
 //                logger.debug("correct with soughtMap: ${c.position.formatAsMs()} -> ${pos.formatAsUs()}")
-                newList.addChapter(pos.us2ms(), c.label, false)
+                val ok = newList.addChapter(pos.us2ms(), c.label, false)
+                logger.debug { "corrected: ${c.position.formatAsMs()} -> ${pos.formatAsUs()} : ${ok}" }
             }
             return newList.chapters
         }

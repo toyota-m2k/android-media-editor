@@ -12,7 +12,6 @@ import io.github.toyota32k.media.lib.io.IInputMediaFile
 import io.github.toyota32k.media.lib.processor.Processor
 import io.github.toyota32k.media.lib.processor.ProcessorOptions
 import io.github.toyota32k.media.lib.processor.contract.IConvertResult
-import io.github.toyota32k.media.lib.processor.contract.format
 import io.github.toyota32k.media.lib.report.Report
 import io.github.toyota32k.media.lib.strategy.IVideoStrategy
 import io.github.toyota32k.media.lib.strategy.PresetAudioStrategies
