@@ -48,6 +48,7 @@ import io.github.toyota32k.lib.media.editor.handler.save.VideoSaveResult
 import io.github.toyota32k.lib.media.editor.handler.split.GenericSplitHandler
 import io.github.toyota32k.lib.player.model.IMutableChapterList
 import io.github.toyota32k.lib.player.model.Range
+import io.github.toyota32k.lib.player.model.StandardPhotoLoader
 import io.github.toyota32k.lib.player.model.chapter.MutableChapterList
 import io.github.toyota32k.logger.UtLog
 import io.github.toyota32k.logger.UtLogConfig
@@ -158,6 +159,7 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
                 enableSeekLarge(5000, 10000)
                 enableSliderLock(true)
                 enablePhotoViewer()
+                customPhotoLoader(StandardPhotoLoader())    // 画像ファイルのSHA1ハッシュをsignatureとしてGlideによる画像ロードを利用
             }
             .supportChapterEditor()
             .supportCrop()
@@ -305,7 +307,7 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
 
             val fileUri = project.uri.toUri()
             val orgSource = targetMediaSource.value
-            if (orgSource?.file?.uri == fileUri) return orgSource
+            if (orgSource?.file?.safeUri == fileUri) return orgSource
             val source = MediaSource.fromFile(fileUri.toAndroidFile(getApplication()), project.type)?.apply {
                 if (!isPhoto) {
                     chapterList.deserialize(project.serializedChapters)
@@ -510,7 +512,7 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
                         val name = target?.getFileName() ?: "unknown"
                         val message = "Saved in $name"
                         if (result is VideoSaveResult) {
-                            val uri = target?.uri
+                            val uri = target?.safeUri
                             if (DetailMessageDialog.showMessage("Completed", message, result.convertResult.report?.toString(), uri?.toString(), null)) {
                                 if (uri!=null) {
                                     viewModel.setNewTargetMediaFile(uri)

@@ -7,7 +7,6 @@ import android.graphics.Bitmap
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
-import androidx.core.net.toUri
 import io.github.toyota32k.lib.media.editor.model.AmeGlobal
 import io.github.toyota32k.media.lib.io.AndroidFile
 import io.github.toyota32k.utils.android.RefBitmap
@@ -85,7 +84,7 @@ object AndroidMediaFile {
             // Deprecated
             // Callers should migrate to inserting items directly into MediaStore, where they will be automatically scanned after each mutation.
             // と書かれているが、これは、Android 10 以上の話で、Android 9 以下の場合は、これを使わざるを得ないのだ。ターゲットOSを Android 10 以上にできたら消す。
-            val uri = this.uri ?: this.path?.toUri() ?: return
+            val uri = this.safeUri
             @Suppress("DEPRECATION")
             context.sendBroadcast(Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, uri))
         }

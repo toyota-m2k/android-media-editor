@@ -176,7 +176,7 @@ class ProjectDB(val application: Application, val dbFileName:String="AME.db") : 
     }
 
     fun getProject(uri:Uri) : Project? {
-        val documentId = safeGetDocumentId(uri) ?: return null
+        val documentId = safeGetDocumentId(uri)
         return db.projectTable().get(documentId)
     }
     fun getProject(id:Int) : Project? {
