@@ -7,7 +7,7 @@
     android:layout_height="match_parent"
     android:layout_gravity="center">
     <io.github.toyota32k.lib.media.editor.view.EditorControlPanel
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:id="@+id/editor_controller"
         app:layout_constraintTop_toTopOf="parent"

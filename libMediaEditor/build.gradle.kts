@@ -60,6 +60,7 @@ dependencies {
     api(libs.android.media.player)
     api(libs.android.binding)
     implementation(libs.android.dialog)
+    implementation(libs.android.viewex)
     implementation(libs.androidx.documentfile)
 
     testImplementation(libs.junit)

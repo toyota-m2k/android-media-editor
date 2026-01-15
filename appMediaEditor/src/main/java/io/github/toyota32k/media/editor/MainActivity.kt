@@ -24,6 +24,8 @@ import io.github.toyota32k.binder.command.bindCommand
 import io.github.toyota32k.binder.editTextBinding
 import io.github.toyota32k.binder.multiVisibilityBinding
 import io.github.toyota32k.binder.observe
+import io.github.toyota32k.binder.onLayoutChanged
+import io.github.toyota32k.binder.onViewSizeChanged
 import io.github.toyota32k.binder.visibilityBinding
 import io.github.toyota32k.dialog.broker.IUtActivityBrokerStoreProvider
 import io.github.toyota32k.dialog.broker.UtActivityBrokerStore
@@ -64,6 +66,7 @@ import io.github.toyota32k.media.editor.providers.CustomInteractiveOutputFilePro
 import io.github.toyota32k.media.lib.io.AndroidFile
 import io.github.toyota32k.media.lib.io.toAndroidFile
 import io.github.toyota32k.utils.TimeSpan
+import io.github.toyota32k.utils.UtLib
 import io.github.toyota32k.utils.android.CompatBackKeyDispatcher
 import io.github.toyota32k.utils.android.PackageUtil
 import io.github.toyota32k.utils.android.RefBitmap
@@ -120,6 +123,9 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
     }
 
     class MainViewModel(application: Application): AndroidViewModel(application) {
+        init {
+            UtLib.applicationContext = application
+        }
         /**
          * OpenInで渡されたUriを保持するクラス
          * デバイスを回転するたびにインポート処理が
@@ -529,6 +535,9 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
                     }
                 }
             })
+            .onViewSizeChanged(controls.menuButton) { width, _->
+                controls.editorPlayerView.controls.editorController.setLayoutWidth((controls.root.width - width - 10.dp.px(this)).coerceAtLeast(50.dp.px(this)))
+            }
         controls.editorPlayerView.bindViewModel(viewModel.editorModel, binder)
         window.addFlags(
             WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON  // スリープしない

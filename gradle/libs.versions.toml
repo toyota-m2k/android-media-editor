@@ -19,6 +19,7 @@ androidMediaProcessor = "4.2.1"
 androidMediaPlayer = "4.3.2"
 androidDialog = "6.3.5"
 androidBinding = "1.12.2"
+androidViewex = "1.1.19"
 slidingpanelayout = "1.2.0"
 documentfile = "1.1.0"
 roomRuntime = "2.8.4"
@@ -43,6 +44,7 @@ android-media-player = { module = "com.github.toyota-m2k:android-media-player", 
 android-media-processor = { module = "com.github.toyota-m2k:android-media-processor", version.ref = "androidMediaProcessor" }
 android-dialog = { module = "com.github.toyota-m2k:android-dialog", version.ref = "androidDialog" }
 android-binding = { module = "com.github.toyota-m2k:android-binding", version.ref = "androidBinding" }
+android-viewex = { module = "com.github.toyota-m2k:android-viewex", version.ref = "androidViewex" }
 androidx-documentfile = { group = "androidx.documentfile", name = "documentfile", version.ref = "documentfile" }
 
 [plugins]
