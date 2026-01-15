@@ -20,6 +20,7 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:layout_gravity="end"
+            android:paddingHorizontal="5dp"
             >
 
             <ImageButton
@@ -117,6 +118,7 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:layout_gravity="end"
+            android:paddingHorizontal="5dp"
             >
             <TextView
                 android:id="@+id/crop_text"
@@ -181,6 +183,7 @@
         android:visibility="gone"
         tools:visibility="visible"
         android:layout_gravity="end"
+        android:padding="5dp"
         >
         <LinearLayout
             android:id="@+id/resolution_buttons"

@@ -6,6 +6,15 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:layout_gravity="center">
+    <io.github.toyota32k.lib.media.editor.view.EditorExoPlayerHost
+        android:id="@+id/player"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        android:layout_gravity="center"
+        app:ampAttrsByParent="true"
+        />
     <io.github.toyota32k.lib.media.editor.view.EditorControlPanel
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -14,15 +23,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:ampAttrsByParent="true"
         />
-    <io.github.toyota32k.lib.media.editor.view.EditorExoPlayerHost
-        android:id="@+id/player"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        app:layout_constraintTop_toBottomOf="@+id/editor_controller"
-        app:layout_constraintBottom_toBottomOf="parent"
-        android:layout_gravity="center"
-        app:ampAttrsByParent="true"
-        />
+
     <io.github.toyota32k.lib.player.view.ControlPanel
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

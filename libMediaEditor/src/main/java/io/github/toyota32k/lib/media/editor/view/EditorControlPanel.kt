@@ -59,7 +59,9 @@ class EditorControlPanel @JvmOverloads constructor(context: Context, attrs: Attr
             val paddingBottom = epa.sarForEditor.sa.getDimensionPixelSize(R.styleable.MediaEditor_amePanelPaddingBottom, padding)
 
             controls.apply {
-                root.background = panelBackground
+                editorMainButtonPanel.background = panelBackground
+                cropPanel.background = panelBackground
+                resolutionPanel.background = panelBackground
                 root.setPadding(paddingStart, paddingTop, paddingEnd, paddingBottom)
                 editorMainButtonPanel.children.forEach { (it as? ImageButton)?.imageTintList = buttonTint }
                 cropPanel.children.forEach {

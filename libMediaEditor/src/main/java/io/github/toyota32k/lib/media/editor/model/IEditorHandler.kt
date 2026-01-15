@@ -23,6 +23,7 @@ import io.github.toyota32k.media.lib.types.RangeMs
 import io.github.toyota32k.utils.IDisposable
 import io.github.toyota32k.utils.android.RefBitmap
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
 import java.io.Closeable
 
 /**
@@ -68,7 +69,7 @@ interface ICropHandler : IDisposable {
     /**
      * 切り抜き中なら true
      */
-    val croppingNow: Flow<Boolean>
+    val croppingNow: StateFlow<Boolean>
 
     /**
      * 解像度変更中なら true

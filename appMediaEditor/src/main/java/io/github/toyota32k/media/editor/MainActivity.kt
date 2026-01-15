@@ -7,12 +7,14 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import android.view.ViewGroup
 import android.view.ViewTreeObserver
 import android.view.WindowManager
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.core.net.toUri
+import androidx.core.view.isVisible
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.application
 import androidx.lifecycle.viewModelScope
@@ -260,11 +262,11 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
             HALF,       // - buttonPane控えめ表示
             NONE,       // - buttonPane非表示
         }
-        fun viewState(targetMediaSource: MediaSource?, requestShowPanel:Boolean) : ViewState =  when {
-            targetMediaSource == null -> ViewState.FULL
-            requestShowPanel -> ViewState.HALF
-            else -> ViewState.NONE
-        }
+//        fun viewState(targetMediaSource: MediaSource?, requestShowPanel:Boolean) : ViewState =  when {
+//            targetMediaSource == null -> ViewState.FULL
+//            requestShowPanel -> ViewState.HALF
+//            else -> ViewState.NONE
+//        }
         val viewState = combine(isEditing, requestShowPanel) { isEditing, requestShowPanel ->
             when {
                 !isEditing-> ViewState.FULL
@@ -407,6 +409,7 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
                 }
             }
         }
+        val AnimDuration = 200L
 
         // Gesture / Scaling
         gestureManager = UtScaleGestureManager(this.applicationContext, enableDoubleTap = true, controls.editorPlayerView.manipulationTarget, minScale = 1f)
@@ -422,6 +425,37 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
                         Direction.Start -> viewModel.requestShowPanel.value = false
                         Direction.End -> viewModel.requestShowPanel.value = true
                     }
+                }
+                onFlickVertical {
+                    val playerControlPanel = controls.editorPlayerView.controls.controller
+                    val editorControlPanel = controls.editorPlayerView.controls.editorController
+                    if (playerControlPanel.isVisible) {
+                        // hide control panels
+                        editorControlPanel.animate()
+                            .y((-(editorControlPanel.height+editorControlPanel.paddingTop).toFloat()))
+                            .setDuration(AnimDuration)
+                            .start()
+                        playerControlPanel.animate()
+                            .y(controls.editorPlayerView.height.toFloat())
+                            .setDuration(AnimDuration)
+                            .withEndAction {
+                                playerControlPanel.visibility = View.INVISIBLE
+                            }
+                            .start()
+
+                    } else {
+                        // show control panels
+                        playerControlPanel.visibility = View.VISIBLE
+                        editorControlPanel.animate()
+                            .y(controls.editorPlayerView.paddingTop.toFloat())
+                            .setDuration(AnimDuration)
+                            .start()
+                        playerControlPanel.animate()
+                            .y((controls.editorPlayerView.height - controls.editorPlayerView.paddingBottom - playerControlPanel.height).toFloat())
+                            .setDuration(AnimDuration)
+                            .start()
+                    }
+
                 }
             }
 
@@ -443,7 +477,6 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
             currentViewState = updateButtonPanel()
         }
 
-        val AnimDuration = 200L
         binder
             .owner(this)
             .observe(viewModel.viewState) { vs ->
