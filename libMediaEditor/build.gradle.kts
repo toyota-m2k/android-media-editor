@@ -1,5 +1,6 @@
+import com.android.build.api.dsl.LibraryExtension
+
 plugins {
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.android.library)
     id("maven-publish")
 }
@@ -7,7 +8,7 @@ plugins {
 group = "com.github.toyota-m2k"
 version="1.0"
 
-android {
+configure<LibraryExtension> {
     namespace = "io.github.toyota32k.lib.media.editor"
     compileSdk {
         version = release(36)
@@ -40,12 +41,6 @@ android {
             withSourcesJar()
 //            withJavadocJar()
         }
-    }
-}
-
-kotlin {
-    compilerOptions {
-        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
 }
 

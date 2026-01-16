@@ -1,6 +1,5 @@
 [versions]
-agp = "8.13.2"
-kotlin = "2.3.0"
+agp = "9.0.0"
 # room compiler で使用。
 # ksp のバージョンは、kotlin_version と同じ世代のものを指定する必要がある。
 # https://github.com/google/ksp/releases で確認する。
@@ -19,7 +18,7 @@ androidMediaProcessor = "4.2.1"
 androidMediaPlayer = "4.3.2"
 androidDialog = "6.3.5"
 androidBinding = "1.12.2"
-androidViewex = "1.1.19"
+androidViewex = "1.1.20"
 slidingpanelayout = "1.2.0"
 documentfile = "1.1.0"
 roomRuntime = "2.8.4"
@@ -49,7 +48,6 @@ androidx-documentfile = { group = "androidx.documentfile", name = "documentfile"
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 android-library = { id = "com.android.library", version.ref = "agp" }
 devtool-ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 
