@@ -1,5 +1,5 @@
 [versions]
-agp = "9.0.0"
+agp = "9.0.1"
 # room compiler で使用。
 # ksp のバージョンは、kotlin_version と同じ世代のものを指定する必要がある。
 # https://github.com/google/ksp/releases で確認する。
