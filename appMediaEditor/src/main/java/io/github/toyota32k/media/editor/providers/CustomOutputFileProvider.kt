@@ -5,10 +5,11 @@ import io.github.toyota32k.lib.media.editor.handler.InteractiveOutputFileProvide
 import io.github.toyota32k.lib.media.editor.handler.OverwriteFileProvider
 import io.github.toyota32k.lib.media.editor.model.IOutputFileProvider
 import io.github.toyota32k.media.lib.io.AndroidFile
+import io.github.toyota32k.media.lib.io.IInputMediaFile
 import kotlinx.coroutines.flow.StateFlow
 
 class CustomExportFileProvider(val projectName: StateFlow<String>, outputFileSuffix: String="") : ExportFileProvider(outputFileSuffix) {
-    override suspend fun getBaseFileName(inputFile: AndroidFile): String {
+    override suspend fun getBaseFileName(inputFile: IInputMediaFile): String {
         return projectName.value.takeIf { it.isNotBlank() } ?: super.getBaseFileName(inputFile)
     }
 }
@@ -20,7 +21,7 @@ class CustomOverwriteFileProvider(val projectName: StateFlow<String>, showConfir
 }
 
 class CustomInteractiveOutputFileProvider(val projectName: StateFlow<String>, outputFileSuffix:String="", subFolder:String?=null): InteractiveOutputFileProvider(outputFileSuffix, subFolder) {
-    override suspend fun getBaseFileName(inputFile: AndroidFile): String {
+    override suspend fun getBaseFileName(inputFile: IInputMediaFile): String {
         return projectName.value.takeIf { it.isNotBlank() } ?: super.getBaseFileName(inputFile)
     }
 

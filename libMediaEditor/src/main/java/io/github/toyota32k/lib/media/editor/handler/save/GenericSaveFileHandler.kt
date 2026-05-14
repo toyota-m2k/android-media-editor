@@ -12,7 +12,9 @@ import io.github.toyota32k.lib.media.editor.model.ISaveResult
 import io.github.toyota32k.lib.media.editor.model.ISourceInfo
 import io.github.toyota32k.lib.media.editor.model.IVideoSaveResult
 import io.github.toyota32k.lib.media.editor.model.IVideoSourceInfo
+import io.github.toyota32k.lib.player.model.IMediaSource
 import io.github.toyota32k.logger.UtLog
+import io.github.toyota32k.media.lib.io.HttpInputFile
 import io.github.toyota32k.media.lib.io.IInputMediaFile
 import io.github.toyota32k.media.lib.io.IOutputMediaFile
 import io.github.toyota32k.media.lib.io.toAndroidFile
@@ -149,6 +151,24 @@ interface ISaveVideoTask: ISaveFileTask, IProgressSinkProvider, IVideoStrategySe
     val fastStart: Boolean
 }
 
+fun interface ISourceToInputMediaFile {
+    fun toInputMediaFile(source: IMediaSource): IInputMediaFile
+
+    class Default(context: Context) : ISourceToInputMediaFile {
+        val applicationContext: Context = context.applicationContext
+        override fun toInputMediaFile(source: IMediaSource): IInputMediaFile {
+            return source.uri.toUri().run {
+                when (scheme?.lowercase()) {
+                    "http", "https" -> HttpInputFile(applicationContext, source.uri)
+                    else -> toAndroidFile(applicationContext)
+                }
+            }
+        }
+    }
+}
+
+
+
 /**
  * ISaveFileHandlerの汎用実装クラス
  * 
@@ -162,12 +182,14 @@ open class GenericSaveFileHandler(
     context: Context,
     showSaveButton:Boolean,
     val startImageSaveTask: (() -> ISaveImageTask?) = { GenericSaveImageTask.defaultTask() },
-    val startVideoSaveTask: (() -> ISaveVideoTask?) = { GenericSaveVideoTask.defaultTask(InteractiveVideoStrategySelector(), DefaultAudioStrategySelector) }
+    val startVideoSaveTask: (() -> ISaveVideoTask?) = { GenericSaveVideoTask.defaultTask(InteractiveVideoStrategySelector(), DefaultAudioStrategySelector) },
+    val sourceToInputMediaFile: ISourceToInputMediaFile =  ISourceToInputMediaFile.Default(context.applicationContext)
 ) : ISaveFileHandler {
     val logger = UtLog("SaveFileHandler", AmeGlobal.logger)
     val applicationContext = context.applicationContext ?: throw IllegalStateException("applicationContext is null")
     override val showSaveButton = MutableStateFlow(showSaveButton)
     override val listener = SaveTaskListenerImpl<ISourceInfo, ISaveResult>()
+
 
     /**
      * 画像ファイルを保存する
@@ -181,7 +203,7 @@ open class GenericSaveFileHandler(
             Bitmap.CompressFormat.PNG -> "image/png"
             else -> "image/*"
         }
-        val inputFile = sourceInfo.source.uri.toUri().toAndroidFile(applicationContext)
+        val inputFile = sourceToInputMediaFile.toInputMediaFile(sourceInfo.source)
         val outputFile = outputFileProvider.getOutputFile(mimeType, inputFile) ?: return false
         val result = try {
             task.onStart(null)  // image does not support cancellation
@@ -198,16 +220,19 @@ open class GenericSaveFileHandler(
         return result.succeeded
     }
 
+
     /**
      * 動画ファイルを保存する
      */
     override suspend fun saveVideo(sourceInfo: IVideoSourceInfo, outputFileProvider: IOutputFileProvider): Boolean {
         val source = sourceInfo.source
         val task = startVideoSaveTask() ?: return false
-        val inputFile = source.uri.toUri().toAndroidFile(applicationContext)
-        val videoStrategy = task.getVideoStrategy(inputFile, sourceInfo) ?: return false
-        val audioStrategy = task.getAudioStrategy(inputFile, sourceInfo) ?: return false
-        val inFile = source.uri.toUri().toAndroidFile(applicationContext)
+//        val inputFile = source.uri.toUri().toAndroidFile(applicationContext)
+
+        val inFile = sourceToInputMediaFile.toInputMediaFile(source)
+
+        val videoStrategy = task.getVideoStrategy(inFile, sourceInfo) ?: return false
+        val audioStrategy = task.getAudioStrategy(inFile, sourceInfo) ?: return false
         val outFile = outputFileProvider.getOutputFile("video/mp4", inFile) ?: return false
 
         val processor = Processor()

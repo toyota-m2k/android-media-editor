@@ -12,6 +12,7 @@ import io.github.toyota32k.lib.media.editor.model.ICommonOutputFileProvider
 import io.github.toyota32k.lib.media.editor.model.IOutputFileProvider
 import io.github.toyota32k.lib.media.editor.model.ISaveResult
 import io.github.toyota32k.media.lib.io.AndroidFile
+import io.github.toyota32k.media.lib.io.IInputMediaFile
 import io.github.toyota32k.media.lib.io.toAndroidFile
 import java.io.File
 
@@ -106,11 +107,11 @@ object FileUtil {
  * @param outputFileSuffix inputFile から outputFile名を作成するときに付加するサフィックス
  */
 abstract class AbstractNamedFileProvider(val outputFileSuffix:String) : IOutputFileProvider {
-    open suspend fun getBaseFileName(inputFile:AndroidFile): String {
-        return inputFile.getFileName() ?: "unnamed"
+    open suspend fun getBaseFileName(inputFile: IInputMediaFile): String {
+        return (inputFile as? AndroidFile)?.getFileName() ?: "output"
     }
 
-    open suspend fun initialFileName(mimeType:String,inputFile: AndroidFile): String? {
+    open suspend fun initialFileName(mimeType:String,inputFile: IInputMediaFile): String? {
         return FileUtil.createInitialFileName(getBaseFileName(inputFile), outputFileSuffix, FileUtil.contentType2Ext(mimeType))
     }
 
@@ -130,7 +131,7 @@ open class ExportFileProvider(outputFileSuffix:String) : AbstractNamedFileProvid
     override suspend fun getOutputFile(mimeType:String, name:String): AndroidFile? {
         return FileUtil.selectFile(mimeType, name)
     }
-    override suspend fun getOutputFile(mimeType:String, inputFile: AndroidFile): AndroidFile? {
+    override suspend fun getOutputFile(mimeType:String, inputFile: IInputMediaFile): AndroidFile? {
         val name = initialFileName(mimeType, inputFile) ?: return null
         return getOutputFile(mimeType, name)
     }
@@ -154,7 +155,7 @@ open class MediaFileProvider(outputFileSuffix: String, val subFolder:String?=nul
         }
     }
 
-    override suspend fun getOutputFile(mimeType: String, inputFile: AndroidFile): AndroidFile? {
+    override suspend fun getOutputFile(mimeType: String, inputFile: IInputMediaFile): AndroidFile? {
         val name = initialFileName(mimeType, inputFile) ?: return null
         return getOutputFile(mimeType, name)
     }
@@ -166,7 +167,7 @@ open class MediaFileProvider(outputFileSuffix: String, val subFolder:String?=nul
  */
 @Suppress("unused")
 open class InteractiveMediaFileProvider(subFolder:String?=null): MediaFileProvider("", subFolder) {
-    override suspend fun initialFileName(mimeType: String, inputFile: AndroidFile): String? {
+    override suspend fun initialFileName(mimeType: String, inputFile: IInputMediaFile): String? {
         val initialName = super.initialFileName(mimeType, inputFile) ?: return null
 //        val initialName = FileUtil.createInitialFileName(inputFile.getFileName() ?: "unnamed", outputFileSuffix, FileUtil.contentType2Ext(mimeType))
         return NameDialog.show(initialName)
@@ -179,7 +180,7 @@ open class InteractiveMediaFileProvider(subFolder:String?=null): MediaFileProvid
  * @param subFolder Media Files のサブフォルダ名 (nullなら直下)
  */
 open class NamedMediaFileProvider(val name:String, subFolder:String?=null): MediaFileProvider("", subFolder) {
-    override suspend fun initialFileName(mimeType: String, inputFile: AndroidFile): String? {
+    override suspend fun initialFileName(mimeType: String, inputFile: IInputMediaFile): String? {
         return name
     }
 }
@@ -192,8 +193,8 @@ open class OverwriteFileProvider(val showConfirmMessage:Boolean=true, val workSu
     protected open suspend fun getFallbackProvider(): IOutputFileProvider? {
         return ExportFileProvider("")
     }
-    override suspend fun getOutputFile(mimeType:String, inputFile: AndroidFile): AndroidFile? {
-        if (!inputFile.canWrite()) {
+    override suspend fun getOutputFile(mimeType:String, inputFile: IInputMediaFile): AndroidFile? {
+        if ((inputFile as? AndroidFile)?.canWrite() != true) {
             AmeGlobal.logger.error("target file is not writable")
             return getFallbackProvider()?.getOutputFile(mimeType, inputFile)
         }
@@ -235,7 +236,7 @@ open class InteractiveOutputFileProvider(outputFileSuffix:String, val subFolder:
         return OverwriteFileProvider(showConfirmMessage = false)    // 確認メッセージは SaveOptionDialog で表示済み
     }
 
-    override suspend fun getOutputFile(mimeType: String, inputFile: AndroidFile): AndroidFile? {
+    override suspend fun getOutputFile(mimeType: String, inputFile: IInputMediaFile): AndroidFile? {
         val initialName = initialFileName(mimeType, inputFile) ?: return null
         val option = SaveOptionDialog.show(initialName) ?: return null
         val provider = when(option.targetType) {
@@ -253,7 +254,7 @@ open class InteractiveOutputFileProvider(outputFileSuffix:String, val subFolder:
  */
 @Suppress("unused")
 class WorkFileProvider(val workSubFolder:String?=null) : IOutputFileProvider {
-    override suspend fun getOutputFile(mimeType: String, inputFile: AndroidFile): AndroidFile {
+    override suspend fun getOutputFile(mimeType: String, inputFile: IInputMediaFile): AndroidFile {
         return FileUtil.createWorkFile(workSubFolder)
     }
 

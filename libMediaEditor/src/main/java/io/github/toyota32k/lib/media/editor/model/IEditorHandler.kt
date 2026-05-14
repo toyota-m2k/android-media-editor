@@ -345,7 +345,7 @@ interface IMediaSourceWithMutableChapterList : IMediaSourceWithChapter {
  * 保存先ファイル（書き込み可能なファイルのUri）を取得するための i/f
  */
 interface IOutputFileProvider {
-    suspend fun getOutputFile(mimeType: String, inputFile: AndroidFile): AndroidFile?
+    suspend fun getOutputFile(mimeType: String, inputFile: IInputMediaFile): AndroidFile?
     suspend fun finalize(result:ISaveResult)
 }
 

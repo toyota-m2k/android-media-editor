@@ -1,21 +1,20 @@
 package io.github.toyota32k.lib.media.editor.handler.split
 
 import android.content.Context
-import androidx.core.net.toUri
 import io.github.toyota32k.lib.media.editor.handler.save.AbstractProgressSaveFileTask
 import io.github.toyota32k.lib.media.editor.handler.save.CancelResult
 import io.github.toyota32k.lib.media.editor.handler.save.IProgressSinkProvider
 import io.github.toyota32k.lib.media.editor.handler.save.ISaveFileTask
+import io.github.toyota32k.lib.media.editor.handler.save.ISourceToInputMediaFile
 import io.github.toyota32k.lib.media.editor.handler.save.SaveTaskListenerImpl
 import io.github.toyota32k.lib.media.editor.model.AmeGlobal
-import io.github.toyota32k.lib.media.editor.model.IMultiSplitResult
 import io.github.toyota32k.lib.media.editor.model.IMultiOutputFileSelector
+import io.github.toyota32k.lib.media.editor.model.IMultiSplitResult
 import io.github.toyota32k.lib.media.editor.model.ISourceInfo
 import io.github.toyota32k.lib.media.editor.model.ISplitHandler
 import io.github.toyota32k.lib.media.editor.model.IVideoSourceInfo
 import io.github.toyota32k.lib.media.editor.model.MediaEditorModel.VideoSourceInfoImpl.Companion.toRangeMsList
 import io.github.toyota32k.media.lib.io.IInputMediaFile
-import io.github.toyota32k.media.lib.io.toAndroidFile
 import io.github.toyota32k.media.lib.processor.Processor
 import io.github.toyota32k.media.lib.processor.ProcessorOptions
 import io.github.toyota32k.media.lib.processor.contract.ICancellable
@@ -63,7 +62,9 @@ class SplitTask : AbstractProgressSaveFileTask(), ISplitTask
 class GenericSplitHandler(
     context: Context,
     showSplitButton: Boolean,
-    val startSplitTask:()->ISplitTask?={ SplitTask() }) : AbstractSplitHandler(showSplitButton) {
+    val startSplitTask:()->ISplitTask?={ SplitTask() },
+    val sourceToInputMediaFile: ISourceToInputMediaFile = ISourceToInputMediaFile.Default(context)
+    ) : AbstractSplitHandler(showSplitButton) {
     val applicationContext = context.applicationContext ?: throw IllegalStateException("applicationContext is null")
 
     /**
@@ -100,7 +101,7 @@ class GenericSplitHandler(
             logger.warn("requested range is too short.")
             return MultiResult().error(null, IllegalArgumentException("requested range is too short."))
         }
-        val inFile = sourceInfo.source.uri.toUri().toAndroidFile(applicationContext)
+        val inFile = sourceToInputMediaFile.toInputMediaFile(sourceInfo.source)
         val ranges = mutableListOf(
             RangeMs(0, sourceInfo.positionMs),
             RangeMs(sourceInfo.positionMs, sourceInfo.durationMs)
@@ -157,7 +158,7 @@ class GenericSplitHandler(
      */
     override suspend fun splitByChapters(sourceInfo: IVideoSourceInfo, optimize:Boolean, fileSelector: IMultiOutputFileSelector): IMultiSplitResult {
         val task = startSplitTask() ?: return MultiResult().cancel(null)
-        val inFile = sourceInfo.source.uri.toUri().toAndroidFile(applicationContext)
+        val inFile = sourceToInputMediaFile.toInputMediaFile(sourceInfo.source)
         val ranges = sourceInfo.chapters.toRangeMsList(sourceInfo.durationMs)
 
         fileSelector.initialize(ranges)

@@ -9,7 +9,6 @@ import androidx.documentfile.provider.DocumentFile
 import androidx.room.Room
 import io.github.toyota32k.logger.UtLog
 import io.github.toyota32k.media.editor.MainActivity.MediaSource.Companion.getType
-import io.github.toyota32k.media.lib.io.AndroidFile
 import io.github.toyota32k.media.lib.io.toAndroidFile
 import io.github.toyota32k.utils.UtLazyResetableValue
 import java.io.File
