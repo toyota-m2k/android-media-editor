@@ -51,6 +51,7 @@ import io.github.toyota32k.lib.media.editor.handler.save.GenericSaveFileHandler
 import io.github.toyota32k.lib.media.editor.handler.save.VideoSaveResult
 import io.github.toyota32k.lib.media.editor.handler.split.GenericSplitHandler
 import io.github.toyota32k.lib.player.model.IMutableChapterList
+import io.github.toyota32k.lib.player.model.PhotoSizeOption
 import io.github.toyota32k.lib.player.model.Range
 import io.github.toyota32k.lib.player.model.StandardPhotoLoader
 import io.github.toyota32k.lib.player.model.chapter.MutableChapterList
@@ -166,7 +167,7 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
                 enableSeekMedium(1000, 3000)
                 enableSeekLarge(5000, 10000)
                 enableSliderLock(true)
-                enablePhotoViewer()
+                enablePhotoViewer(photoSizeOption=PhotoSizeOption.Original)
                 customPhotoLoader(StandardPhotoLoader())    // 画像ファイルのSHA1ハッシュをsignatureとしてGlideによる画像ロードを利用
             }
             .supportChapterEditor()
