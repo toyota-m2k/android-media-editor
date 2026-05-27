@@ -130,7 +130,12 @@ class GenericSplitHandler(
         task.onStart(cancellerWrapper)
         listener.onSaveTaskStarted(sourceInfo)
         try {
+            var cancelled: IConvertResult? = null
             for (range in ranges) {
+                if (cancelled!=null) {
+                    multiResult.add(cancelled)
+                    continue
+                }
                 val outFile = fileSelector.selectOutputFile(ranges.indexOf(range), range.startMs) ?: return multiResult.add(CancelResult(inFile))
                 if (inFile == outFile) throw IllegalStateException("cannot overwrite input file on splitting file.")
                 val processorOptions = processorOptionsBuilder
@@ -141,6 +146,10 @@ class GenericSplitHandler(
                 cancellerWrapper.setCanceller(processor)
                 val result = processor.execute(processorOptions, optimizerOptions)
                 multiResult.add(result)
+                // キャンセルされたら、以後、すべてキャンセル扱いとする
+                if (result.cancelled) {
+                    cancelled = result
+                }
             }
         } catch(e:Throwable) {
             logger.error(e)
