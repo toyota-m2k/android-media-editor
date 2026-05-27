@@ -39,7 +39,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
  * IMultiPhaseProgress を受け取る i/f
  */
 interface IProgressSink {
-    fun onProgress(progress: IMultiPhaseProgress<OptimizingProcessorPhase>)
+    fun onProgress(progress: IMultiPhaseProgress)
     fun complete()
 }
 

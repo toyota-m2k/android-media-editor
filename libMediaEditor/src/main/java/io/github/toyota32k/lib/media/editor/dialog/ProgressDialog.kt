@@ -40,7 +40,7 @@ class ProgressDialog : UtDialogEx() {
             }
         }
 
-        override fun onProgress(progress: IMultiPhaseProgress<OptimizingProcessorPhase>) {
+        override fun onProgress(progress: IMultiPhaseProgress) {
             viewModel.message.update(progress.phase.description)
             viewModel.progress.update(progress.percentage)
             viewModel.progressText.update(progress.format())
