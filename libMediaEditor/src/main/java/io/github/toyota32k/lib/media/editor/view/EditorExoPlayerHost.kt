@@ -183,7 +183,7 @@ class EditorExoPlayerHost  @JvmOverloads constructor(context: Context, attrs: At
                     bmp-> photoAltView.setImageBitmap(bmp?.bitmap)
                 }
             }
-            .observe(model.cropHandler.croppingNow) { cropping->
+            .observe(model.cropHandler.isCroppingNow) { cropping->
                 maskView.showHandle(cropping)
                 val padding = if (cropping) {
                     context.dp2px(16)
@@ -195,7 +195,7 @@ class EditorExoPlayerHost  @JvmOverloads constructor(context: Context, attrs: At
             }
             .bindCommand(model.cropHandler.commandResetCrop) { controls.expCropMaskView.invalidateIfNeed() }
             .bindCommand(model.cropHandler.commandRestoreCropFromMemory) { controls.expCropMaskView.invalidateIfNeed() }
-        combine(model.cropHandler.croppingNow,model.playerModel.videoSize, model.playerModel.rotation, rootViewSize,  this::updateLayout).launchIn(scope)
+        combine(model.cropHandler.isCroppingNow,model.playerModel.videoSize, model.playerModel.rotation, rootViewSize,  this::updateLayout).launchIn(scope)
     }
 
     private var handleRadius = 15.dp

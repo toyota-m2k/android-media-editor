@@ -19,7 +19,6 @@ import kotlin.math.roundToInt
 open class CropHandler(val playerModel: IPlayerModel, croppable: Boolean, showCompleteCancelButton:Boolean) : ICropHandler {
     override val croppable = MutableStateFlow(croppable)
     override val showCompleteCancelButton = MutableStateFlow(showCompleteCancelButton)
-    override val croppingNow = MutableStateFlow(false)
     override val cropAspectMode get() = maskViewModel.aspectMode
     override val resolutionChangingNow = MutableStateFlow(false)
     override val canChangeResolution = MutableStateFlow(false)
@@ -51,6 +50,7 @@ open class CropHandler(val playerModel: IPlayerModel, croppable: Boolean, showCo
     private val storedCropParams = MutableStateFlow<MaskCoreParams?>(null)
     private var originalCropParam = MaskCoreParams.IDENTITY
 
+    override val isCroppingNow: MutableStateFlow<Boolean> get() = maskViewModel.isCroppingNow
     override val isCropped: Flow<Boolean> get() = maskViewModel.isCropped
     override val isResolutionChanged: Flow<Boolean> = combine(canChangeResolution, cropImageModel.isResolutionChanged) { canChange, isChanged -> canChange && isChanged }
     override val isDirty: Boolean get() = maskViewModel.isCropped.value || (canChangeResolution.value && cropImageModel.isDirty)
@@ -75,7 +75,7 @@ open class CropHandler(val playerModel: IPlayerModel, croppable: Boolean, showCo
 
     open fun onBeginCrop() {
         if (!croppable.value) return
-        croppingNow.value = true
+        isCroppingNow.value = true
         originalCropParam = maskViewModel.getParams()
     }
     open fun onResetCrop() {
@@ -83,10 +83,10 @@ open class CropHandler(val playerModel: IPlayerModel, croppable: Boolean, showCo
     }
     open fun onCancelCrop() {
         maskViewModel.setParams(originalCropParam)
-        croppingNow.value = false
+        isCroppingNow.value = false
     }
     open fun onCompleteCrop() {
-        croppingNow.value = false
+        isCroppingNow.value = false
     }
     open fun onSetCropToMemory() {
         storedCropParams.value = maskViewModel.getParams().run { if (isIdentity) null else this }
@@ -122,7 +122,7 @@ open class CropHandler(val playerModel: IPlayerModel, croppable: Boolean, showCo
         }
 
     override fun cancelMode(): Boolean {
-        if (croppingNow.value) {
+        if (isCroppingNow.value) {
             onCancelCrop()
             return true
         }

@@ -63,7 +63,7 @@ open class MediaEditorModel(
      * - CROP       ... 映像（動画・画像）切り取り
      * - RESOLUTION ... 画像解像度変更
      */
-    val editMode: Flow<EditMode> = combine(cropHandler.croppingNow, cropHandler.resolutionChangingNow) { crop, resolution ->
+    val editMode: Flow<EditMode> = combine(cropHandler.isCroppingNow, cropHandler.resolutionChangingNow) { crop, resolution ->
         when {
             resolution -> EditMode.RESOLUTION
             crop -> EditMode.CROP

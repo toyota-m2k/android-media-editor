@@ -26,7 +26,6 @@ import io.github.toyota32k.binder.command.bindCommand
 import io.github.toyota32k.binder.editTextBinding
 import io.github.toyota32k.binder.multiVisibilityBinding
 import io.github.toyota32k.binder.observe
-import io.github.toyota32k.binder.onLayoutChanged
 import io.github.toyota32k.binder.onViewSizeChanged
 import io.github.toyota32k.binder.visibilityBinding
 import io.github.toyota32k.dialog.broker.IUtActivityBrokerStoreProvider
@@ -528,18 +527,18 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
                 }
             }
             .editTextBinding(controls.projectNameEdit, viewModel.projectName)
-            .visibilityBinding(controls.menuButton, combine(viewModel.isEditing, viewModel.editorModel.cropHandler.croppingNow) { isEditing, cropping ->
+            .visibilityBinding(controls.menuButton, combine(viewModel.isEditing, viewModel.editorModel.cropHandler.isCroppingNow) { isEditing, cropping ->
                 isEditing && !cropping
             })
             .multiVisibilityBinding(arrayOf(controls.buttonClose, controls.projectNameEdit, controls.projectNameLabel), viewModel.isEditing)
-            .visibilityBinding(controls.buttonPane, viewModel.editorModel.cropHandler.croppingNow, BoolConvert.Inverse)
+            .visibilityBinding(controls.buttonPane, viewModel.editorModel.cropHandler.isCroppingNow, BoolConvert.Inverse)
             .clickBinding(controls.menuButton) {
                 viewModel.requestShowPanel.toggle()
             }
             .bindCommand(viewModel.commandOpenProject, controls.buttonOpen)
 //            .bindCommand(viewModel.commandSaveFile, controls.buttonSave)
             .bindCommand(viewModel.commandCloseProject,controls.buttonClose)
-            .observe(viewModel.editorModel.cropHandler.croppingNow) {
+            .observe(viewModel.editorModel.cropHandler.isCroppingNow) {
                 if (it) {
                     gestureManager.agent.resetScrollAndScale()
                 }
