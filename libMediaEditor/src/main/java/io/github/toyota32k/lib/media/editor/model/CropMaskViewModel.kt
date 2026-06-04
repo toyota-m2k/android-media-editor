@@ -9,7 +9,6 @@ import io.github.toyota32k.logger.UtLog
 import io.github.toyota32k.utils.android.RefBitmap
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import org.json.JSONObject
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -68,21 +67,12 @@ typealias MaskCoreParams = VisibleAreaParams
  */
 class CropMaskViewModel {
     companion object {
-        //        const val MIN = 32f
         val logger = UtLog("CropMaskView", null, CropMaskView::class.java)
-        var previousAspectMode = AspectMode.FREE
-//        var memorizedCoreParams:MaskCoreParams? = null
     }
 
     // invalidateが必要かどうか
     var isDirty: Boolean = false
-    var aspectMode = MutableStateFlow(previousAspectMode)
-//    var memory:StateFlow<MaskCoreParams?> = MutableStateFlow(memorizedCoreParams)
-//    fun pushMemory() {
-//        val p = getParams()
-//        (memory as MutableStateFlow<MaskCoreParams?>).value = p
-//        memorizedCoreParams = p
-//    }
+    val aspectMode = MutableStateFlow(AspectMode.FREE)
 
     // isDirty が true の場合に fn() を実行し、isDirty を false にする
     // usage: viewModel.clearDirty { invalidate() }
@@ -189,8 +179,6 @@ class CropMaskViewModel {
     val minY:Float get() = padding.toFloat()
     val maxX:Float get() = viewWidth.toFloat() + padding
     val maxY:Float get() = viewHeight.toFloat() + padding
-//    val rangeX: ClosedFloatingPointRange<Float> get() = minX..maxX
-//    val rangeY: ClosedFloatingPointRange<Float> get() = minY..maxY
 
     var maskSy:Float
         get() = rsy * viewHeight + padding
@@ -387,6 +375,9 @@ class CropMaskViewModel {
         maskEy = newSy + h
     }
 
+    // 切り抜きモードか？
+    val isCroppingNow = MutableStateFlow(false)
+    // 切り抜かれているか？
     val isCropped = MutableStateFlow(false)
 
     interface ICropFlows {
@@ -471,7 +462,6 @@ class CropMaskViewModel {
     }
 
     fun getParams():MaskCoreParams {
-        previousAspectMode = aspectMode.value
         return MaskCoreParams(rsx, rsy, rex, rey)
     }
 

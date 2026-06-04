@@ -21,6 +21,7 @@ import io.github.toyota32k.utils.android.dp
 import io.github.toyota32k.utils.android.dp2px
 import io.github.toyota32k.utils.android.getLayoutHeight
 import io.github.toyota32k.utils.android.getLayoutWidth
+import kotlinx.coroutines.flow.combine
 
 /**
  * 画像切り抜き用の矩形マスクビュー
@@ -95,12 +96,12 @@ class CropMaskView@JvmOverloads constructor(context: Context, attrs: AttributeSe
         viewModel = vm
         vm.setViewDimension(getLayoutWidth(), getLayoutHeight(), paddingStart)
         vm.clearDirty { invalidate() }
-        binder.observe(vm.aspectMode) {
-                if (it!= AspectMode.FREE&&vm.viewSizeAvailable) {
-                    vm.moveRightBottom(vm.maskEx, vm.maskEy)
-                    vm.clearDirty { invalidate() }
-                }
+        binder.observe((combine(vm.aspectMode, vm.isCroppingNow) { mode, cropping-> if (cropping) mode else AspectMode.FREE })) {
+            if (it!= AspectMode.FREE && vm.viewSizeAvailable) {
+                vm.moveRightBottom(vm.maskEx, vm.maskEy)
+                vm.clearDirty { invalidate() }
             }
+        }
     }
 
     fun invalidateIfNeed() {

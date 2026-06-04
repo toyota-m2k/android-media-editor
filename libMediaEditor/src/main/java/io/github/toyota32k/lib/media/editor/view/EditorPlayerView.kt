@@ -5,7 +5,6 @@ import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.widget.FrameLayout
 import io.github.toyota32k.binder.Binder
-import io.github.toyota32k.binder.BoolConvert
 import io.github.toyota32k.binder.VisibilityBinding
 import io.github.toyota32k.binder.clickBinding
 import io.github.toyota32k.binder.command.bindCommand
@@ -17,6 +16,7 @@ import io.github.toyota32k.lib.media.editor.model.EditorPlayerViewAttributes
 import io.github.toyota32k.lib.media.editor.model.MediaEditorModel
 import io.github.toyota32k.utils.gesture.IUtManipulationTarget
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 
 /**
  * 動画編集用プレーヤービュー
@@ -52,9 +52,8 @@ class EditorPlayerView @JvmOverloads constructor(context: Context, attrs: Attrib
 
         val showVolumePanel = MutableStateFlow(false)
         binder
-            .visibilityBinding(controls.controller, model.playerControllerModel.showControlPanel, hiddenMode = VisibilityBinding.HiddenMode.HideByGone)
+            .visibilityBinding(controls.controller, combine(model.playerControllerModel.showControlPanel, model.cropHandler.isCroppingNow) { show, crop-> show && !crop }, hiddenMode = VisibilityBinding.HiddenMode.HideByGone)
             .multiVisibilityBinding(arrayOf(controls.volumePanel,controls.volumeGuardView), showVolumePanel, hiddenMode = VisibilityBinding.HiddenMode.HideByGone)
-            .visibilityBinding(controls.controller, model.cropHandler.croppingNow, BoolConvert.Inverse, hiddenMode = VisibilityBinding.HiddenMode.HideByGone)
             .clickBinding(controls.volumeGuardView) {
                 showVolumePanel.value = false
             }
