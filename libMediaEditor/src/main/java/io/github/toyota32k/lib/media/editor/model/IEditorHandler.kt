@@ -15,7 +15,6 @@ import io.github.toyota32k.lib.player.model.Range
 import io.github.toyota32k.media.lib.io.AndroidFile
 import io.github.toyota32k.media.lib.io.IInputMediaFile
 import io.github.toyota32k.media.lib.io.IOutputMediaFile
-import io.github.toyota32k.media.lib.processor.contract.IActualSoughtMap
 import io.github.toyota32k.media.lib.processor.contract.IConvertResult
 import io.github.toyota32k.media.lib.processor.contract.IResultBase
 import io.github.toyota32k.media.lib.processor.contract.ISoughtMap
@@ -275,6 +274,21 @@ interface ISourceInfo: Closeable {
 }
 
 /**
+ * 保存モード
+ * ALL      ... すべての有効範囲を保存
+ * LEFT     ... 現在の再生位置より前の有効範囲を保存
+ * RIGHT    ... 現在の再生位置より後ろの有効範囲を保存
+ * CHAPTER  ... 現在の再生位置を含むチャプターを保存
+ */
+enum class VideoSaveMode {
+    ALL,
+    LEFT,
+    RIGHT,
+    CHAPTER,        // カレントチャプター１つのみ
+    CURRENT_RANGES,  // カレントチャプターを含む一続きの有効範囲
+}
+
+/**
  * 動画用メディアソース情報 i/f
  */
 interface IVideoSourceInfo : ISourceInfo {
@@ -285,6 +299,7 @@ interface IVideoSourceInfo : ISourceInfo {
     val brightness:Float?
     val positionMs: Long
     val durationMs: Long
+    val saveMode: VideoSaveMode
 }
 
 /**

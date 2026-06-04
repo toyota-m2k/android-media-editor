@@ -98,40 +98,31 @@ open class MediaEditorModel(
         override val cropRect: Rect?,
         override val brightness: Float?,
         override val positionMs: Long,
-        override val durationMs: Long) : IVideoSourceInfo {
+        override val durationMs: Long,
+        override val saveMode: VideoSaveMode,
+        ) : IVideoSourceInfo {
         companion object {
-            fun fromModel(model: MediaEditorModel): VideoSourceInfoImpl? {
-                if (model.playerModel.isCurrentSourcePhoto.value) return null
-                val source = model.playerModel.currentSource.value ?: return null
-                val size = model.playerModel.videoSize.value ?: return null
-                val positionMs = model.playerModel.currentPosition
-                val durationMs = model.playerModel.naturalDuration.value
-                val ranges = model.chapterEditorHandler.getEnabledRangeList().map { RangeMs(it.start, it.actualEnd(durationMs)) }
-                val rotation = model.playerModel.rotation.value
-                val cropRect = if (model.cropHandler.maskViewModel.isCropped.value) model.cropHandler.maskViewModel.cropRect(size.width, size.height).asRect else null
-                return VideoSourceInfoImpl(source, ranges, model.chapterEditorHandler.getChapterList().chapters, rotation, cropRect, null/*for future*/, positionMs, durationMs)
-            }
-            fun fromModel(model: MediaEditorModel, mode:SaveMode): VideoSourceInfoImpl? {
+            fun fromModel(model: MediaEditorModel, mode:VideoSaveMode=VideoSaveMode.ALL): VideoSourceInfoImpl? {
                 if (model.playerModel.isCurrentSourcePhoto.value) return null
                 val source = model.playerModel.currentSource.value ?: return null
                 val size = model.playerModel.videoSize.value ?: return null
                 val durationMs = model.playerModel.naturalDuration.value
                 val positionMs = model.playerModel.currentPosition
                 val ranges = when(mode) {
-                    SaveMode.ALL->model.chapterEditorHandler.getEnabledRangeList().map {
+                    VideoSaveMode.ALL->model.chapterEditorHandler.getEnabledRangeList().map {
                         RangeMs(it.start, it.actualEnd(durationMs))
                     }
-                    SaveMode.LEFT->model.chapterEditorHandler.getEnabledRangeList().mapNotNull {
+                    VideoSaveMode.LEFT->model.chapterEditorHandler.getEnabledRangeList().mapNotNull {
                         if (it.start <= positionMs) RangeMs(it.start, min(it.actualEnd(durationMs), positionMs)) else null
                     }
-                    SaveMode.RIGHT->model.chapterEditorHandler.getEnabledRangeList().mapNotNull {
+                    VideoSaveMode.RIGHT->model.chapterEditorHandler.getEnabledRangeList().mapNotNull {
                         val end = it.actualEnd(durationMs)
                         if (positionMs < end) RangeMs(max(it.start, positionMs), end) else null
                     }
-                    SaveMode.CURRENT_RANGES->model.chapterEditorHandler.getEnabledRangeList().mapNotNull {
+                    VideoSaveMode.CURRENT_RANGES->model.chapterEditorHandler.getEnabledRangeList().mapNotNull {
                         if (it.contains(positionMs)) RangeMs(positionMs, it.actualEnd(durationMs)) else null
                     }
-                    SaveMode.CHAPTER-> {
+                    VideoSaveMode.CHAPTER-> {
                         // 現在の再生位置を含む単一チャプター（有効・無効は考慮しない）
                         val chapterList = model.chapterEditorHandler.getChapterList()
                         val neighbor = chapterList.getNeighborChapters(positionMs)
@@ -147,10 +138,10 @@ open class MediaEditorModel(
                         }
                     }
                 }
-                if (ranges.isEmpty() && mode!= SaveMode.ALL) return null
+                if (ranges.isEmpty() && mode!= VideoSaveMode.ALL) return null
                 val rotation = model.playerModel.rotation.value
                 val cropRect = if (model.cropHandler.maskViewModel.isCropped.value) model.cropHandler.maskViewModel.cropRect(size.width, size.height).asRect else null
-                return VideoSourceInfoImpl(source, ranges, model.chapterEditorHandler.getChapterList().chapters, rotation, cropRect, null/*for future*/, positionMs, durationMs)
+                return VideoSourceInfoImpl(source, ranges, model.chapterEditorHandler.getChapterList().chapters, rotation, cropRect, null/*for future*/, positionMs, durationMs, mode)
             }
 
             /**
@@ -184,20 +175,6 @@ open class MediaEditorModel(
         }
     }
 
-    /**
-     * 保存モード
-     * ALL      ... すべての有効範囲を保存
-     * LEFT     ... 現在の再生位置より前の有効範囲を保存
-     * RIGHT    ... 現在の再生位置より後ろの有効範囲を保存
-     * CHAPTER  ... 現在の再生位置を含むチャプターを保存
-     */
-    enum class SaveMode {
-        ALL,
-        LEFT,
-        RIGHT,
-        CHAPTER,        // カレントチャプター１つのみ
-        CURRENT_RANGES,  // カレントチャプターを含む一続きの有効範囲
-    }
 
     /**
      * 動画を保存する。
@@ -212,8 +189,8 @@ open class MediaEditorModel(
      * @param outputFileProvider 保存先ファイル選択用
      * @return 保存に成功すれば true
      */
-    open suspend fun saveVideo(mode:SaveMode, outputFileProvider:IOutputFileProvider?=null):Boolean {
-        if (mode == SaveMode.ALL) {
+    open suspend fun saveVideo(mode:VideoSaveMode, outputFileProvider:IOutputFileProvider?=null):Boolean {
+        if (mode == VideoSaveMode.ALL) {
             return saveFile(outputFileProvider)
         }
         val item = playerModel.currentSource.value ?: return false

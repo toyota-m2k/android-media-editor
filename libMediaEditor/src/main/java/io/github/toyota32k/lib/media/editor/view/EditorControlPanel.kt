@@ -27,6 +27,7 @@ import io.github.toyota32k.lib.media.editor.model.AspectMode
 import io.github.toyota32k.lib.media.editor.model.EditorPlayerViewAttributes
 import io.github.toyota32k.lib.media.editor.model.MediaEditorModel
 import io.github.toyota32k.lib.media.editor.handler.ExportFileProvider
+import io.github.toyota32k.lib.media.editor.model.VideoSaveMode
 import io.github.toyota32k.lib.player.view.ControlPanel.Companion.createButtonColorStateList
 import io.github.toyota32k.utils.android.lifecycleOwner
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -205,27 +206,40 @@ class EditorControlPanel @JvmOverloads constructor(context: Context, attrs: Attr
             }
         }
 
-        suspend fun popupSaveModeMenu(context: Context, anchor: View): MediaEditorModel.SaveMode? {
-            val selection = MutableStateFlow<Int?>(null)
+        private enum class VSM(val sm:VideoSaveMode?, val id:Int) {
+            ALL(VideoSaveMode.ALL, R.id.save_all),
+            LEFT(VideoSaveMode.LEFT, R.id.save_left),
+            RIGHT(VideoSaveMode.RIGHT, R.id.save_right),
+            CHAPTER(VideoSaveMode.CHAPTER, R.id.save_current_chapter),
+            CURRENT_RANGES(VideoSaveMode.CURRENT_RANGES, R.id.save_current_active_range),
+            INVALID(null, -1),
+            ;
+            companion object {
+                fun fromId(id:Int):VSM {
+                    return entries.firstOrNull { it.id == id } ?: INVALID
+                }
+            }
+        }
+
+        suspend fun popupSaveModeMenu(context: Context, anchor: View): VideoSaveMode? {
+            val selection = MutableStateFlow<VSM?>(null)
             PopupMenu(context, anchor).apply {
                 setOnMenuItemClickListener {
-                    selection.value = it.itemId
-                    true
+                    val vsm = VSM.fromId(it.itemId)
+                    if (vsm != VSM.INVALID) {
+                        selection.value = vsm
+                        true
+                    } else {
+                        // unknown id ... maybe submenu
+                        false
+                    }
                 }
                 setOnDismissListener {
-                    selection.value = -1
+                    selection.value = VSM.INVALID
                 }
                 inflate(R.menu.menu_save_mode)
             }.show()
-            val sel = selection.first { it != null }
-            return when(sel) {
-                R.id.save_all -> MediaEditorModel.SaveMode.ALL
-                R.id.save_current_chapter-> MediaEditorModel.SaveMode.CHAPTER
-                R.id.save_current_active_range-> MediaEditorModel.SaveMode.CURRENT_RANGES
-                R.id.save_left -> MediaEditorModel.SaveMode.LEFT
-                R.id.save_right -> MediaEditorModel.SaveMode.RIGHT
-                else -> null
-            }
+            return selection.first { it != null }?.sm
         }
 
     }
