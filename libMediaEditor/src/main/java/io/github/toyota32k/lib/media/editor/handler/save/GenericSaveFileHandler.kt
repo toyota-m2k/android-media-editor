@@ -109,6 +109,7 @@ interface IVideoStrategySelector {
  */
 interface IVideoStrategyAndHdrSelector : IVideoStrategySelector {
     val keepHdr: Boolean
+    val brightness: Float
 }
 
 /**
@@ -149,6 +150,7 @@ interface IProgressSinkProvider {
 interface ISaveVideoTask: ISaveFileTask, IProgressSinkProvider, IVideoStrategySelector, IAudioStrategySelector {
     val keepHdr: Boolean
     val fastStart: Boolean
+    val brightness: Float
 }
 
 fun interface ISourceToInputMediaFile {
@@ -245,6 +247,7 @@ open class GenericSaveFileHandler(
                 .videoStrategy(videoStrategy)
                 .audioStrategy(audioStrategy)
                 .keepHDR(task.keepHdr)
+                .brightness(task.brightness)
                 .trimming {
                     addRangesMs(sourceInfo.trimmingRanges)
                 }

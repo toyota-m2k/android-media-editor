@@ -48,7 +48,7 @@ class TrialConvertHelper(
     val trimmedDuration:Long
         get() = calcTrimmedDuration(durationMs, trimmingRanges)
 
-    private suspend fun convert(applicationContext: Context, limitDuration:Long, ranges: List<RangeMs>?): File {
+    private suspend fun convert(applicationContext: Context, limitDuration:Long, ranges: List<RangeMs>?, brightness:Float): File {
         return UtImmortalTask.awaitTaskResult("ConvertHelper") {
             val vm = createViewModel<ProgressDialog.ProgressViewModel>()
             vm.message.value = "Trimming Now..."
@@ -63,6 +63,7 @@ class TrialConvertHelper(
                 .crop(cropRect)
                 .keepHDR(keepHdr)
                 .rotate(rotation)
+                .brightness(brightness)
                 .trimming {
                     addRangesMs(ranges ?: trimmingRanges)
                 }
@@ -104,9 +105,9 @@ class TrialConvertHelper(
         } catch (_:Throwable) {}
     }
 
-    private suspend fun safeConvert(applicationContext: Context, limitDuration: Long, ranges: List<RangeMs>?=null): File? {
+    private suspend fun safeConvert(applicationContext: Context, limitDuration: Long, ranges: List<RangeMs>?, brightness:Float): File? {
         return try {
-            convert(applicationContext, limitDuration, ranges)
+            convert(applicationContext, limitDuration, ranges, brightness)
         } catch (_: CancellationException) {
             logger.info("conversion cancelled")
             null
@@ -174,7 +175,7 @@ class TrialConvertHelper(
         }
     }
 
-    suspend fun tryConvert(applicationContext: Context, convertFrom:Long, limitDuration:Long=10.seconds.inWholeMilliseconds): File? {
+    suspend fun tryConvert(applicationContext: Context, convertFrom:Long, limitDuration:Long, brightness:Float): File? {
 //        assert(videoStrategy != null) { "tryConvert: videoStrategy is null" }
         val duration = calcTrimmedDuration(durationMs, trimmingRanges)
         val ranges = if (duration<=limitDuration) {
@@ -184,7 +185,7 @@ class TrialConvertHelper(
             // convertFrom と limitDuration から、試行用の trimmingRanges 配列を作成する
             adjustTrimmingRangeWithPosition(convertFrom, limitDuration)
         }
-        return safeConvert(applicationContext, limitDuration, ranges)
+        return safeConvert(applicationContext, limitDuration, ranges, brightness)
     }
 
     companion object {

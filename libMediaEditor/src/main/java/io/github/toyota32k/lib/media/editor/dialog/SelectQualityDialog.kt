@@ -6,11 +6,13 @@ import android.view.View
 import androidx.annotation.IdRes
 import androidx.annotation.StringRes
 import androidx.core.net.toUri
+import io.github.toyota32k.binder.BindingMode
 import io.github.toyota32k.binder.IIDValueResolver
 import io.github.toyota32k.binder.VisibilityBinding
 import io.github.toyota32k.binder.checkBinding
 import io.github.toyota32k.binder.command.LiteUnitCommand
 import io.github.toyota32k.binder.radioGroupBinding
+import io.github.toyota32k.binder.sliderBinding
 import io.github.toyota32k.binder.textBinding
 import io.github.toyota32k.binder.visibilityBinding
 import io.github.toyota32k.dialog.UtDialogEx
@@ -31,6 +33,10 @@ import io.github.toyota32k.utils.lifecycle.ConstantLiveData
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 import java.io.File
+import kotlin.math.pow
+import kotlin.math.roundToInt
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 //object NoReEncodeStrategy : IVideoStrategy {
 //    override val sizeCriteria: VideoStrategy.SizeCriteria
@@ -108,30 +114,23 @@ class SelectQualityDialog : UtDialogEx() {
 
     class QualityViewModel(application: Application) : UtAndroidViewModel(application) {
         private class TrialCache {
-            private enum class TrialType(val quality: VideoQuality, val keepHdr: Boolean) {
-                HighKeep(VideoQuality.High, true),
-                HighNoKeep(VideoQuality.High, false),
-                MiddleKeep(VideoQuality.Middle, true),
-                MiddleNoKeep(VideoQuality.Middle, false),
-                LowKeep(VideoQuality.Low, true),
-                LowNoKeep(VideoQuality.Low, false);
+            private data class TrialType(val quality: VideoQuality, val keepHdr:Boolean, val brightnessIndex:Int) {
                 companion object {
-                    fun typeOf(vq: VideoQuality, keepHdr:Boolean):TrialType? {
-                        return entries.find { it.quality == vq && it.keepHdr == keepHdr }
+                    fun typeOf(vq: VideoQuality, keepHdr:Boolean, brightnessIndex:Int):TrialType {
+                        return TrialType(vq, keepHdr, brightnessIndex)
                     }
                 }
             }
             private val map = mutableMapOf<TrialType, File>()
 
-            fun fileNameOf(vq: VideoQuality, keepHdr:Boolean):String? {
-                val type = TrialType.typeOf(vq, keepHdr) ?: return null
-                return type.name
+            fun fileNameOf(vq: VideoQuality, keepHdr:Boolean, brightnessIndex: Int):String {
+                return "${vq.name}_${if(keepHdr) "1" else "0"}_${brightnessIndex}"
             }
 
-            fun get(vq: VideoQuality, keepHdr:Boolean):File? {
-                val type = TrialType.typeOf(vq, keepHdr) ?: return null
+            fun get(vq: VideoQuality, keepHdr:Boolean, brightnessIndex: Int):File? {
+                val type = TrialType.typeOf(vq, keepHdr, brightnessIndex)
                 val cached = map[type]
-                if(cached?.exists()!=true) {
+                if (cached!=null && !cached.exists()) {
                     map.remove(type)
                     return null
                 }
@@ -146,8 +145,8 @@ class SelectQualityDialog : UtDialogEx() {
                 } catch (_:Throwable) {}
             }
 
-            fun put(vq: VideoQuality, keepHdr:Boolean, file:File) {
-                val type = TrialType.typeOf(vq, keepHdr) ?: return
+            fun put(vq: VideoQuality, keepHdr:Boolean, brightnessIndex:Int, file:File) {
+                val type = TrialType.typeOf(vq, keepHdr, brightnessIndex) ?: return
                 val old = map[type]
                 if (old!=null && old!=file) {
                     old.safeDelete()
@@ -155,15 +154,8 @@ class SelectQualityDialog : UtDialogEx() {
                 map[type] = file
             }
             fun clear(application: Application?) {
-                if (application!=null) {
-                    val cacheDir = application.cacheDir
-                    TrialType.entries.forEach {
-                        File(cacheDir, it.name).safeDelete()
-                    }
-                } else {
-                    map.values.forEach {
-                        it.safeDelete()
-                    }
+                map.values.forEach {
+                    it.safeDelete()
                 }
                 map.clear()
             }
@@ -176,8 +168,14 @@ class SelectQualityDialog : UtDialogEx() {
         val quality = MutableStateFlow(VideoQuality.High)
         val sourceHdr = MutableStateFlow(false)
         val keepHdr = MutableStateFlow(true)
+        val brightnessIndex = MutableStateFlow(0f)
         private val trialCache = TrialCache()
 
+        val brightness:Float get() {
+            val index = brightnessIndex.value.roundToInt()
+            return if (index == 0) 1f
+            else 10f.pow(index.toFloat()*3f/100f)
+        }
         val estimatedSizes = mapOf<VideoQuality, MutableStateFlow<Long>>(
             VideoQuality.Highest to MutableStateFlow(0L),
             VideoQuality.High to MutableStateFlow(0L),
@@ -204,16 +202,16 @@ class SelectQualityDialog : UtDialogEx() {
          * 変換に成功したら変換後のファイルを返す。
          * 変換に失敗したらnullを返す。
          */
-        private suspend fun tryConvert():File? {
-            val cached = trialCache.get(quality.value, keepHdr.value)
+        private suspend fun tryConvert(brightness:Float, brightnessIndex: Int):File? {
+            val cached = trialCache.get(quality.value, keepHdr.value, brightnessIndex)
             if (cached!=null) {
                 return cached
             }
-            trialConvertHelper.trimFileName = trialCache.fileNameOf(quality.value, keepHdr.value) ?: return null
+            trialConvertHelper.trimFileName = trialCache.fileNameOf(quality.value, keepHdr.value, brightnessIndex) ?: return null
             trialConvertHelper.keepHdr = keepHdr.value && sourceHdr.value
             trialConvertHelper.videoStrategy = quality.value.strategy
-            return trialConvertHelper.tryConvert(getApplication(), convertFrom)?.apply {
-                trialCache.put(quality.value, keepHdr.value, this)
+            return trialConvertHelper.tryConvert(getApplication(), convertFrom, 10.seconds.inWholeMilliseconds, brightness)?.apply {
+                trialCache.put(quality.value, keepHdr.value, brightnessIndex, this)
                 val report = trialConvertHelper.report
                 if (trialConvertHelper.result.succeeded && report!=null) {
                     var bitRate = report.output.videoSummary?.bitRate
@@ -231,7 +229,7 @@ class SelectQualityDialog : UtDialogEx() {
         val testCommand = LiteUnitCommand {
             if (!quality.value.strategy.isValid) return@LiteUnitCommand
             immortalTaskContext.launchSubTask {
-                val workFile:File? = tryConvert()
+                val workFile:File? = tryConvert(brightness, brightnessIndex.value.roundToInt())
                 if (workFile!=null) {
                     VideoPreviewDialog.show(workFile.toUri().toString(), "preview")
                 }
@@ -285,11 +283,12 @@ class SelectQualityDialog : UtDialogEx() {
                 .textBinding(controls.radioLow, viewModel.estimatedSizes[VideoQuality.Low]!!.map {"${getString(VideoQuality.Low.strId)}       ${caFormatSize(it)}"})
                 .dialogOptionButtonCommand(viewModel.testCommand)
                 .dialogOptionButtonEnable(viewModel.quality.map { it.strategy.isValid })
+                .sliderBinding(controls.sliderBrightness, viewModel.brightnessIndex,BindingMode.TwoWay)
         }
     }
 
     companion object {
-        data class Result(val quality: VideoQuality, val keepHdr: Boolean)
+        data class Result(val quality: VideoQuality, val keepHdr: Boolean, val brightness:Float)
         suspend fun show(hdr:Boolean, helper:TrialConvertHelper, pos:Long):Result? {
             return UtImmortalTask.awaitTaskResult(this::class.java.name) {
                 val vm = createAndroidViewModel<QualityViewModel>().apply {
@@ -298,7 +297,7 @@ class SelectQualityDialog : UtDialogEx() {
                     convertFrom = pos
                 }
                 if(showDialog(this.taskName) { SelectQualityDialog() }.status.positive) {
-                    Result(vm.quality.value, vm.keepHdr.value)
+                    Result(vm.quality.value, vm.keepHdr.value, vm.brightness)
                 } else null
             }
         }
