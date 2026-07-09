@@ -100,7 +100,7 @@ class VideoPreviewDialog : UtDialogEx() {
 
     companion object {
         suspend fun show(uri: String, name: String, chapters: List<IChapter>?=null, setupPlayer:((PlayerControllerModel.Builder)->Unit)?=null) {
-            UtImmortalTask.awaitTask {
+            UtImmortalTask.awaitTask(this::javaClass.name) {
                 VideoPreviewViewModel.create(this, uri, name, chapters, setupPlayer)
                 showDialog(VideoPreviewDialog())
             }

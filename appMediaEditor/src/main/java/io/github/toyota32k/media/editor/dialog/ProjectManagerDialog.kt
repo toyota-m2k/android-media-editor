@@ -131,6 +131,7 @@ class ProjectManagerDialog : UtDialogEx() {
                     bindView = { views, itemBinder, _, item ->
                         views.root.isSelected = item == viewModel.selected.value
                         views.nameText.text = item.name
+                        views.urlText.text = item.uri
                         views.subText.text = formatTimestamp(item.fileTimestamp)
                         if (item.isVideo) {
                             views.typePhotoIcon.visibility = View.GONE
@@ -229,8 +230,8 @@ class ProjectManagerDialog : UtDialogEx() {
     }
 
     companion object {
-        suspend fun show(projectDb: ProjectDB, currentTargetUri: String?):ProjectSelection? {
-            return UtImmortalTask.awaitTaskResult(this::class.java.name) {
+        suspend fun show(projectDb: ProjectDB, currentTargetUri: String?, onEditing:Boolean):ProjectSelection? {
+            return UtImmortalTask.safeAwaitTaskResult(this::class.java.name, null) {
                 val (currentProject,list) = withContext(Dispatchers.IO) {
                     Pair(if (currentTargetUri!=null) projectDb.getProject(currentTargetUri.toUri()) else null,
                     projectDb.getProjectList())
@@ -239,7 +240,7 @@ class ProjectManagerDialog : UtDialogEx() {
                     ProjectSelection(null, false)
                 } else {
                     val vm = createViewModel<ProjectManagerViewModel> { initWithDB(projectDb, currentProject, list) }
-                    if (showDialog(taskName) { ProjectManagerDialog() }.status.ok) {
+                    if (showDialog(taskName) { ProjectManagerDialog().apply { if(!onEditing) { guardColor = GuardColor.TRANSPARENT }}}.status.ok) {
                         vm.result
                     } else null
                 }

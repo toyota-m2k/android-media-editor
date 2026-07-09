@@ -360,7 +360,7 @@ interface IMediaSourceWithMutableChapterList : IMediaSourceWithChapter {
  */
 interface IOutputFileProvider {
     suspend fun getOutputFile(mimeType: String, inputFile: IInputMediaFile): AndroidFile?
-    suspend fun finalize(result:ISaveResult)
+    suspend fun finalize(result:ISaveResult): ISaveResult
 }
 
 /**

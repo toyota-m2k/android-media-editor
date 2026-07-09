@@ -180,7 +180,7 @@ class SnapshotDialog : UtDialogEx() {
 
         fun saveBitmap() {
             val bitmap = cropBitmap ?: bitmapScaler.bitmap.value ?: throw IllegalStateException("no bitmap")
-            launchSubTask {
+            UtImmortalTask.launchTask("SnapshotDialog.saveBitmap") {
                 val vm = createViewModel<WallpaperDialog.WallpaperViewModel> { displayName.value = defaultFileName }
                 if (showDialog(WallpaperDialog::class.java.name) { WallpaperDialog() }.status.ok) {
                     val saved = if (maskViewModel.isCropped.value) {
@@ -341,7 +341,7 @@ class SnapshotDialog : UtDialogEx() {
             source: RefBitmap,
             initialName: String,
             maskParams: MaskCoreParams?=null) {
-            UtImmortalTask.awaitTaskResult(this::class.java.name) {
+            UtImmortalTask.safeAwaitTask(this::class.java.name) {
                 createViewModel<SnapshotViewModel> { setup(source, initialName, maskParams) }
                 showDialog(taskName) { SnapshotDialog() }
             }

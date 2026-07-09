@@ -4,13 +4,12 @@ import android.content.Context
 import android.graphics.Rect
 import io.github.toyota32k.dialog.task.UtImmortalTask
 import io.github.toyota32k.dialog.task.createViewModel
-import io.github.toyota32k.dialog.task.launchSubTask
 import io.github.toyota32k.dialog.task.showConfirmMessageBox
 import io.github.toyota32k.lib.media.editor.dialog.ProgressDialog
 import io.github.toyota32k.logger.UtLog
 import io.github.toyota32k.media.lib.io.IInputMediaFile
+import io.github.toyota32k.media.lib.processor.ConvertOptions
 import io.github.toyota32k.media.lib.processor.Processor
-import io.github.toyota32k.media.lib.processor.ProcessorOptions
 import io.github.toyota32k.media.lib.processor.contract.IConvertResult
 import io.github.toyota32k.media.lib.report.Report
 import io.github.toyota32k.media.lib.strategy.IVideoStrategy
@@ -18,11 +17,9 @@ import io.github.toyota32k.media.lib.strategy.PresetAudioStrategies
 import io.github.toyota32k.media.lib.strategy.PresetVideoStrategies
 import io.github.toyota32k.media.lib.types.RangeMs
 import io.github.toyota32k.media.lib.types.Rotation
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
-import kotlin.time.Duration.Companion.seconds
 
 class TrialConvertHelper(
     val inputFile: IInputMediaFile,
@@ -37,10 +34,10 @@ class TrialConvertHelper(
     var trimFileName: String = "trim"
 //    var optFileName: String = "opt"
 
-    lateinit var result: IConvertResult
+    var result: IConvertResult? = null
         private set
     @Suppress("unused")
-    val report: Report? get() = result.report
+    val report: Report? get() = result?.report
 
     /**
      * トリミング実行後の再生時間
@@ -48,14 +45,14 @@ class TrialConvertHelper(
     val trimmedDuration:Long
         get() = calcTrimmedDuration(durationMs, trimmingRanges)
 
-    private suspend fun convert(applicationContext: Context, limitDuration:Long, ranges: List<RangeMs>?, brightness:Float): File {
-        return UtImmortalTask.awaitTaskResult("ConvertHelper") {
+    private suspend fun safeConvert(applicationContext: Context, limitDuration:Long, ranges: List<RangeMs>?, brightness:Float): File? {
+        return UtImmortalTask.safeAwaitTaskResult("ConvertHelper", null) {
             val vm = createViewModel<ProgressDialog.ProgressViewModel>()
             vm.message.value = "Trimming Now..."
             val trimFile = File(applicationContext.cacheDir ?: throw IllegalStateException("no cacheDir"), trimFileName)
 
             val processor = Processor()
-            val processorOptions = ProcessorOptions.Builder()
+            val processorOptions = ConvertOptions.Builder()
                 .input(inputFile)
                 .output(trimFile)
                 .audioStrategy(PresetAudioStrategies.AACDefault)
@@ -68,32 +65,34 @@ class TrialConvertHelper(
                     addRangesMs(ranges ?: trimmingRanges)
                 }
                 .limitDuration(limitDuration)
-                .onProgress {
-                    vm.progress.value = it.percentage
-                    vm.progressText.value = it.format()
-                }
                 .build()
 
             vm.cancelCommand.bindForever { processor.cancel() }
-            launchSubTask { showDialog("ConvertHelper.ProgressDialog") { ProgressDialog() } }
+            subTask().launchTask { showDialog("ConvertHelper.ProgressDialog") { ProgressDialog() } }
 
-            withContext(Dispatchers.IO) {
+            var error: Throwable? = null
+            result = withContext(Dispatchers.IO) {
                 try {
-                    val r = processor.execute(processorOptions).apply { result = this }
-                    if (!r.succeeded) {
-                        if (r.cancelled) {
-                            throw CancellationException("conversion cancelled")
-                        } else {
-                            throw r.exception ?: IllegalStateException("unknown error")
-                        }
+                    processor.process(processorOptions) { progress ->
+                        vm.progress.value = progress.percentage
+                        vm.progressText.value = progress.format()
                     }
-                    trimFile
                 } catch (e: Throwable) {
-                    trimFile.safeDelete()
-                    throw e
-                } finally {
-                    withContext(Dispatchers.Main) { vm.closeCommand.invoke(true) }
+                    error = e
+                    logger.error(e)
+                    null
                 }
+            }
+            try {
+                if (result?.succeeded == true) {
+                    trimFile
+                } else {
+                    showConfirmMessageBox("Transcode Error", result?.errorMessage ?: result?.exception?.message ?: error?.message ?: "Unknown Error.")
+                    trimFile.safeDelete()   // processor が削除しているはずだが念のため
+                    null
+                }
+            } finally {
+                vm.closeCommand.invoke(true)
             }
         }
     }
@@ -103,24 +102,6 @@ class TrialConvertHelper(
                 delete()
             }
         } catch (_:Throwable) {}
-    }
-
-    private suspend fun safeConvert(applicationContext: Context, limitDuration: Long, ranges: List<RangeMs>?, brightness:Float): File? {
-        return try {
-            convert(applicationContext, limitDuration, ranges, brightness)
-        } catch (_: CancellationException) {
-            logger.info("conversion cancelled")
-            null
-        } catch (e: Throwable) {
-            logger.stackTrace(e)
-            UtImmortalTask("ConvertHelper.Error") {
-                showConfirmMessageBox(
-                    "Conversion Error",
-                    e.localizedMessage ?: e.message ?: "Something wrong."
-                )
-            }
-            null
-        }
     }
 
     /**

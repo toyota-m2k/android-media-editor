@@ -18,15 +18,13 @@ import io.github.toyota32k.media.lib.io.HttpInputFile
 import io.github.toyota32k.media.lib.io.IInputMediaFile
 import io.github.toyota32k.media.lib.io.IOutputMediaFile
 import io.github.toyota32k.media.lib.io.toAndroidFile
+import io.github.toyota32k.media.lib.processor.ConvertOptions
 import io.github.toyota32k.media.lib.processor.Processor
-import io.github.toyota32k.media.lib.processor.ProcessorOptions
 import io.github.toyota32k.media.lib.processor.contract.IActualSoughtMap
 import io.github.toyota32k.media.lib.processor.contract.ICancellable
 import io.github.toyota32k.media.lib.processor.contract.IConvertResult
-import io.github.toyota32k.media.lib.processor.contract.IMultiPhaseProgress
+import io.github.toyota32k.media.lib.processor.contract.IProgress
 import io.github.toyota32k.media.lib.processor.contract.ISoughtMap
-import io.github.toyota32k.media.lib.processor.optimizer.OptimizerOptions
-import io.github.toyota32k.media.lib.processor.optimizer.OptimizingProcessorPhase
 import io.github.toyota32k.media.lib.report.Report
 import io.github.toyota32k.media.lib.strategy.IAudioStrategy
 import io.github.toyota32k.media.lib.strategy.IVideoStrategy
@@ -39,7 +37,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
  * IMultiPhaseProgress を受け取る i/f
  */
 interface IProgressSink {
-    fun onProgress(progress: IMultiPhaseProgress)
+    fun onProgress(progress: IProgress)
     fun complete()
 }
 
@@ -241,7 +239,7 @@ open class GenericSaveFileHandler(
         task.onStart(processor)
         listener.onSaveTaskStarted(sourceInfo)
         val result = try {
-            val processorOptions = ProcessorOptions.Builder()
+            val processorOptions = ConvertOptions.Builder()
                 .input(inFile)
                 .output(outFile)
                 .videoStrategy(videoStrategy)
@@ -254,16 +252,14 @@ open class GenericSaveFileHandler(
                 .rotate(Rotation.relative(sourceInfo.rotation))
                 .crop(sourceInfo.cropRect)
                 .brightness(sourceInfo.brightness)
+                .optimize(applicationContext, removeFreeAtom = true)
                 .build()
-            val optimizerOptions = OptimizerOptions(applicationContext) { progress ->
-                task.progressSink?.onProgress(progress)
-            }
-            processor.execute(processorOptions, optimizerOptions)
+            val sink = task.progressSink
+            processor.process(processorOptions, if (sink!=null) sink::onProgress else null)
         } catch(e:Throwable) {
             Processor.ErrorResult(inFile, e)
         }
-        val saveResult = VideoSaveResult.fromResult(sourceInfo,result)
-        outputFileProvider.finalize(saveResult)
+        val saveResult = outputFileProvider.finalize(VideoSaveResult.fromResult(sourceInfo,result))
         listener.onSaveTaskCompleted(saveResult)
         task.onEnd()
         return result.succeeded
