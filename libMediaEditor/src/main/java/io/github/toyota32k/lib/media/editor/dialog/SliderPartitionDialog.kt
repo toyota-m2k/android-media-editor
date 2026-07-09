@@ -145,7 +145,7 @@ class SliderPartitionDialog: UtDialogEx() {
     companion object {
         const val MIN_DURATION = 60*2*1000L     // 2分以上ないとSliderが作れない
         suspend fun show(currentParams: SliderPartition?): SliderPartition? {
-            return UtImmortalTask.safeAwaitTaskResult(this::class.java.name, null) {
+            return UtImmortalTask.awaitTaskResultCatching(this::class.java.name, null) {
                 val vm = createViewModel<SliderPartitionViewModel> { initWith(currentParams) }
                 if(showDialog(taskName) { SliderPartitionDialog() }.status.ok) {
                     vm.toSliderPartition()

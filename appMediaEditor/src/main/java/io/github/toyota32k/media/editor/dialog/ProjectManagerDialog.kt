@@ -231,7 +231,7 @@ class ProjectManagerDialog : UtDialogEx() {
 
     companion object {
         suspend fun show(projectDb: ProjectDB, currentTargetUri: String?, onEditing:Boolean):ProjectSelection? {
-            return UtImmortalTask.safeAwaitTaskResult(this::class.java.name, null) {
+            return UtImmortalTask.awaitTaskResultCatching(this::class.java.name, null) {
                 val (currentProject,list) = withContext(Dispatchers.IO) {
                     Pair(if (currentTargetUri!=null) projectDb.getProject(currentTargetUri.toUri()) else null,
                     projectDb.getProjectList())

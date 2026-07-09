@@ -290,7 +290,7 @@ class SelectQualityDialog : UtDialogEx() {
     companion object {
         data class Result(val quality: VideoQuality, val keepHdr: Boolean, val brightness:Float)
         suspend fun show(hdr:Boolean, helper:TrialConvertHelper, pos:Long):Result? {
-            return UtImmortalTask.safeAwaitTaskResult(this::class.java.name, null) {
+            return UtImmortalTask.awaitTaskResultCatching(this::class.java.name, null) {
                 val vm = createAndroidViewModel<QualityViewModel>().apply {
                     setConvertHelper(helper)
                     sourceHdr.value = hdr

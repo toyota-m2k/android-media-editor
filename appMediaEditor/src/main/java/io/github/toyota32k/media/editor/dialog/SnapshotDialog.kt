@@ -341,7 +341,7 @@ class SnapshotDialog : UtDialogEx() {
             source: RefBitmap,
             initialName: String,
             maskParams: MaskCoreParams?=null) {
-            UtImmortalTask.safeAwaitTask(this::class.java.name) {
+            UtImmortalTask.awaitTaskCatching(this::class.java.name) {
                 createViewModel<SnapshotViewModel> { setup(source, initialName, maskParams) }
                 showDialog(taskName) { SnapshotDialog() }
             }

@@ -46,7 +46,7 @@ class TrialConvertHelper(
         get() = calcTrimmedDuration(durationMs, trimmingRanges)
 
     private suspend fun safeConvert(applicationContext: Context, limitDuration:Long, ranges: List<RangeMs>?, brightness:Float): File? {
-        return UtImmortalTask.safeAwaitTaskResult("ConvertHelper", null) {
+        return UtImmortalTask.awaitTaskResultCatching("ConvertHelper", null) {
             val vm = createViewModel<ProgressDialog.ProgressViewModel>()
             vm.message.value = "Trimming Now..."
             val trimFile = File(applicationContext.cacheDir ?: throw IllegalStateException("no cacheDir"), trimFileName)

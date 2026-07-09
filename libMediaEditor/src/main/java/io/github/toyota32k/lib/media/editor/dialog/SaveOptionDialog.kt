@@ -85,7 +85,7 @@ class SaveOptionDialog : UtDialogEx() {
     override fun onPositive() {
         if (viewModel.targetType.value == TargetType.OVERWRITE && viewModel.showConfirmMessageOnOverwrite) {
             viewModel.viewModelScope.launch {
-                val confirm = UtImmortalTask.safeAwaitTaskResult(this::class.java.name, false) {
+                val confirm = UtImmortalTask.awaitTaskResultCatching(this::class.java.name, false) {
                     showYesNoMessageBox("Overwrite", "Are you sure to overwrite the file?")
                 }
                 if (confirm) super.onPositive()
@@ -98,7 +98,7 @@ class SaveOptionDialog : UtDialogEx() {
     companion object {
         data class SaveOption(val targetType:TargetType, val targetName:String)
         suspend fun show(initialName:String): SaveOption? {
-            return UtImmortalTask.safeAwaitTaskResult(this::class.java.name, null) {
+            return UtImmortalTask.awaitTaskResultCatching(this::class.java.name, null) {
                 val vm = createViewModel<SaveOptionViewModel> {
                     targetName.value = initialName
                 }

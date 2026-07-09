@@ -205,7 +205,7 @@ open class OverwriteFileProvider(val showConfirmMessage:Boolean=true, val workSu
             return getFallbackProvider()?.getOutputFile(mimeType, inputFile)
         }
         if (showConfirmMessage) {
-            val confirm = UtImmortalTask.safeAwaitTaskResult(this::class.java.name, false) {
+            val confirm = UtImmortalTask.awaitTaskResultCatching(this::class.java.name, false) {
                 showYesNoMessageBox("Overwrite", "Are you sure to overwrite the file?")
             }
             if (!confirm) return null

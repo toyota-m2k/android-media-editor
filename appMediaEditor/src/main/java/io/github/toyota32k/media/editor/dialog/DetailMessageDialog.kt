@@ -94,7 +94,7 @@ class DetailMessageDialog : UtDialogEx() {
 
     companion object {
         suspend fun showMessage(label:String, message:String, detailMessage:String?, targetUri:String?, chapters: List<IChapter>?):Boolean {
-            return UtImmortalTask.safeAwaitTaskResult(DetailMessageDialog::class.java.name, false) {
+            return UtImmortalTask.awaitTaskResultCatching(DetailMessageDialog::class.java.name, false) {
                 DetailMessageViewModel.create(taskName, label, message, detailMessage, targetUri, chapters)
                 showDialog(taskName) { DetailMessageDialog() }.status.ok
             }
