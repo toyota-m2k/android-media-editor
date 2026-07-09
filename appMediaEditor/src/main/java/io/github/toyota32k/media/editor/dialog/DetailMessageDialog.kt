@@ -14,25 +14,25 @@ import io.github.toyota32k.dialog.task.UtImmortalTask
 import io.github.toyota32k.dialog.task.UtImmortalTaskManager
 import io.github.toyota32k.dialog.task.createViewModel
 import io.github.toyota32k.dialog.task.immortalTaskContext
-import io.github.toyota32k.dialog.task.launchSubTask
 import io.github.toyota32k.lib.media.editor.dialog.VideoPreviewDialog
 import io.github.toyota32k.lib.player.model.IChapter
 import io.github.toyota32k.media.editor.R
 import io.github.toyota32k.media.editor.databinding.DialogDetailMessageBinding
+import io.github.toyota32k.utils.lifecycle.ConstantLiveData
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 
 class DetailMessageDialog : UtDialogEx() {
     class DetailMessageViewModel : UtDialogViewModel() {
         val label = MutableStateFlow("")
-        val message = MutableStateFlow<String>("")
+        val message = MutableStateFlow("")
         val detailMessage = MutableStateFlow<String?>(null)
         val showDetailMessage = MutableStateFlow(false)
         var targetUri: String? = null
         var chapters: List<IChapter>? = null
         val commandPlay = LiteUnitCommand {
             val targetUri = this.targetUri ?: return@LiteUnitCommand
-            immortalTaskContext.launchSubTask {
+            launchSubTask {
                 VideoPreviewDialog.show(targetUri, "preview", chapters) { builder ->
                     builder.enableSeekSmall(0,0)    // step by frame
                     builder.enableSeekMedium(1000, 1000)
@@ -85,6 +85,7 @@ class DetailMessageDialog : UtDialogEx() {
                 .checkBinding(checkShowDetail, viewModel.showDetailMessage)
                 .visibilityBinding(checkShowDetail, viewModel.detailMessage.map { !it.isNullOrBlank() }, hiddenMode = VisibilityBinding.HiddenMode.HideByGone)
                 .visibilityBinding(detailMessage, viewModel.showDetailMessage)
+                .dialogOptionButtonVisibility(ConstantLiveData(viewModel.targetUri!=null))
                 .dialogOptionButtonCommand(viewModel.commandPlay)
         }
 
@@ -93,7 +94,7 @@ class DetailMessageDialog : UtDialogEx() {
 
     companion object {
         suspend fun showMessage(label:String, message:String, detailMessage:String?, targetUri:String?, chapters: List<IChapter>?):Boolean {
-            return UtImmortalTask.awaitTaskResult(DetailMessageDialog::class.java.name) {
+            return UtImmortalTask.awaitTaskResultCatching(DetailMessageDialog::class.java.name, false) {
                 DetailMessageViewModel.create(taskName, label, message, detailMessage, targetUri, chapters)
                 showDialog(taskName) { DetailMessageDialog() }.status.ok
             }

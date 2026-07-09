@@ -3,18 +3,13 @@ package io.github.toyota32k.lib.media.editor.dialog
 import android.os.Bundle
 import android.view.View
 import io.github.toyota32k.binder.IIDValueResolver
-import io.github.toyota32k.binder.checkBinding
 import io.github.toyota32k.binder.clickBinding
-import io.github.toyota32k.binder.enableBinding
-import io.github.toyota32k.binder.multiEnableBinding
 import io.github.toyota32k.binder.radioGroupBinding
 import io.github.toyota32k.binder.sliderBinding
 import io.github.toyota32k.binder.textBinding
 import io.github.toyota32k.dialog.UtDialogEx
 import io.github.toyota32k.dialog.task.UtDialogViewModel
 import io.github.toyota32k.dialog.task.UtImmortalTask
-import io.github.toyota32k.dialog.task.UtImmortalTaskBase
-import io.github.toyota32k.dialog.task.awaitSubTaskResult
 import io.github.toyota32k.dialog.task.createViewModel
 import io.github.toyota32k.dialog.task.getViewModel
 import io.github.toyota32k.lib.media.editor.R
@@ -25,8 +20,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
-import kotlin.ranges.coerceAtLeast
-import kotlin.ranges.coerceIn
 
 data class SliderPartition(
     val enabled:Boolean,
@@ -142,7 +135,7 @@ class SliderPartitionDialog: UtDialogEx() {
                 if (p == 0) "${c.roundToLong()} min" else "$p min"
             })
             .sliderBinding(controls.spanSlider, viewModel.customSpan)
-            .clickBinding(optionButton!!) { v->
+            .clickBinding(optionButton!!) {
                 viewModel.reset = true
                 onPositive()
             }
@@ -152,7 +145,7 @@ class SliderPartitionDialog: UtDialogEx() {
     companion object {
         const val MIN_DURATION = 60*2*1000L     // 2分以上ないとSliderが作れない
         suspend fun show(currentParams: SliderPartition?): SliderPartition? {
-            return UtImmortalTask.awaitTaskResult(this::class.java.name) {
+            return UtImmortalTask.awaitTaskResultCatching(this::class.java.name, null) {
                 val vm = createViewModel<SliderPartitionViewModel> { initWith(currentParams) }
                 if(showDialog(taskName) { SliderPartitionDialog() }.status.ok) {
                     vm.toSliderPartition()

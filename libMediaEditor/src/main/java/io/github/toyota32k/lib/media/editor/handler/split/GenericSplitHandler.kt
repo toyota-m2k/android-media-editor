@@ -3,6 +3,7 @@ package io.github.toyota32k.lib.media.editor.handler.split
 import android.content.Context
 import io.github.toyota32k.lib.media.editor.handler.save.AbstractProgressSaveFileTask
 import io.github.toyota32k.lib.media.editor.handler.save.CancelResult
+import io.github.toyota32k.lib.media.editor.handler.save.IProgressSink
 import io.github.toyota32k.lib.media.editor.handler.save.IProgressSinkProvider
 import io.github.toyota32k.lib.media.editor.handler.save.ISaveFileTask
 import io.github.toyota32k.lib.media.editor.handler.save.ISourceToInputMediaFile
@@ -15,11 +16,13 @@ import io.github.toyota32k.lib.media.editor.model.ISplitHandler
 import io.github.toyota32k.lib.media.editor.model.IVideoSourceInfo
 import io.github.toyota32k.lib.media.editor.model.MediaEditorModel.VideoSourceInfoImpl.Companion.toRangeMsList
 import io.github.toyota32k.media.lib.io.IInputMediaFile
+import io.github.toyota32k.media.lib.processor.ConvertOptions
 import io.github.toyota32k.media.lib.processor.Processor
-import io.github.toyota32k.media.lib.processor.ProcessorOptions
 import io.github.toyota32k.media.lib.processor.contract.ICancellable
 import io.github.toyota32k.media.lib.processor.contract.IConvertResult
-import io.github.toyota32k.media.lib.processor.optimizer.OptimizerOptions
+import io.github.toyota32k.media.lib.processor.contract.IMultiPhaseProgress
+import io.github.toyota32k.media.lib.processor.contract.IProgress
+import io.github.toyota32k.media.lib.processor.contract.IProgress.ValueUnit
 import io.github.toyota32k.media.lib.strategy.PresetAudioStrategies
 import io.github.toyota32k.media.lib.strategy.PresetVideoStrategies
 import io.github.toyota32k.media.lib.types.RangeMs
@@ -90,6 +93,40 @@ class GenericSplitHandler(
         }
     }
 
+    class SplitProgress(val sink: IProgressSink?): IMultiPhaseProgress {
+        lateinit var inner: IProgress
+        var currentId:Int = 0
+        fun next() {
+            currentId++
+        }
+        fun onProgress(progress:IProgress) {
+            if (sink!=null) {
+                this.inner = progress
+                sink.onProgress(this)
+            }
+        }
+
+        private val innerAsMultiResult get() = inner as? IMultiPhaseProgress
+        private val innerDescription get() = innerAsMultiResult?.phase?.description ?: ""
+        inner class Phase() : IMultiPhaseProgress.IPhase {
+            override val description: String
+                get() =  "$innerDescription #$currentId"
+            override val valueUnit: IProgress.ValueUnit
+                get() = innerAsMultiResult?.phase?.valueUnit ?: ValueUnit.BYTES
+        }
+        override val phaseCount: Int
+            get() = innerAsMultiResult?.phaseCount?: 1
+        override val phase: IMultiPhaseProgress.IPhase = Phase()
+        override val total: Long
+            get() = inner.total
+        override val current: Long
+            get() = inner.current
+        override val remainingTime: Long
+            get() = inner.remainingTime
+        override val valueUnit: IProgress.ValueUnit
+            get() = inner.valueUnit
+    }
+
     /**
      * 現在の再生位置で分割する
      * UI上で指定されたトリミングを反映した状態で、カーソル位置で２つに分割する。
@@ -110,7 +147,7 @@ class GenericSplitHandler(
             return MultiResult().cancel(inFile)
         }
         val processor = Processor()
-        val processorOptionsBuilder = ProcessorOptions.Builder()
+        val processorOptionsBuilder = ConvertOptions.Builder()
             .videoStrategy(PresetVideoStrategies.InvalidStrategy)
             .audioStrategy(PresetAudioStrategies.AACDefault)
             .input(inFile)
@@ -122,15 +159,14 @@ class GenericSplitHandler(
             .rotate(Rotation.relative(sourceInfo.rotation))
             .crop(sourceInfo.cropRect)
             .brightness(sourceInfo.brightness)
-        val optimizerOptions = OptimizerOptions(applicationContext) { progress->
-            task.progressSink?.onProgress(progress)
-        }
+            .optimize(applicationContext, removeFreeAtom = true)
         val cancellerWrapper = CancellerWrapper()
         val multiResult = MultiResult()
         task.onStart(cancellerWrapper)
         listener.onSaveTaskStarted(sourceInfo)
         try {
             var cancelled: IConvertResult? = null
+            val splitProgress = SplitProgress(task.progressSink)
             for (range in ranges) {
                 if (cancelled!=null) {
                     multiResult.add(cancelled)
@@ -144,7 +180,8 @@ class GenericSplitHandler(
                     .clipEndMs(range.endMs)
                     .build()
                 cancellerWrapper.setCanceller(processor)
-                val result = processor.execute(processorOptions, optimizerOptions)
+                splitProgress.next()
+                val result = processor.process(processorOptions, splitProgress::onProgress)
                 multiResult.add(result)
                 // キャンセルされたら、以後、すべてキャンセル扱いとする
                 if (result.cancelled) {
@@ -172,7 +209,7 @@ class GenericSplitHandler(
 
         fileSelector.initialize(ranges)
         val processor = Processor()
-        val processorOptionsBuilder = ProcessorOptions.Builder()
+        val processorOptionsBuilder = ConvertOptions.Builder()
             .videoStrategy(PresetVideoStrategies.InvalidStrategy)
             .audioStrategy(PresetAudioStrategies.AACDefault)
             .input(inFile)
@@ -181,15 +218,14 @@ class GenericSplitHandler(
             .rotate(Rotation.relative(sourceInfo.rotation))
             .crop(sourceInfo.cropRect)
             .brightness(sourceInfo.brightness)
-        val optimizerOptions = OptimizerOptions(applicationContext) { progress->
-            task.progressSink?.onProgress(progress)
-        }
+            .optimize(applicationContext,true)
 
         val cancellerWrapper = CancellerWrapper()
         val multiResult = MultiResult()
         task.onStart(cancellerWrapper)
         listener.onSaveTaskStarted(sourceInfo)
         try {
+            val splitProgress = SplitProgress(task.progressSink)
             for (range in ranges) {
                 val outFile = fileSelector.selectOutputFile(ranges.indexOf(range), range.startMs) ?: return multiResult.add(CancelResult(inFile))
                 if (inFile == outFile) throw IllegalStateException("cannot overwrite input file on splitting file.")
@@ -201,7 +237,8 @@ class GenericSplitHandler(
                     }
                     .build()
                 cancellerWrapper.setCanceller(processor)
-                val result = processor.execute(processorOptions, optimizerOptions)
+                splitProgress.next()
+                val result = processor.process(processorOptions, splitProgress::onProgress)
                 multiResult.add(result)
             }
         } catch(e:Throwable) {

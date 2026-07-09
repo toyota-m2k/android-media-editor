@@ -42,7 +42,7 @@ class NameDialog : UtDialogEx() {
 
     companion object {
         suspend fun show(initialName:String, title: String? = null, hint: String? = null): String? {
-            return UtImmortalTask.awaitTaskResult(this::class.java.name) {
+            return UtImmortalTask.awaitTaskResultCatching(this::class.java.name, null) {
                 val vm = createViewModel<NameDialogViewModel> {
                     this.name.value = initialName
                     this.hint = hint

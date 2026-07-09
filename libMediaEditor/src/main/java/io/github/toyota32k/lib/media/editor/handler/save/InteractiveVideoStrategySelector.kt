@@ -14,14 +14,17 @@ import java.lang.IllegalStateException
  */
 class InteractiveVideoStrategySelector() : IVideoStrategyAndHdrSelector {
     private var mKeepHdr:Boolean? = null
+    private var mBrightness:Float = 1f
     override val keepHdr: Boolean
         get() = mKeepHdr ?: throw IllegalStateException("call getVideoStrategy first")
-
+    override val brightness: Float
+        get() = mBrightness
     override suspend fun getVideoStrategy(inputFile: IInputMediaFile, sourceInfo: IVideoSourceInfo): IVideoStrategy? {
-        return UtImmortalTask.awaitTaskResult("SelectVideoStrategy") {
+        return UtImmortalTask.awaitTaskResultCatching("SelectVideoStrategy", null) {
             val helper = TrialConvertHelper(inputFile,  true, Rotation(sourceInfo.rotation, true), sourceInfo.cropRect, sourceInfo.trimmingRanges, sourceInfo.durationMs)
             SelectQualityDialog.show(true, helper, sourceInfo.positionMs)?.run {
                 mKeepHdr = keepHdr
+                mBrightness = brightness
                 quality.strategy
             }
         }

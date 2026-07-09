@@ -92,6 +92,13 @@ open class GenericSaveVideoTask(
     private val mKeepHdr: Boolean,
     override val fastStart: Boolean,
 ) : AbstractProgressSaveFileTask(), ISaveVideoTask, IVideoStrategySelector by videoStrategySelector, IAudioStrategySelector by audioStrategySelector {
+    private var mBrightness = 1f
+    override var brightness: Float
+        get() = if (mBrightness!=1f) mBrightness else if (videoStrategySelector is IVideoStrategyAndHdrSelector) videoStrategySelector.brightness else 1f
+        set(v) { mBrightness = v }
+
+
+
     override val keepHdr: Boolean
         get() = if (videoStrategySelector is IVideoStrategyAndHdrSelector) {
                 videoStrategySelector.keepHdr
