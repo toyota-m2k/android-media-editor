@@ -16,32 +16,36 @@ import java.util.Date
 
 @Entity(
     tableName = "t_project",
-    indices = [Index(value = ["name"]), Index(value=["uri"], unique = true)])
+    indices = [Index(value = ["name"]), Index(value=["sourceUri"], unique = true), Index(value=["hash"], unique = false)])
 data class Project(
     @PrimaryKey(autoGenerate = true)
     val id:Int,
     val name:String,
-    val documentId: String,
     val type: String,
-    val uri: String,
-    val copied:Boolean,
+    val sourceUri: String,
+    val copiedUri: String?,            // sourceUri の永続的なアクセス権がない場合は、アプリデータ領域にコピーして管理する
     val serializedChapters: String?,
     val serializedCropParams: String?,
     val resolution:Int,
     val fileTimestamp: Long,
     val lastAccessTime:Long,
+    val hash: String,
     ) {
+    val copied get() = !copiedUri.isNullOrEmpty()
+    val editingUri get() = copiedUri ?: sourceUri
+
     fun modified(
         name: String = this.name,
-        uri: String = this.uri,
         serializedChapters: String? = this.serializedChapters,
         serializedCropParams: String? = this.serializedCropParams,
-        resolution: Int = this.resolution) : Project? {
-        if (name==this.name && uri == this.uri && serializedChapters == this.serializedChapters && serializedCropParams == this.serializedCropParams && this.resolution == resolution) {
+        resolution: Int = this.resolution,
+        hash: String = this.hash,
+        ) : Project? {
+        if (name==this.name && serializedChapters == this.serializedChapters && serializedCropParams == this.serializedCropParams && this.resolution == resolution && this.hash == hash) {
             return null // 変更がなければ null を返す
         }
         UtLog("DB").debug("ORG=$this")
-        return Project(id, name, documentId, type, uri, copied, serializedChapters, serializedCropParams, resolution, fileTimestamp, Date().time).apply {UtLog("DB").debug("NEW=$this")}
+        return Project(id, name, type, sourceUri, copiedUri, serializedChapters, serializedCropParams, resolution, fileTimestamp, Date().time, hash).apply {UtLog("DB").debug("NEW=$this")}
     }
     val isPhoto:Boolean
         get() = when (type) {
@@ -62,8 +66,10 @@ interface ProjectTable {
     fun getAll(): List<Project>
     @Query("SELECT * from t_project WHERE id = :id")
     fun get(id:Int): Project?
-    @Query("SELECT * from t_project WHERE documentId = :documentId")
-    fun get(documentId:String): Project?
+    @Query("SELECT * from t_project WHERE sourceUri = :uri")
+    fun getByUri(uri:String): Project?
+//    @Query("SELECT * from t_project WHERE hash = :hash")
+//    fun getByHash(hash:String): Project?
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insert(project:Project): Long
     @Update

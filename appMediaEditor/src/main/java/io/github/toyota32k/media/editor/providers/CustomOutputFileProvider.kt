@@ -30,6 +30,6 @@ class CustomInteractiveOutputFileProvider(val projectName: StateFlow<String>, ou
     }
 
     override fun getOverwriteFileProvider(): IOutputFileProvider {
-        return CustomOverwriteFileProvider(projectName, true, null)
+        return CustomOverwriteFileProvider(projectName, false, null)
     }
 }

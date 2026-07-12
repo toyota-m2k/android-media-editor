@@ -11,7 +11,14 @@ import io.github.toyota32k.logger.UtLog
 import io.github.toyota32k.media.editor.MainActivity.MediaSource.Companion.getType
 import io.github.toyota32k.media.lib.io.toAndroidFile
 import io.github.toyota32k.utils.UtLazyResetableValue
+import io.github.toyota32k.utils.android.IUtFile
+import io.github.toyota32k.utils.android.UtFile
+import io.github.toyota32k.utils.android.toUtFile
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.FileInputStream
+import java.security.MessageDigest
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -29,33 +36,28 @@ class ProjectDB(val application: Application, val dbFileName:String="AME.db") : 
         mDbInstance.reset { it.close() }
     }
 
-    fun <T> closingBlock(fn:()->T):T {
-        try {
-            return fn()
-        } finally {
-            close()
-        }
-    }
+//    fun <T> closingBlock(fn:()->T):T {
+//        try {
+//            return fn()
+//        } finally {
+//            close()
+//        }
+//    }
 
-    fun safeGetDocumentId(uri: Uri):String {
-        return try {
-            DocumentsContract.getDocumentId(uri)
-        } catch (e: Throwable) {
-            uri.toString()
-        }
-    }
 
 //    fun register(project:Project) {
 //        db.projectTable().insert(project)
 //    }
 
-    fun isRegistered(documentId:String?):Boolean {
-        if (documentId == null) return false
-        return db.projectTable().get(documentId) != null
+    fun isRegistered(uri:String?):Boolean {
+        if (uri.isNullOrEmpty()) return false
+        return db.projectTable().getByUri(uri) != null
     }
     fun isRegistered(uri: Uri): Boolean {
-        return isRegistered(safeGetDocumentId(uri))
+        return isRegistered(uri.toString())
     }
+
+
 
     fun normalizeUriForComparison(uri: Uri): Uri {
         // Uri のビルダーを作成し、全てのクエリパラメータを削除して、新しい Uri を構築する
@@ -107,66 +109,85 @@ class ProjectDB(val application: Application, val dbFileName:String="AME.db") : 
 
     fun registerProject(
         name:String,
-        uri: String,
+        sourceUri: Uri,
         type: String,
         serializedChapters: String?,
         serializedCropParams: String?,
         resolution: Int,
+        hash: String? = null
         ):Project? {
-        var uriObj = uri.toUri()
-        var saveUri = uri
-        var documentId = safeGetDocumentId(uriObj)
         val now = Date().time
-        var timestamp = timestamp(uriObj)?:now
-        val oldProject = db.projectTable().get(documentId)
-        logger.debug("saving")
-        return if (oldProject == null) {
-            var copied = false
-            if (!persistPermission(uriObj)) {
-                logger.info("no permission is persisted for the document: $documentId")
-                val src = uriObj.toAndroidFile(application)
+        val timestamp = timestamp(sourceUri) ?: now
+        val hash = hash ?: sha1Of(sourceUri.toUtFile(application))
+        val oldProject = db.projectTable().getByUri(sourceUri.toString())
+        if (oldProject == null) {
+            var copiedUri:String? = null
+            if (!persistPermission(sourceUri)) {
+                logger.info("no permission is persisted for : $sourceUri")
+                val src = sourceUri.toAndroidFile(application)
                 val type = src.getType()
                 if (type==null) {
-                    logger.info("cannot register the document: file of unknown type")
+                    logger.info("unknown type: $sourceUri")
                     return null
                 }
                 val dst = File(application.filesDir, "${SimpleDateFormat("yyyy.MM.dd-HH:mm:ss", Locale.US).format(Date())}.${type}").toAndroidFile()
                 dst.copyFrom(src)
-                copied = true
-                saveUri = dst.safeUri.toString()
-                documentId = saveUri
-                uriObj = saveUri.toUri()
-                if (timestamp==0L) {
-                    timestamp = timestamp(uriObj) ?: now
-                }
+                copiedUri = dst.safeUri.toString()
             }
-            logger.debug("permission persisted for new document: $documentId")
-            Project(0, name, documentId, type.lowercase(), saveUri, copied, serializedChapters, serializedCropParams, resolution,timestamp, now)
+            Project(0, name, type.lowercase(), sourceUri.toString(), copiedUri, serializedChapters, serializedCropParams, resolution,timestamp, now, hash)
                 .also {
                     db.projectTable().insert(it)
-                    logger.debug("inserted: $documentId ${it.uri}")
+                    logger.debug("inserted: ${it.sourceUri} ${it.name} copied=${it.copied}")
                 }
             // id を含む登録済みProjectインスタンスを返す
-            getProject(uriObj)
+            return getProject(sourceUri)
         } else {
-            oldProject.modified(name, saveUri, serializedChapters, serializedCropParams, resolution)
-                ?.also {
-                    db.projectTable().update(it)
-                    logger.debug("updated: $documentId ${it.uri}")
-                }
-                ?.apply {
-                    logger.debug("not updated: $documentId ${this.uri}")
-                } ?: oldProject
+            return (oldProject.modified(name, serializedChapters, serializedCropParams, resolution, hash) ?: return oldProject).also {
+                updateProject(it)
+            }
         }
+    }
+
+    /**
+     * プロジェクトの可変データを更新
+     * registerProject() での変更可能だが、こちらは hash計算がないぶん軽量
+     */
+    fun updateProjectVariables(
+        project:Project, name:String,
+        serializedChapters: String?,
+        serializedCropParams: String?,
+        resolution: Int,
+    ) : Project {
+        val newProject = project.modified(name, serializedChapters, serializedCropParams, resolution) ?: return project
+        updateProject(newProject)
+        return newProject
+    }
+
+    /**
+     * アプリのデータ領域にコピーして編集している場合、プロジェクトを削除すると、変更が失われるのでチェックできるようにしておく。
+     */
+    fun isDirty(project:Project):Boolean {
+        val copiedUri = project.copiedUri ?: return false   // 直接編集の場合は失われるファイルはない
+        val hash = sha1Of(copiedUri.toUri().toUtFile())
+        return hash != project.hash
+    }
+
+    fun updateProject(newProject: Project) {
+        db.projectTable().update(newProject)
+        logger.debug("updated: ${newProject.sourceUri} ${newProject.name}")
     }
 
     fun unregisterProject(project:Project) {
         if (project.copied) {
-            logger.assertStrongly(project.uri.startsWith("file:"))
-            runCatching { File(project.uri.toUri().path!!).delete() }
+            // コピーされている場合は、ファイル削除
+            logger.assertStrongly(project.editingUri.startsWith("file:"))
+            val path = project.copiedUri?.toUri()?.path
+            if (path != null) {
+                runCatching { File(path).delete() }
+            }
         } else {
             try {
-                application.contentResolver.releasePersistableUriPermission(project.uri.toUri(), Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                application.contentResolver.releasePersistableUriPermission(project.sourceUri.toUri(), Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
             } catch(e:Throwable) {
                 logger.error(e)
             }
@@ -174,9 +195,11 @@ class ProjectDB(val application: Application, val dbFileName:String="AME.db") : 
         db.projectTable().delete(project)
     }
 
+//    fun getProject(hash:String) : Project? {
+//        return db.projectTable().getByHash(hash)
+//    }
     fun getProject(uri:Uri) : Project? {
-        val documentId = safeGetDocumentId(uri)
-        return db.projectTable().get(documentId)
+        return db.projectTable().getByUri(uri.toString())
     }
     fun getProject(id:Int) : Project? {
         return db.projectTable().get(id)
@@ -189,8 +212,38 @@ class ProjectDB(val application: Application, val dbFileName:String="AME.db") : 
     fun checkPoint() {
         db.openHelper.writableDatabase.execSQL("PRAGMA wal_checkpoint(full);");
     }
-//    companion object {
-//        val Uri.documentId:String? get() = DocumentsContract.getDocumentId(this)
-//    }
+
+    suspend fun sha1Of(uri:Uri):String {
+        return withContext(Dispatchers.IO) { sha1Of(uri.toUtFile(application)) }
+    }
+    companion object {
+        fun sha1Of(inputStream: FileInputStream): String {
+            val digest = MessageDigest.getInstance("SHA-1")
+            val buffer = ByteArray(8 * 1024)
+            inputStream.use { stream ->
+                while (true) {
+                    val read = stream.read(buffer)
+                    if (read < 0) break
+                    digest.update(buffer, 0, read)
+                }
+            }
+            return digest.digest().joinToString("") { "%02x".format(it) }
+        }
+        fun sha1Of(file:IUtFile): String {
+            return file.fileInputStream {
+                sha1Of(it)
+            }
+        }
+
+
+
+//        fun safeGetDocumentId(uri: Uri):String {
+//            return try {
+//                DocumentsContract.getDocumentId(uri)
+//            } catch (e: Throwable) {
+//                uri.toString()
+//            }
+//        }
+    }
 }
 

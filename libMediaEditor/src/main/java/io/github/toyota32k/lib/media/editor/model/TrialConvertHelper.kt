@@ -47,10 +47,7 @@ class TrialConvertHelper(
 
     private suspend fun safeConvert(applicationContext: Context, limitDuration:Long, ranges: List<RangeMs>?, brightness:Float): File? {
         return UtImmortalTask.awaitTaskResultCatching("ConvertHelper", null) {
-            val vm = createViewModel<ProgressDialog.ProgressViewModel>()
-            vm.message.value = "Trimming Now..."
             val trimFile = File(applicationContext.cacheDir ?: throw IllegalStateException("no cacheDir"), trimFileName)
-
             val processor = Processor()
             val processorOptions = ConvertOptions.Builder()
                 .input(inputFile)
@@ -67,22 +64,18 @@ class TrialConvertHelper(
                 .limitDuration(limitDuration)
                 .build()
 
-            vm.cancelCommand.bindForever { processor.cancel() }
-            subTask().launchTask { showDialog("ConvertHelper.ProgressDialog") { ProgressDialog() } }
-
+            val progressSink = ProgressDialog.showProgressDialog("Trial Convert", processor)
             var error: Throwable? = null
             result = withContext(Dispatchers.IO) {
                 try {
-                    processor.process(processorOptions) { progress ->
-                        vm.progress.value = progress.percentage
-                        vm.progressText.value = progress.format()
-                    }
+                    processor.process(processorOptions, progressSink::onProgress)
                 } catch (e: Throwable) {
                     error = e
                     logger.error(e)
                     null
                 }
             }
+
             try {
                 if (result?.succeeded == true) {
                     trimFile
@@ -92,7 +85,7 @@ class TrialConvertHelper(
                     null
                 }
             } finally {
-                vm.closeCommand.invoke(true)
+                progressSink.complete()
             }
         }
     }
