@@ -3,3 +3,7 @@
     <item android:state_selected="true" android:color="?attr/colorSecondary" />
     <item android:color="?attr/colorSurface" />
 </selector>
+
+<!--
+color_list_item_backgroundを直接 View の background に設定すると、Android 9 で inflateエラーになった。
+この問題を回避するため、drawable_list_item_background.xml を用意したので、それを background に設定すること -->

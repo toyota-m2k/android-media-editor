@@ -67,7 +67,7 @@ class SaveOptionDialog : UtDialogEx() {
     override fun preCreateBodyView() {
         title = "Save File"
         widthOption = WidthOption.LIMIT(300)
-        heightOption = HeightOption.COMPACT
+        heightOption = HeightOption.AUTO_SCROLL
         rightButtonType = ButtonType.OK
         leftButtonType = ButtonType.CANCEL
     }

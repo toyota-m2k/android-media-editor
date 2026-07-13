@@ -247,7 +247,7 @@ class SelectQualityDialog : UtDialogEx() {
         optionButtonWithAccent = true
         gravityOption = GravityOption.CENTER
         widthOption = WidthOption.LIMIT(400)
-        heightOption = HeightOption.COMPACT
+        heightOption = HeightOption.AUTO_SCROLL
         title = requireActivity().getString(R.string.video_quality)
         enableFocusManagement()
             .setInitialFocus(R.id.radio_high)
