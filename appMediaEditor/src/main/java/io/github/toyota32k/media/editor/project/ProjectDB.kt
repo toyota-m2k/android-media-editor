@@ -92,20 +92,20 @@ class ProjectDB(val application: Application, val dbFileName:String="AME.db") : 
         return true
     }
 
-    fun timestamp(uri:Uri):Long? {
-        try {
-            return if (uri.scheme == "file") {
-                val path = uri.path ?: return null
-                File(path).lastModified()
-            } else {
-                val docFile = DocumentFile.fromSingleUri(application, uri)
-                docFile?.lastModified()
-            }
-        } catch (e:Throwable) {
-            logger.error(e)
-            return null
-        }
-    }
+//    fun timestamp(uri:Uri):Long? {
+//        try {
+//            return if (uri.scheme == "file") {
+//                val path = uri.path ?: return null
+//                File(path).lastModified()
+//            } else {
+//                val docFile = DocumentFile.fromSingleUri(application, uri)
+//                docFile?.lastModified()
+//            }
+//        } catch (e:Throwable) {
+//            logger.error(e)
+//            return null
+//        }
+//    }
 
     fun registerProject(
         name:String,
@@ -114,13 +114,11 @@ class ProjectDB(val application: Application, val dbFileName:String="AME.db") : 
         serializedChapters: String?,
         serializedCropParams: String?,
         resolution: Int,
-        hash: String? = null
         ):Project? {
-        val now = Date().time
-        val timestamp = timestamp(sourceUri) ?: now
-        val hash = hash ?: sha1Of(sourceUri.toUtFile(application))
+//        val hash = hash ?: sha1Of(sourceUri.toUtFile(application))
         val oldProject = db.projectTable().getByUri(sourceUri.toString())
         if (oldProject == null) {
+            val now = Date().time
             var copiedUri:String? = null
             if (!persistPermission(sourceUri)) {
                 logger.info("no permission is persisted for : $sourceUri")
@@ -134,7 +132,10 @@ class ProjectDB(val application: Application, val dbFileName:String="AME.db") : 
                 dst.copyFrom(src)
                 copiedUri = dst.safeUri.toString()
             }
-            Project(0, name, type.lowercase(), sourceUri.toString(), copiedUri, serializedChapters, serializedCropParams, resolution,timestamp, now, hash)
+            val utFile = (copiedUri?.toUri() ?: sourceUri).toUtFile(application)
+            val fileSize = utFile.getLength()
+            val timestamp = utFile.getLastModifiedTime() ?: now
+            Project(0, name, type.lowercase(), sourceUri.toString(), copiedUri, serializedChapters, serializedCropParams, resolution,timestamp, fileSize,now)
                 .also {
                     db.projectTable().insert(it)
                     logger.debug("inserted: ${it.sourceUri} ${it.name} copied=${it.copied}")
@@ -142,7 +143,7 @@ class ProjectDB(val application: Application, val dbFileName:String="AME.db") : 
             // id を含む登録済みProjectインスタンスを返す
             return getProject(sourceUri)
         } else {
-            return (oldProject.modified(name, serializedChapters, serializedCropParams, resolution, hash) ?: return oldProject).also {
+            return (oldProject.modified(name, serializedChapters, serializedCropParams, resolution) ?: return oldProject).also {
                 updateProject(it)
             }
         }
@@ -168,8 +169,17 @@ class ProjectDB(val application: Application, val dbFileName:String="AME.db") : 
      */
     fun isDirty(project:Project):Boolean {
         val copiedUri = project.copiedUri ?: return false   // 直接編集の場合は失われるファイルはない
-        val hash = sha1Of(copiedUri.toUri().toUtFile())
-        return hash != project.hash
+        val utFile = copiedUri.toUri().toUtFile(application)
+        if (utFile.getLength() != project.fileSize) {
+            logger.debug("file length is different: ${project.sourceUri}")
+            return true // ファイルサイズが違っていれば編集されていると判断できる
+        }
+        val timestamp = utFile.getLastModifiedTime()
+        if (timestamp!=null && timestamp!=project.fileTimestamp) {
+            logger.debug("file timestamp is different: ${project.sourceUri}")
+            return true // ファイルのタイムスタンプが違っていれば編集されていると判断する
+        }
+        return false
     }
 
     fun updateProject(newProject: Project) {
@@ -213,27 +223,27 @@ class ProjectDB(val application: Application, val dbFileName:String="AME.db") : 
         db.openHelper.writableDatabase.execSQL("PRAGMA wal_checkpoint(full);");
     }
 
-    suspend fun sha1Of(uri:Uri):String {
-        return withContext(Dispatchers.IO) { sha1Of(uri.toUtFile(application)) }
-    }
+//    suspend fun sha1Of(uri:Uri):String {
+//        return withContext(Dispatchers.IO) { sha1Of(uri.toUtFile(application)) }
+//    }
     companion object {
-        fun sha1Of(inputStream: FileInputStream): String {
-            val digest = MessageDigest.getInstance("SHA-1")
-            val buffer = ByteArray(8 * 1024)
-            inputStream.use { stream ->
-                while (true) {
-                    val read = stream.read(buffer)
-                    if (read < 0) break
-                    digest.update(buffer, 0, read)
-                }
-            }
-            return digest.digest().joinToString("") { "%02x".format(it) }
-        }
-        fun sha1Of(file:IUtFile): String {
-            return file.fileInputStream {
-                sha1Of(it)
-            }
-        }
+//        fun sha1Of(inputStream: FileInputStream): String {
+//            val digest = MessageDigest.getInstance("SHA-1")
+//            val buffer = ByteArray(8 * 1024)
+//            inputStream.use { stream ->
+//                while (true) {
+//                    val read = stream.read(buffer)
+//                    if (read < 0) break
+//                    digest.update(buffer, 0, read)
+//                }
+//            }
+//            return digest.digest().joinToString("") { "%02x".format(it) }
+//        }
+//        fun sha1Of(file:IUtFile): String {
+//            return file.fileInputStream {
+//                sha1Of(it)
+//            }
+//        }
 
 
 

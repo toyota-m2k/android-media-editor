@@ -16,7 +16,7 @@ import java.util.Date
 
 @Entity(
     tableName = "t_project",
-    indices = [Index(value = ["name"]), Index(value=["sourceUri"], unique = true), Index(value=["hash"], unique = false)])
+    indices = [Index(value = ["name"]), Index(value=["sourceUri"], unique = true), ])
 data class Project(
     @PrimaryKey(autoGenerate = true)
     val id:Int,
@@ -28,8 +28,8 @@ data class Project(
     val serializedCropParams: String?,
     val resolution:Int,
     val fileTimestamp: Long,
+    val fileSize: Long,
     val lastAccessTime:Long,
-    val hash: String,
     ) {
     val copied get() = !copiedUri.isNullOrEmpty()
     val editingUri get() = copiedUri ?: sourceUri
@@ -39,13 +39,12 @@ data class Project(
         serializedChapters: String? = this.serializedChapters,
         serializedCropParams: String? = this.serializedCropParams,
         resolution: Int = this.resolution,
-        hash: String = this.hash,
         ) : Project? {
-        if (name==this.name && serializedChapters == this.serializedChapters && serializedCropParams == this.serializedCropParams && this.resolution == resolution && this.hash == hash) {
+        if (name==this.name && serializedChapters == this.serializedChapters && serializedCropParams == this.serializedCropParams && this.resolution == resolution) {
             return null // 変更がなければ null を返す
         }
         UtLog("DB").debug("ORG=$this")
-        return Project(id, name, type, sourceUri, copiedUri, serializedChapters, serializedCropParams, resolution, fileTimestamp, Date().time, hash).apply {UtLog("DB").debug("NEW=$this")}
+        return Project(id, name, type, sourceUri, copiedUri, serializedChapters, serializedCropParams, resolution, fileTimestamp, fileSize,Date().time).apply {UtLog("DB").debug("NEW=$this")}
     }
     val isPhoto:Boolean
         get() = when (type) {
