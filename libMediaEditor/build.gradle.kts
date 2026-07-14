@@ -11,7 +11,7 @@ version="1.0"
 configure<LibraryExtension> {
     namespace = "io.github.toyota32k.lib.media.editor"
     compileSdk {
-        version = release(36)
+        version = release(37)
     }
 
     defaultConfig {
@@ -33,8 +33,8 @@ configure<LibraryExtension> {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
     publishing {
         singleVariant("release") {
@@ -42,6 +42,10 @@ configure<LibraryExtension> {
 //            withJavadocJar()
         }
     }
+}
+
+kotlin {
+    jvmToolchain(21)
 }
 
 dependencies {

@@ -9,7 +9,7 @@ plugins {
 configure<ApplicationExtension> {
     namespace = "io.github.toyota32k.media.editor"
     compileSdk {
-        version = release(36)
+        version = release(37)
     }
 
     signingConfigs {
@@ -33,9 +33,9 @@ configure<ApplicationExtension> {
     defaultConfig {
         applicationId = "io.github.toyota32k.media.editor"
         minSdk = 26
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 1
-        versionName = "0.7.0"
+        versionName = "0.10.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -57,9 +57,13 @@ configure<ApplicationExtension> {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
+}
+
+kotlin {
+    jvmToolchain(21)
 }
 
 dependencies {

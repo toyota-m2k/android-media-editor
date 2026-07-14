@@ -108,7 +108,7 @@ class ProjectManagerDialog : UtDialogEx() {
     lateinit var controls : DialogProjectsManagerBinding
 
     val dateFormat = SimpleDateFormat("yyyy.MM.dd-HH:mm:ss",Locale.US).apply { timeZone = TimeZone.getTimeZone(ZoneId.systemDefault()) }
-    private fun formatTimestamp(time:Long):String {
+    fun formatTimestamp(time:Long):String {
         return dateFormat.format(Date(time))
     }
 
@@ -131,7 +131,7 @@ class ProjectManagerDialog : UtDialogEx() {
                     bindView = { views, itemBinder, _, item ->
                         views.root.isSelected = item == viewModel.selected.value
                         views.nameText.text = item.name
-                        views.urlText.text = item.uri
+//                        views.urlText.text = item.uri
                         views.subText.text = formatTimestamp(item.fileTimestamp)
                         if (item.isVideo) {
                             views.typePhotoIcon.visibility = View.GONE
