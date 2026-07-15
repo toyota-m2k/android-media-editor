@@ -80,8 +80,7 @@ class DetailMessageDialog : UtDialogEx() {
         gravityOption = GravityOption.CENTER
         widthOption = WidthOption.LIMIT(400)
         heightOption = HeightOption.AUTO_SCROLL
-        leftButtonType = ButtonType.NEGATIVE_CLOSE
-        rightButtonType = ButtonType(getString(R.string.open_as_project), positive=true)
+        rightButtonType = ButtonType.CLOSE
         if (viewModel.targetUri!=null) {
             optionButtonType = ButtonType("Play", positive = true)
         }
@@ -123,22 +122,22 @@ class DetailMessageDialog : UtDialogEx() {
     }
 
     companion object {
-        suspend fun showMessage(label:String, message:String, detailMessage:String?, targetUri:String?, chapters: List<IChapter>?):Boolean {
-            return UtImmortalTask.awaitTaskResultCatching(DetailMessageDialog::class.java.name, false) {
+        suspend fun showMessage(label:String, message:String, detailMessage:String?, targetUri:String?, chapters: List<IChapter>?) {
+            UtImmortalTask.awaitTaskCatching(DetailMessageDialog::class.java.name, false) {
                 DetailMessageViewModel.create(taskName, label, message, detailMessage, targetUri, chapters)
-                showDialog(taskName) { DetailMessageDialog() }.status.ok
+                showDialog(taskName) { DetailMessageDialog() }
             }
         }
-        suspend fun showMessage(label:String, message:String, targetUri:String?, chapters: List<IChapter>?, retriever: suspend () -> String):Boolean {
-            return UtImmortalTask.awaitTaskResultCatching(DetailMessageDialog::class.java.name, false) {
+        suspend fun showMessage(label:String, message:String, targetUri:String?, chapters: List<IChapter>?, retriever: suspend () -> String) {
+            UtImmortalTask.awaitTaskCatching(DetailMessageDialog::class.java.name, false) {
                 DetailMessageViewModel.createLazy(taskName, label, message, targetUri, chapters, retriever)
-                showDialog(taskName) { DetailMessageDialog() }.status.ok
+                showDialog(taskName) { DetailMessageDialog() }
             }
         }
-        suspend fun showNoDetailMessage(label:String, message:String, targetUri:String?, chapters: List<IChapter>?):Boolean {
-            return UtImmortalTask.awaitTaskResultCatching(DetailMessageDialog::class.java.name, false) {
+        suspend fun showNoDetailMessage(label:String, message:String, targetUri:String?, chapters: List<IChapter>?) {
+            UtImmortalTask.awaitTaskCatching(DetailMessageDialog::class.java.name, false) {
                 DetailMessageViewModel.create(taskName, label, message, null, targetUri, chapters)
-                showDialog(taskName) { DetailMessageDialog() }.status.ok
+                showDialog(taskName) { DetailMessageDialog() }
             }
         }
     }
