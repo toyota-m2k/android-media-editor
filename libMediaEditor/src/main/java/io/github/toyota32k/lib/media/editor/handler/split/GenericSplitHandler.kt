@@ -92,6 +92,20 @@ class GenericSplitHandler(
         fun error(inputFile: IInputMediaFile?, e: Throwable, msg: String? = null): MultiResult = apply {
             add(Processor.ConvertResult.error( e,msg, inputFile))
         }
+
+        // 分割に失敗した場合、生成されたファイルをすべて削除し、キャンセル扱いにする。
+        fun finalize() {
+            if (!succeeded) {
+                val itr = results.listIterator()
+                while (itr.hasNext()) {
+                    val result = itr.next()
+                    if (!result.succeeded) {
+                        result.outputFile?.safeDelete()
+                        itr.set(Processor.ConvertResult.cancelled(result.inputFile))
+                    }
+                }
+            }
+        }
     }
 
     class SplitProgress(val sink: IProgressSink?): IMultiPhaseProgress {
@@ -212,6 +226,7 @@ class GenericSplitHandler(
             logger.error(e)
             multiResult.error(inFile, e)
         }
+        multiResult.finalize()
         fileSelector.finalize(multiResult)
         listener.onSaveTaskCompleted(multiResult)
         task.onEnd()
