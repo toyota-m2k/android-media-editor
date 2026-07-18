@@ -12,6 +12,7 @@ configure<LibraryExtension> {
     namespace = "io.github.toyota32k.lib.media.editor"
     compileSdk {
         version = release(37)
+        compileSdkMinor = 1
     }
 
     defaultConfig {
@@ -54,13 +55,15 @@ dependencies {
     implementation(libs.material)
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.ui)
-
-    api(libs.android.media.processor)
-    api(libs.android.media.player)
-    api(libs.android.binding)
-    implementation(libs.android.dialog)
-    implementation(libs.android.viewex)
     implementation(libs.androidx.documentfile)
+
+    implementation(libs.android.logger)
+    implementation(libs.android.utilities)
+    implementation(libs.android.viewex)
+    implementation(libs.android.binding)
+    implementation(libs.android.dialog)
+    implementation(libs.android.media.player)
+    implementation(libs.android.media.processor)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
@@ -79,6 +82,7 @@ publishing {
 
             afterEvaluate {
                 from(components["release"])
+                artifact(tasks.named("sourceReleaseJar"))
             }
         }
     }

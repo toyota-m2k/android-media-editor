@@ -2,7 +2,6 @@ package io.github.toyota32k.lib.media.editor.handler.split
 
 import android.content.Context
 import io.github.toyota32k.lib.media.editor.handler.save.AbstractProgressSaveFileTask
-import io.github.toyota32k.lib.media.editor.handler.save.CancelResult
 import io.github.toyota32k.lib.media.editor.handler.save.IProgressSink
 import io.github.toyota32k.lib.media.editor.handler.save.IProgressSinkProvider
 import io.github.toyota32k.lib.media.editor.handler.save.ISaveFileTask
@@ -15,6 +14,7 @@ import io.github.toyota32k.lib.media.editor.model.ISourceInfo
 import io.github.toyota32k.lib.media.editor.model.ISplitHandler
 import io.github.toyota32k.lib.media.editor.model.IVideoSourceInfo
 import io.github.toyota32k.lib.media.editor.model.MediaEditorModel.VideoSourceInfoImpl.Companion.toRangeMsList
+import io.github.toyota32k.lib.player.common.formatTimeMs
 import io.github.toyota32k.media.lib.io.IInputMediaFile
 import io.github.toyota32k.media.lib.processor.ConvertOptions
 import io.github.toyota32k.media.lib.processor.Processor
@@ -26,6 +26,7 @@ import io.github.toyota32k.media.lib.processor.contract.IProgress.ValueUnit
 import io.github.toyota32k.media.lib.strategy.PresetAudioStrategies
 import io.github.toyota32k.media.lib.strategy.PresetVideoStrategies
 import io.github.toyota32k.media.lib.types.RangeMs
+import io.github.toyota32k.media.lib.types.RangeUs.Companion.formatAsMs
 import io.github.toyota32k.media.lib.types.Rotation
 import kotlinx.coroutines.flow.MutableStateFlow
 
@@ -85,11 +86,25 @@ class GenericSplitHandler(
         }
 
         fun cancel(inputFile: IInputMediaFile?): MultiResult = apply {
-            add(CancelResult(inputFile))
+            add(Processor.ConvertResult.cancelled(inputFile))
         }
 
         fun error(inputFile: IInputMediaFile?, e: Throwable, msg: String? = null): MultiResult = apply {
-            add(Processor.ErrorResult(inputFile, e,msg))
+            add(Processor.ConvertResult.error( e,msg, inputFile))
+        }
+
+        // 分割に失敗した場合、生成されたファイルをすべて削除し、キャンセル扱いにする。
+        fun finalize() {
+            if (!succeeded) {
+                val itr = results.listIterator()
+                while (itr.hasNext()) {
+                    val result = itr.next()
+                    if (!result.succeeded) {
+                        result.outputFile?.safeDelete()
+                        itr.set(Processor.ConvertResult.cancelled(result.inputFile))
+                    }
+                }
+            }
         }
     }
 
@@ -165,6 +180,21 @@ class GenericSplitHandler(
         task.onStart(cancellerWrapper)
         listener.onSaveTaskStarted(sourceInfo)
         try {
+            fun IConvertResult.evaluateResult(requiredDurationMs:Long): IConvertResult {
+                val result = this
+                if (result.succeeded) {
+                    val report = result.report
+                    if (report==null) {
+                        logger.error("result.report is null")
+                        return Processor.ConvertResult.error(IllegalStateException("no report"), null, result.inputFile)
+                    }
+                    if ((requiredDurationMs - report.output.duration) > 2000L) {
+                        logger.error("difference between required duration and output duration is too large. required=${requiredDurationMs.formatAsMs()}, output=${report.output.duration.formatAsMs()}")
+                        return Processor.ConvertResult.error(IllegalStateException("output duration is too short"),null, result.inputFile)
+                    }
+                }
+                return result
+            }
             var cancelled: IConvertResult? = null
             val splitProgress = SplitProgress(task.progressSink)
             for (range in ranges) {
@@ -172,7 +202,7 @@ class GenericSplitHandler(
                     multiResult.add(cancelled)
                     continue
                 }
-                val outFile = fileSelector.selectOutputFile(ranges.indexOf(range), range.startMs) ?: return multiResult.add(CancelResult(inFile))
+                val outFile = fileSelector.selectOutputFile(ranges.indexOf(range), range.startMs) ?: return multiResult.add(Processor.ConvertResult.cancelled(inFile))
                 if (inFile == outFile) throw IllegalStateException("cannot overwrite input file on splitting file.")
                 val processorOptions = processorOptionsBuilder
                     .output(outFile)
@@ -181,17 +211,22 @@ class GenericSplitHandler(
                     .build()
                 cancellerWrapper.setCanceller(processor)
                 splitProgress.next()
-                val result = processor.process(processorOptions, splitProgress::onProgress)
+                val result = processor.convert(processorOptions, splitProgress::onProgress).evaluateResult(range.endMs - range.startMs)
                 multiResult.add(result)
-                // キャンセルされたら、以後、すべてキャンセル扱いとする
-                if (result.cancelled) {
+                // キャンセル、または、エラーが発生したら、以後、すべてキャンセル扱いとする
+                if (!result.succeeded) {
+                    if (result.hasError) {
+                        logger.error("split failed. ${result.errorMessage} ${range.startMs.formatAsMs()}-${range.endMs.formatAsMs()}")
+                    }
                     cancelled = result
+                    outFile.safeDelete()
                 }
             }
         } catch(e:Throwable) {
             logger.error(e)
             multiResult.error(inFile, e)
         }
+        multiResult.finalize()
         fileSelector.finalize(multiResult)
         listener.onSaveTaskCompleted(multiResult)
         task.onEnd()
@@ -227,7 +262,7 @@ class GenericSplitHandler(
         try {
             val splitProgress = SplitProgress(task.progressSink)
             for (range in ranges) {
-                val outFile = fileSelector.selectOutputFile(ranges.indexOf(range), range.startMs) ?: return multiResult.add(CancelResult(inFile))
+                val outFile = fileSelector.selectOutputFile(ranges.indexOf(range), range.startMs) ?: return multiResult.add(Processor.ConvertResult.cancelled(inFile))
                 if (inFile == outFile) throw IllegalStateException("cannot overwrite input file on splitting file.")
                 val processorOptions = processorOptionsBuilder
                     .output(outFile)
@@ -238,7 +273,7 @@ class GenericSplitHandler(
                     .build()
                 cancellerWrapper.setCanceller(processor)
                 splitProgress.next()
-                val result = processor.process(processorOptions, splitProgress::onProgress)
+                val result = processor.convert(processorOptions, splitProgress::onProgress)
                 multiResult.add(result)
             }
         } catch(e:Throwable) {

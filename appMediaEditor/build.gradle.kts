@@ -10,6 +10,7 @@ configure<ApplicationExtension> {
     namespace = "io.github.toyota32k.media.editor"
     compileSdk {
         version = release(37)
+        compileSdkMinor = 1
     }
 
     signingConfigs {
@@ -35,7 +36,7 @@ configure<ApplicationExtension> {
         minSdk = 26
         targetSdk = 37
         versionCode = 1
-        versionName = "0.10.0"
+        versionName = "0.11.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -76,7 +77,14 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.documentfile)
     ksp(libs.androidx.room.compiler)
+
+    implementation(libs.android.logger)
+    implementation(libs.android.utilities)
+    implementation(libs.android.viewex)
+    implementation(libs.android.binding)
     implementation(libs.android.dialog)
+    implementation(libs.android.media.player)
+    implementation(libs.android.media.processor)
 
     implementation(project(":libMediaEditor"))
     testImplementation(libs.junit)

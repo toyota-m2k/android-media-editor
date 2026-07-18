@@ -426,6 +426,11 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
             .onViewSizeChanged(controls.menuButton) { width, _->
                 controls.editorPlayerView.controls.editorController.setLayoutWidth((controls.root.width - width - 10.dp.px(this)).coerceAtLeast(50.dp.px(this)))
             }
+            .observe(viewModel.editorModel.playerModel.isPlaying) { playing ->
+                if (playing) {
+                    viewModel.projectPanelOpened.value = false
+                }
+            }
         controls.editorPlayerView.bindViewModel(viewModel.editorModel, binder)
         controls.projectListView.bindViewModel(viewModel.projectListViewModel, binder)
         window.addFlags(

@@ -16,6 +16,7 @@ import io.github.toyota32k.dialog.task.UtImmortalTask
 import io.github.toyota32k.dialog.task.createViewModel
 import io.github.toyota32k.dialog.task.getViewModel
 import io.github.toyota32k.lib.media.editor.model.AmeGlobal
+import io.github.toyota32k.lib.player.common.formatSize
 import io.github.toyota32k.media.editor.databinding.DialogProjectsManagerBinding
 import io.github.toyota32k.media.editor.databinding.ItemProjectBinding
 import io.github.toyota32k.media.editor.project.Project
@@ -132,7 +133,8 @@ class ProjectManagerDialog : UtDialogEx() {
                         views.root.isSelected = item == viewModel.selected.value
                         views.nameText.text = item.name
 //                        views.urlText.text = item.uri
-                        views.subText.text = formatTimestamp(item.fileTimestamp)
+                        views.dateText.text = formatTimestamp(item.fileTimestamp)
+                        views.sizeText.text = formatSize(item.fileSize)
                         if (item.isVideo) {
                             views.typePhotoIcon.visibility = View.GONE
                             views.typeVideoIcon.visibility = View.VISIBLE
