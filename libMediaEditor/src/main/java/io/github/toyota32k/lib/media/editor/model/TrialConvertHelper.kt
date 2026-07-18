@@ -68,7 +68,7 @@ class TrialConvertHelper(
             var error: Throwable? = null
             result = withContext(Dispatchers.IO) {
                 try {
-                    processor.process(processorOptions, progressSink::onProgress)
+                    processor.convert(processorOptions, progressSink::onProgress)
                 } catch (e: Throwable) {
                     error = e
                     logger.error(e)

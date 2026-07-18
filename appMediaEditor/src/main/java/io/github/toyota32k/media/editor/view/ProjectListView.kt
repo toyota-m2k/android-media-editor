@@ -26,6 +26,7 @@ import io.github.toyota32k.dialog.task.showYesNoMessageBox
 import io.github.toyota32k.dialog.task.withActivity
 import io.github.toyota32k.lib.media.editor.dialog.NameDialog
 import io.github.toyota32k.lib.media.editor.handler.FileUtil
+import io.github.toyota32k.lib.player.common.formatSize
 import io.github.toyota32k.logger.UtLog
 import io.github.toyota32k.media.editor.MainActivity
 import io.github.toyota32k.media.editor.MainActivity.MediaSource.Companion.getType
@@ -258,7 +259,8 @@ class ProjectListView @JvmOverloads constructor(
                         views.root.isSelected = item == viewModel.currentProject.value
                         views.nameText.text = item.name
 //                        views.urlText.text = item.uri
-                        views.subText.text = formatTimestamp(item.fileTimestamp)
+                        views.dateText.text = formatTimestamp(item.fileTimestamp)
+                        views.sizeText.text = formatSize(item.fileSize)
                         if (item.isVideo) {
                             views.typePhotoIcon.visibility = View.GONE
                             views.typeVideoIcon.visibility = View.VISIBLE
@@ -266,6 +268,7 @@ class ProjectListView @JvmOverloads constructor(
                             views.typePhotoIcon.visibility = View.VISIBLE
                             views.typeVideoIcon.visibility = View.GONE
                         }
+                        views.copiedIcon.visibility = if (item.copied) View.VISIBLE else View.GONE
                         itemBinder
                             .owner(binder.requireOwner)
                             .clickBinding(views.root) {

@@ -24,6 +24,7 @@ import io.github.toyota32k.dialog.task.getViewModel
 import io.github.toyota32k.lib.media.editor.R
 import io.github.toyota32k.lib.media.editor.databinding.DialogSelectQualityBinding
 import io.github.toyota32k.lib.media.editor.model.TrialConvertHelper
+import io.github.toyota32k.lib.player.common.formatSize
 import io.github.toyota32k.media.lib.strategy.IVideoStrategy
 import io.github.toyota32k.media.lib.strategy.PresetAudioStrategies
 import io.github.toyota32k.media.lib.strategy.PresetVideoStrategies
@@ -254,17 +255,7 @@ class SelectQualityDialog : UtDialogEx() {
     }
 
     fun caFormatSize(bytes:Long):String {
-        if(bytes>1000*1000*1000) {
-            val m = bytes / (1000*1000)
-            return "ca ${m/1000f} GB"
-        } else if(bytes>1000*1000) {
-            val k = bytes / 1000
-            return "ca ${k/1000} MB"
-        } else if(bytes>1000) {
-            return "ca ${bytes/1000} KB"
-        } else {
-            return "$bytes B"
-        }
+        return "ca ${formatSize(bytes)}"
     }
 
 

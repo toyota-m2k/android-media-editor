@@ -14,15 +14,14 @@ material = "1.14.0"
 activity = "1.13.0"
 constraintlayout = "2.2.1"
 media3ExoplayerVersion = "1.10.1"
-androidMediaProcessor = "5.0.2"
-androidDialog = "7.2.0"
-androidMediaPlayer = "4.8.0"
-androidBinding = "1.15.0"
-#androidMediaProcessor = "LOCAL"
-#androidMediaPlayer = "LOCAL"
-#androidDialog = "LOCAL"
-#androidBinding = "LOCAL"
-androidViewex = "1.2.0"
+
+androidLogger = "2.2.3"
+androidUtilities = "4.16.3"
+androidBinding = "1.15.3"
+androidViewex = "1.2.1"
+androidDialog = "7.2.1"
+androidMediaProcessor = "5.2.0"
+androidMediaPlayer = "4.8.1"
 slidingpanelayout = "1.2.0"
 documentfile = "1.1.0"
 roomRuntime = "2.8.4"
@@ -43,11 +42,13 @@ androidx-constraintlayout = { group = "androidx.constraintlayout", name = "const
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "roomCompiler" }
 androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "roomRuntime" }
 
+android-logger = { module = "com.github.toyota-m2k:android-logger", version.ref = "androidLogger" }
+android-utilities = { module = "com.github.toyota-m2k:android-utilities", version.ref = "androidUtilities" }
+android-viewex = { module = "com.github.toyota-m2k:android-viewex", version.ref = "androidViewex" }
+android-binding = { module = "com.github.toyota-m2k:android-binding", version.ref = "androidBinding" }
+android-dialog = { module = "com.github.toyota-m2k:android-dialog", version.ref = "androidDialog" }
 android-media-player = { module = "com.github.toyota-m2k:android-media-player", version.ref = "androidMediaPlayer" }
 android-media-processor = { module = "com.github.toyota-m2k:android-media-processor", version.ref = "androidMediaProcessor" }
-android-dialog = { module = "com.github.toyota-m2k:android-dialog", version.ref = "androidDialog" }
-android-binding = { module = "com.github.toyota-m2k:android-binding", version.ref = "androidBinding" }
-android-viewex = { module = "com.github.toyota-m2k:android-viewex", version.ref = "androidViewex" }
 androidx-documentfile = { group = "androidx.documentfile", name = "documentfile", version.ref = "documentfile" }
 
 [plugins]

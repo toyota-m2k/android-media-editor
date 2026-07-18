@@ -18,19 +18,16 @@ import io.github.toyota32k.media.lib.io.HttpInputFile
 import io.github.toyota32k.media.lib.io.IInputMediaFile
 import io.github.toyota32k.media.lib.io.IOutputMediaFile
 import io.github.toyota32k.media.lib.io.toAndroidFile
+import io.github.toyota32k.media.lib.legacy.converter.ConvertResult
 import io.github.toyota32k.media.lib.processor.ConvertOptions
 import io.github.toyota32k.media.lib.processor.Processor
-import io.github.toyota32k.media.lib.processor.contract.IActualSoughtMap
 import io.github.toyota32k.media.lib.processor.contract.ICancellable
 import io.github.toyota32k.media.lib.processor.contract.IConvertResult
 import io.github.toyota32k.media.lib.processor.contract.IProgress
-import io.github.toyota32k.media.lib.processor.contract.ISoughtMap
-import io.github.toyota32k.media.lib.report.Report
 import io.github.toyota32k.media.lib.strategy.IAudioStrategy
 import io.github.toyota32k.media.lib.strategy.IVideoStrategy
 import io.github.toyota32k.media.lib.strategy.PresetAudioStrategies
 import io.github.toyota32k.media.lib.types.Rotation
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 
 /**
@@ -74,7 +71,7 @@ class VideoSaveResult private constructor (override val sourceInfo:ISourceInfo, 
 
     companion object {
         //            fun error(error:Throwable, message:String? = null) = SaveVideoResult( null, ConvertResult.error(error, message))
-        fun cancel(sourceInfo:ISourceInfo, inputFile: IInputMediaFile?) = VideoSaveResult(sourceInfo, CancelResult(inputFile))
+        fun cancel(sourceInfo:ISourceInfo, inputFile: IInputMediaFile?) = VideoSaveResult(sourceInfo, ConvertResult.cancelled(inputFile))
         fun fromResult(sourceInfo:ISourceInfo, result: IConvertResult) = VideoSaveResult(sourceInfo,result)
     }
 }
@@ -255,9 +252,9 @@ open class GenericSaveFileHandler(
                 .optimize(applicationContext, removeFreeAtom = true)
                 .build()
             val sink = task.progressSink
-            processor.process(processorOptions, if (sink!=null) sink::onProgress else null)
+            processor.convert(processorOptions, if (sink!=null) sink::onProgress else null)
         } catch(e:Throwable) {
-            Processor.ErrorResult(inFile, e)
+            Processor.ConvertResult.error(e, e.message,inFile)
         }
         val saveResult = outputFileProvider.finalize(VideoSaveResult.fromResult(sourceInfo,result))
         listener.onSaveTaskCompleted(saveResult)
@@ -266,13 +263,13 @@ open class GenericSaveFileHandler(
     }
 }
 
-class CancelResult(override val inputFile: IInputMediaFile?) : IConvertResult {
-    override val outputFile: IOutputMediaFile? = null
-    @Deprecated("use soughtMap")
-    override val actualSoughtMap: IActualSoughtMap? = null
-    override val soughtMap: ISoughtMap? = null
-    override val report: Report? = null
-    override val succeeded: Boolean = false
-    override val exception: Throwable = CancellationException()
-    override val errorMessage: String? = null
-}
+//class CancelResult(override val inputFile: IInputMediaFile?) : IConvertResult {
+//    override val outputFile: IOutputMediaFile? = null
+//    @Deprecated("use soughtMap")
+//    override val actualSoughtMap: IActualSoughtMap? = null
+//    override val soughtMap: ISoughtMap? = null
+//    override val report: Report? = null
+//    override val succeeded: Boolean = false
+//    override val exception: Throwable = CancellationException()
+//    override val errorMessage: String? = null
+//}
