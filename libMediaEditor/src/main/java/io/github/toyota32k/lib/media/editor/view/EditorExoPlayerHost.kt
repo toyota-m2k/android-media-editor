@@ -50,6 +50,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
@@ -269,9 +270,11 @@ class EditorExoPlayerHost  @JvmOverloads constructor(context: Context, attrs: At
 
     private suspend fun takeScreenshotWithSurfaceView(surfaceView: SurfaceView): Bitmap? {
         logger.debug("capture from SurfaceView")
-        return suspendCoroutine { cont ->
+        return suspendCancellableCoroutine { cont ->
             takeScreenshotWithPixelCopy(surfaceView) { bmp->
-                cont.resume(bmp)
+                cont.resume(bmp) { _, bmp, _ ->
+                    bmp?.recycle()
+                }
             }
         }
     }
