@@ -1,5 +1,5 @@
 [versions]
-agp = "9.3.0"
+agp = "9.3.1"
 # room compiler で使用。
 # ksp のバージョンは、kotlin_version と同じ世代のものを指定する必要がある。
 # https://github.com/google/ksp/releases で確認する。
@@ -12,16 +12,16 @@ espressoCore = "3.7.0"
 appcompat = "1.7.1"
 material = "1.14.0"
 activity = "1.13.0"
-constraintlayout = "2.2.1"
+constraintlayout = "2.2.2"
 media3ExoplayerVersion = "1.10.1"
 
-androidLogger = "2.2.3"
-androidUtilities = "4.16.3"
-androidBinding = "1.15.3"
-androidViewex = "1.2.1"
-androidDialog = "7.2.1"
-androidMediaProcessor = "5.2.0"
-androidMediaPlayer = "4.8.2"
+androidLogger = "2.2.4"
+androidUtilities = "4.16.4"
+androidBinding = "1.16.0"
+androidViewex = "1.2.2"
+androidDialog = "7.2.2"
+androidMediaProcessor = "5.3.0"
+androidMediaPlayer = "4.10.0"
 slidingpanelayout = "1.2.0"
 documentfile = "1.1.0"
 roomRuntime = "2.8.4"
