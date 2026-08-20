@@ -151,11 +151,10 @@ open class ExportFileProvider(outputFileSuffix:String) : AbstractNamedFileProvid
 open class MediaFileProvider(outputFileSuffix: String, val subFolder:String?=null) : AbstractNamedFileProvider(outputFileSuffix), ICommonOutputFileProvider {
     override suspend fun getOutputFile(mimeType:String, name:String): AndroidFile? {
         val ct = mimeType.lowercase()
-        val owner = UtImmortalTaskManager.mortalInstanceSource.getOwner()
         return if (ct.startsWith("video/")) {
-            AndroidMediaFile.createVideoFile(owner.application, name, subFolder, mimeType)
+            AndroidMediaFile.createVideoFile(name, subFolder, mimeType)
         } else if (ct.startsWith("image/")) {
-            AndroidMediaFile.createImageFile(owner.application, name, subFolder, mimeType)
+            AndroidMediaFile.createImageFile(name, subFolder, mimeType)
         } else {
             throw IllegalStateException("unsupported mime type: $mimeType")
         }

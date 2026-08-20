@@ -9,6 +9,7 @@ import android.os.Environment
 import android.provider.MediaStore
 import io.github.toyota32k.lib.media.editor.model.AmeGlobal
 import io.github.toyota32k.media.lib.io.AndroidFile
+import io.github.toyota32k.utils.UtLib
 import io.github.toyota32k.utils.android.RefBitmap
 import java.io.File
 
@@ -18,7 +19,7 @@ import java.io.File
 object AndroidMediaFile {
     val logger = AmeGlobal.logger
 
-    fun createVideoFile(context:Context, filename:String, subFolder:String?=null, mimeType:String="video/mp4"): AndroidFile? {
+    fun createVideoFile(filename:String, subFolder:String?=null, mimeType:String="video/mp4"): AndroidFile? {
         return if(Build.VERSION.SDK_INT>= Build.VERSION_CODES.Q) {
             // Android 10+
             val values = ContentValues().apply {
@@ -28,6 +29,7 @@ object AndroidMediaFile {
                     put(MediaStore.Video.Media.RELATIVE_PATH, "Movies/$subFolder")
                 }
             }
+            val context = UtLib.applicationContext
             val uri = context.contentResolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values) ?: return null
             AndroidFile(uri, context)
         } else {
@@ -47,7 +49,7 @@ object AndroidMediaFile {
         }
     }
 
-    fun createImageFile(context:Context, filename:String, subFolder:String?=null, mimeType:String="image/jpeg"): AndroidFile? {
+    fun createImageFile(filename:String, subFolder:String?=null, mimeType:String="image/jpeg"): AndroidFile? {
         return if(Build.VERSION.SDK_INT>= Build.VERSION_CODES.Q) {
             // Android 10+
             val values = ContentValues().apply {
@@ -57,6 +59,7 @@ object AndroidMediaFile {
                     put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/$subFolder")
                 }
             }
+            val context = UtLib.applicationContext
             val uri = context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values) ?: return null
             AndroidFile(uri, context)
         } else {

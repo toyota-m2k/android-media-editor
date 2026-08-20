@@ -52,8 +52,6 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
-import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
 import kotlin.math.abs
 
 /**
@@ -206,7 +204,7 @@ class EditorExoPlayerHost  @JvmOverloads constructor(context: Context, attrs: At
         logger.debug("layoutSize = ${videoSize.width} x ${videoSize.height}")
 
         handler?.post {
-            val padding = if (cropping) handleRadius.px(context) * 2 else 0
+            val padding = if (cropping) handleRadius.px() * 2 else 0
             if (abs(rotation %180)==0) {
                 // image/image_preview/cropOverlay には同じ padding が設定されている
                 // コンテナー領域から、そのpaddingを差し引いた領域内に、bitmapを最大表示したときのサイズを計算
