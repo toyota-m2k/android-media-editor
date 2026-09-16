@@ -108,13 +108,11 @@ class EditorExoPlayerHost  @JvmOverloads constructor(context: Context, attrs: At
 
     fun setPlayerAttributes(epa: EditorPlayerViewAttributes) {
         val sar = epa.sarForPlayer
-        if (sar.sa.getBoolean(io.github.toyota32k.lib.player.R.styleable.ControlPanel_ampAttrsByParent, true)) {
-            controls.expPlayerRoot.background = sar.getDrawable(
-                io.github.toyota32k.lib.player.R.styleable.ControlPanel_ampPlayerBackground,
-                com.google.android.material.R.attr.colorSurface,
-                Color.BLACK
-            )
-        }
+        controls.expPlayerRoot.background = sar.getDrawable(
+            io.github.toyota32k.lib.player.R.styleable.ControlPanel_ampPlayerBackground,
+            com.google.android.material.R.attr.colorSurface,
+            Color.BLACK
+        )
         if (sar.sa.getBoolean(io.github.toyota32k.lib.player.R.styleable.ControlPanel_ampPlayerCenteringVertically, false)) {
             val params = controls.expPlayerView.layoutParams as LayoutParams
             params.gravity = Gravity.CENTER_HORIZONTAL or Gravity.CENTER_VERTICAL
@@ -129,14 +127,15 @@ class EditorExoPlayerHost  @JvmOverloads constructor(context: Context, attrs: At
         if (ringSize!=0) {
             progressRingSize = ProgressRingSize.fromValue(ringSize)
         }
-        if (sar.sa.getBoolean(io.github.toyota32k.lib.player.R.styleable.ControlPanel_ampAttrsByParent, true)) {
-            controls.expCropMaskView.setCropMaskViewAttributes(epa.sarForEditor)
-        }
+
+        controls.expCropMaskView.setViewAttributes(epa.sarForEditor)
     }
 
     init {
         EditorPlayerViewAttributes(context, attrs, defStyleAttr).use { epa->
-            setPlayerAttributes(epa)
+            if (!epa.isAttrByParent) {
+                setPlayerAttributes(epa)
+            }
         }
     }
 

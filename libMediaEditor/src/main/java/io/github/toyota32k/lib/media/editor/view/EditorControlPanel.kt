@@ -45,41 +45,41 @@ class EditorControlPanel @JvmOverloads constructor(context: Context, attrs: Attr
     val controls = EditorControlPanelBinding.inflate(LayoutInflater.from(context), this, true)
 
     fun setControlPanelAttributes(epa: EditorPlayerViewAttributes) {
-        if (epa.sarForPlayer.sa.getBoolean(io.github.toyota32k.lib.player.R.styleable.ControlPanel_ampAttrsByParent, true)) {
-            val panelBackground = epa.sarForPlayer.getDrawableWithAlphaOnFallback(
-                io.github.toyota32k.lib.player.R.styleable.ControlPanel_ampPanelBackgroundColor,
-                com.google.android.material.R.attr.colorSurface,
-                def = Color.WHITE, alpha = 0x50
-            )
+        val panelBackground = epa.sarForPlayer.getDrawableWithAlphaOnFallback(
+            io.github.toyota32k.lib.player.R.styleable.ControlPanel_ampPanelBackgroundColor,
+            com.google.android.material.R.attr.colorSurface,
+            def = Color.WHITE, alpha = 0x50
+        )
 
-            val buttonTint = createButtonColorStateList(epa.sarForPlayer)
-            val padding = epa.sarForEditor.sa.getDimensionPixelSize(R.styleable.MediaEditor_amePanelPadding, 0)
-            val paddingStart = epa.sarForEditor.sa.getDimensionPixelSize(R.styleable.MediaEditor_amePanelPaddingStart, padding)
-            val paddingTop = epa.sarForEditor.sa.getDimensionPixelSize(R.styleable.MediaEditor_amePanelPaddingTop, padding)
-            val paddingEnd = epa.sarForEditor.sa.getDimensionPixelSize(R.styleable.MediaEditor_amePanelPaddingEnd, padding)
-            val paddingBottom = epa.sarForEditor.sa.getDimensionPixelSize(R.styleable.MediaEditor_amePanelPaddingBottom, padding)
+        val buttonTint = createButtonColorStateList(epa.sarForPlayer)
+        val padding = epa.sarForEditor.sa.getDimensionPixelSize(R.styleable.MediaEditor_amePanelPadding, 0)
+        val paddingStart = epa.sarForEditor.sa.getDimensionPixelSize(R.styleable.MediaEditor_amePanelPaddingStart, padding)
+        val paddingTop = epa.sarForEditor.sa.getDimensionPixelSize(R.styleable.MediaEditor_amePanelPaddingTop, padding)
+        val paddingEnd = epa.sarForEditor.sa.getDimensionPixelSize(R.styleable.MediaEditor_amePanelPaddingEnd, padding)
+        val paddingBottom = epa.sarForEditor.sa.getDimensionPixelSize(R.styleable.MediaEditor_amePanelPaddingBottom, padding)
 
-            controls.apply {
-                editorMainButtonPanel.background = panelBackground
-                cropPanel.background = panelBackground
-                resolutionPanel.background = panelBackground
-                root.setPadding(paddingStart, paddingTop, paddingEnd, paddingBottom)
-                editorMainButtonPanel.children.forEach { (it as? ImageButton)?.imageTintList = buttonTint }
-                cropPanel.children.forEach {
-                    when (it) {
-                        is ImageButton -> it.imageTintList = buttonTint
-                        is Button -> it.setTextColor(buttonTint)
-                    }
+        controls.apply {
+            editorMainButtonPanel.background = panelBackground
+            cropPanel.background = panelBackground
+            resolutionPanel.background = panelBackground
+            root.setPadding(paddingStart, paddingTop, paddingEnd, paddingBottom)
+            editorMainButtonPanel.children.forEach { (it as? ImageButton)?.imageTintList = buttonTint }
+            cropPanel.children.forEach {
+                when (it) {
+                    is ImageButton -> it.imageTintList = buttonTint
+                    is Button -> it.setTextColor(buttonTint)
                 }
-                resolutionButtons.children.forEach { (it as? ImageButton)?.imageTintList = buttonTint }
             }
+            resolutionButtons.children.forEach { (it as? ImageButton)?.imageTintList = buttonTint }
         }
     }
 
 
     init {
         EditorPlayerViewAttributes(context, attrs, defStyleAttr).use { epa ->
-            setControlPanelAttributes(epa)
+            if (!epa.isAttrByParent) {
+                setControlPanelAttributes(epa)
+            }
         }
     }
 

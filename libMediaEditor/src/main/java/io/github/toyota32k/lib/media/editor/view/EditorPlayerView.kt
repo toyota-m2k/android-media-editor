@@ -28,17 +28,18 @@ class EditorPlayerView @JvmOverloads constructor(context: Context, attrs: Attrib
     val logger get() = AmeGlobal.logger
     val controls = EditorPlayerViewBinding.inflate(LayoutInflater.from(context), this, true)
 
-    private fun setVideoPlayerViewAttributes(context:Context, attrs: AttributeSet?, defStyleAttr:Int) {
-        EditorPlayerViewAttributes(context, attrs, defStyleAttr).use { epa->
-            if (epa.sarForPlayer.sa.getBoolean(io.github.toyota32k.lib.player.R.styleable.ControlPanel_ampAttrsByParent, true)) {
-                controls.player.setPlayerAttributes(epa)
-                controls.controller.setControlPanelAttributes(epa.sarForPlayer)
-            }
-        }
+    fun setViewAttributes(epa: EditorPlayerViewAttributes) {
+        controls.player.setPlayerAttributes(epa)
+        controls.editorController.setControlPanelAttributes(epa)
+        controls.controller.setControlPanelAttributes(epa.sarForPlayer)
     }
 
     init {
-        setVideoPlayerViewAttributes(context, attrs, defStyleAttr)
+        EditorPlayerViewAttributes(context, attrs, defStyleAttr).use { epa->
+            if (!epa.isAttrByParent) {
+                setViewAttributes(epa)
+            }
+        }
     }
 
     private lateinit var model: MediaEditorModel

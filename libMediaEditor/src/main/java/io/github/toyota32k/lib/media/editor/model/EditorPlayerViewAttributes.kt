@@ -5,6 +5,7 @@ import android.util.AttributeSet
 import androidx.annotation.AttrRes
 import androidx.annotation.StyleRes
 import io.github.toyota32k.lib.media.editor.R
+import io.github.toyota32k.lib.player.view.ControlPanel
 import io.github.toyota32k.utils.android.StyledAttrRetriever
 import java.lang.AutoCloseable
 
@@ -15,6 +16,9 @@ import java.lang.AutoCloseable
 class EditorPlayerViewAttributes(context: Context, attrs: AttributeSet?, @AttrRes defStyleAttr: Int, @StyleRes defStyleRes:Int=0): AutoCloseable {
     val sarForPlayer: StyledAttrRetriever = StyledAttrRetriever(context, attrs, io.github.toyota32k.lib.player.R.styleable.ControlPanel, defStyleAttr, defStyleRes)
     val sarForEditor: StyledAttrRetriever = StyledAttrRetriever(context, attrs, R.styleable.MediaEditor, defStyleAttr, defStyleRes)
+
+    val isAttrByParent get() = ControlPanel.isAttrByParent(sarForPlayer)
+
     override fun close() {
         sarForPlayer.close()
         sarForEditor.close()
