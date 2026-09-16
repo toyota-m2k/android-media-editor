@@ -116,9 +116,6 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
     }
 
     class MainViewModel(application: Application): AndroidViewModel(application) {
-        init {
-            UtLib.applicationContext = application
-        }
         /**
          * OpenInで渡されたUriを保持するクラス
          * デバイスを回転するたびにインポート処理が
@@ -153,7 +150,7 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
         val projectName: StateFlow<String> get() = projectListViewModel.currentProjectName
 
 //        val projectName = MutableStateFlow<String>("")
-        val editorModel = MediaEditorModel.Builder(application, viewModelScope) {
+        val editorModel = MediaEditorModel.Builder(viewModelScope) {
                 supportChapter(false)
                 supportSnapshot(::snapshot)
                 enableRotateLeft()
@@ -270,12 +267,13 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
 
     private val viewModel by viewModels<MainViewModel>()
     private lateinit var gestureManager: UtScaleGestureManager
-    val halfPanelWidth:Int by lazy { 300.dp.px(this) }
+    val halfPanelWidth:Int by lazy { 300.dp.px() }
 
     @SuppressLint("SetTextI18n")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         UtLogConfig.logLevel = Log.VERBOSE
+        UtLib.initialize(application)
 
         enableEdgeToEdge()
         controls = ActivityMainBinding.inflate(layoutInflater)
@@ -424,7 +422,7 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
                 }
             })
             .onViewSizeChanged(controls.menuButton) { width, _->
-                controls.editorPlayerView.controls.editorController.setLayoutWidth((controls.root.width - width - 10.dp.px(this)).coerceAtLeast(50.dp.px(this)))
+                controls.editorPlayerView.controls.editorController.setLayoutWidth((controls.root.width - width - 10.dp.px()).coerceAtLeast(50.dp.px()))
             }
             .observe(viewModel.editorModel.playerModel.isPlaying) { playing ->
                 if (playing) {

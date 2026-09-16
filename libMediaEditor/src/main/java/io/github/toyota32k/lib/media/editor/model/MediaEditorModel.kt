@@ -300,6 +300,7 @@ open class MediaEditorModel(
      */
     class Builder (val playerControllerModelBuilder: PlayerControllerModel.Builder) {
         constructor (androidContext: Context, viewModelScope: CoroutineScope, playerControllerModelInitializer:PlayerControllerModel.Builder.()-> PlayerControllerModel.Builder):this(PlayerControllerModel.Builder(androidContext, viewModelScope).playerControllerModelInitializer())
+        constructor (viewModelScope: CoroutineScope, playerControllerModelInitializer:PlayerControllerModel.Builder.()-> PlayerControllerModel.Builder):this(PlayerControllerModel.Builder(viewModelScope).playerControllerModelInitializer())
 
         private var mSaveFileHandler: ISaveFileHandler? = null
 

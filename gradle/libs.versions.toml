@@ -1,9 +1,9 @@
 [versions]
-agp = "9.3.1"
+agp = "9.4.0"
 # room compiler で使用。
 # ksp のバージョンは、kotlin_version と同じ世代のものを指定する必要がある。
 # https://github.com/google/ksp/releases で確認する。
-ksp = "2.3.4"
+ksp = "2.3.11"
 
 coreKtx = "1.19.0"
 junit = "4.13.2"
@@ -13,19 +13,19 @@ appcompat = "1.8.0"
 material = "1.14.0"
 activity = "1.13.0"
 constraintlayout = "2.2.2"
-media3ExoplayerVersion = "1.11.0"
+media3ExoplayerVersion = "1.11.1"
 
-androidLogger = "2.2.4"
-androidUtilities = "4.16.4"
-androidBinding = "1.16.0"
-androidViewex = "1.2.2"
-androidDialog = "7.2.2"
-androidMediaProcessor = "5.3.0"
-androidMediaPlayer = "4.10.2"
+androidLogger = "2.3.3"
+androidUtilities = "4.18.0"
+androidBinding = "1.16.2"
+androidViewex = "1.2.4"
+androidDialog = "7.3.1"
+androidMediaProcessor = "5.4.1"
+androidMediaPlayer = "4.12.0"
 slidingpanelayout = "1.2.0"
 documentfile = "1.1.0"
-roomRuntime = "2.8.4"
-roomCompiler = "2.8.4"
+roomRuntime = "2.8.5"
+roomCompiler = "2.8.5"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }

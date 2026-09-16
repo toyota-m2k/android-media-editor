@@ -13,7 +13,6 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
         android:layout_gravity="center"
-        app:ampAttrsByParent="true"
         />
     <io.github.toyota32k.lib.media.editor.view.EditorControlPanel
         android:layout_width="match_parent"
@@ -52,7 +51,6 @@
         app:layout_constraintBottom_toTopOf="@+id/controller"
         android:paddingHorizontal="50dp"
         android:layout_marginBottom="20dp"
-        app:ampAttrsByParent="true"
         android:visibility="gone"
         tools:visibility="visible"
         />

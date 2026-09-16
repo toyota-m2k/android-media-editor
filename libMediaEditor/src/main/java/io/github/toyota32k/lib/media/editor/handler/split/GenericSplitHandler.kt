@@ -28,6 +28,7 @@ import io.github.toyota32k.media.lib.strategy.PresetVideoStrategies
 import io.github.toyota32k.media.lib.types.RangeMs
 import io.github.toyota32k.media.lib.types.RangeUs.Companion.formatAsMs
 import io.github.toyota32k.media.lib.types.Rotation
+import io.github.toyota32k.utils.UtLib
 import kotlinx.coroutines.flow.MutableStateFlow
 
 abstract class AbstractSplitHandler(showSplitButton:Boolean) : ISplitHandler {
@@ -69,6 +70,12 @@ class GenericSplitHandler(
     val startSplitTask:()->ISplitTask?={ SplitTask() },
     val sourceToInputMediaFile: ISourceToInputMediaFile = ISourceToInputMediaFile.Default(context)
     ) : AbstractSplitHandler(showSplitButton) {
+    constructor(
+        showSplitButton: Boolean,
+        startSplitTask:()->ISplitTask?={ SplitTask() },
+        sourceToInputMediaFile: ISourceToInputMediaFile = ISourceToInputMediaFile.Default()
+    ) : this(UtLib.applicationContext, showSplitButton, startSplitTask, sourceToInputMediaFile)
+
     val applicationContext = context.applicationContext ?: throw IllegalStateException("applicationContext is null")
 
     /**

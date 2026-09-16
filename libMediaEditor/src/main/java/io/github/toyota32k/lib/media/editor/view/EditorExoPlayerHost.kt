@@ -52,8 +52,6 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
-import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
 import kotlin.math.abs
 
 /**
@@ -110,13 +108,11 @@ class EditorExoPlayerHost  @JvmOverloads constructor(context: Context, attrs: At
 
     fun setPlayerAttributes(epa: EditorPlayerViewAttributes) {
         val sar = epa.sarForPlayer
-        if (sar.sa.getBoolean(io.github.toyota32k.lib.player.R.styleable.ControlPanel_ampAttrsByParent, true)) {
-            controls.expPlayerRoot.background = sar.getDrawable(
-                io.github.toyota32k.lib.player.R.styleable.ControlPanel_ampPlayerBackground,
-                com.google.android.material.R.attr.colorSurface,
-                Color.BLACK
-            )
-        }
+        controls.expPlayerRoot.background = sar.getDrawable(
+            io.github.toyota32k.lib.player.R.styleable.ControlPanel_ampPlayerBackground,
+            com.google.android.material.R.attr.colorSurface,
+            Color.BLACK
+        )
         if (sar.sa.getBoolean(io.github.toyota32k.lib.player.R.styleable.ControlPanel_ampPlayerCenteringVertically, false)) {
             val params = controls.expPlayerView.layoutParams as LayoutParams
             params.gravity = Gravity.CENTER_HORIZONTAL or Gravity.CENTER_VERTICAL
@@ -131,14 +127,15 @@ class EditorExoPlayerHost  @JvmOverloads constructor(context: Context, attrs: At
         if (ringSize!=0) {
             progressRingSize = ProgressRingSize.fromValue(ringSize)
         }
-        if (sar.sa.getBoolean(io.github.toyota32k.lib.player.R.styleable.ControlPanel_ampAttrsByParent, true)) {
-            controls.expCropMaskView.setCropMaskViewAttributes(epa.sarForEditor)
-        }
+
+        controls.expCropMaskView.setViewAttributes(epa.sarForEditor)
     }
 
     init {
         EditorPlayerViewAttributes(context, attrs, defStyleAttr).use { epa->
-            setPlayerAttributes(epa)
+            if (!epa.isAttrByParent) {
+                setPlayerAttributes(epa)
+            }
         }
     }
 
@@ -206,7 +203,7 @@ class EditorExoPlayerHost  @JvmOverloads constructor(context: Context, attrs: At
         logger.debug("layoutSize = ${videoSize.width} x ${videoSize.height}")
 
         handler?.post {
-            val padding = if (cropping) handleRadius.px(context) * 2 else 0
+            val padding = if (cropping) handleRadius.px() * 2 else 0
             if (abs(rotation %180)==0) {
                 // image/image_preview/cropOverlay には同じ padding が設定されている
                 // コンテナー領域から、そのpaddingを差し引いた領域内に、bitmapを最大表示したときのサイズを計算

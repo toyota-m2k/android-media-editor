@@ -28,6 +28,7 @@ import io.github.toyota32k.media.lib.strategy.IAudioStrategy
 import io.github.toyota32k.media.lib.strategy.IVideoStrategy
 import io.github.toyota32k.media.lib.strategy.PresetAudioStrategies
 import io.github.toyota32k.media.lib.types.Rotation
+import io.github.toyota32k.utils.UtLib
 import kotlinx.coroutines.flow.MutableStateFlow
 
 /**
@@ -152,6 +153,7 @@ fun interface ISourceToInputMediaFile {
     fun toInputMediaFile(source: IMediaSource): IInputMediaFile
 
     class Default(context: Context) : ISourceToInputMediaFile {
+        constructor(): this(UtLib.applicationContext)
         val applicationContext: Context = context.applicationContext
         override fun toInputMediaFile(source: IMediaSource): IInputMediaFile {
             return source.uri.toUri().run {
@@ -182,6 +184,12 @@ open class GenericSaveFileHandler(
     val startVideoSaveTask: (() -> ISaveVideoTask?) = { GenericSaveVideoTask.defaultTask(InteractiveVideoStrategySelector(), DefaultAudioStrategySelector) },
     val sourceToInputMediaFile: ISourceToInputMediaFile =  ISourceToInputMediaFile.Default(context.applicationContext)
 ) : ISaveFileHandler {
+    constructor(
+        showSaveButton:Boolean,
+        startImageSaveTask: (() -> ISaveImageTask?) = { GenericSaveImageTask.defaultTask() },
+        startVideoSaveTask: (() -> ISaveVideoTask?) = { GenericSaveVideoTask.defaultTask(InteractiveVideoStrategySelector(), DefaultAudioStrategySelector) },
+        sourceToInputMediaFile: ISourceToInputMediaFile =  ISourceToInputMediaFile.Default()
+    ) : this(UtLib.applicationContext, showSaveButton, startImageSaveTask, startVideoSaveTask, sourceToInputMediaFile)
     val logger = UtLog("SaveFileHandler", AmeGlobal.logger)
     val applicationContext = context.applicationContext ?: throw IllegalStateException("applicationContext is null")
     override val showSaveButton = MutableStateFlow(showSaveButton)

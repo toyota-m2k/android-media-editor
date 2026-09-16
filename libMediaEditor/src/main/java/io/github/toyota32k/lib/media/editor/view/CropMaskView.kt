@@ -45,7 +45,7 @@ class CropMaskView@JvmOverloads constructor(context: Context, attrs: AttributeSe
         }
     }
 
-    private fun setViewAttributes(sar: StyledAttrRetriever) {
+    fun setViewAttributes(sar: StyledAttrRetriever) {
         maskDrawable = sar.getDrawableWithAlphaOnFallback(R.styleable.MediaEditor_ameCropMaskColor, com.google.android.material.R.attr.colorOnSurface, Color.WHITE, 0xB0)
         showHandle = sar.sa.getBoolean(R.styleable.MediaEditor_ameShowHandle, true)
 
@@ -74,7 +74,7 @@ class CropMaskView@JvmOverloads constructor(context: Context, attrs: AttributeSe
         invalidate()
     }
 
-    fun setCropMaskViewAttributes(sarForEditor:StyledAttrRetriever) {
+    private fun setCropMaskViewAttributes(sarForEditor:StyledAttrRetriever) {
         setViewAttributes(sarForEditor)
     }
 
