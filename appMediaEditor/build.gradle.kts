@@ -83,6 +83,7 @@ dependencies {
     implementation(libs.android.viewex)
     implementation(libs.android.binding)
     implementation(libs.android.dialog)
+    implementation(libs.android.themes)
     implementation(libs.android.media.player)
     implementation(libs.android.media.processor)
 

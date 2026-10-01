@@ -47,6 +47,7 @@ import io.github.toyota32k.lib.player.model.PhotoSizeOption
 import io.github.toyota32k.lib.player.model.Range
 import io.github.toyota32k.lib.player.model.StandardPhotoLoader
 import io.github.toyota32k.lib.player.model.chapter.MutableChapterList
+import io.github.toyota32k.lib.themes.ColorVariationDialog
 import io.github.toyota32k.logger.UtLog
 import io.github.toyota32k.logger.UtLogConfig
 import io.github.toyota32k.media.editor.databinding.ActivityMainBinding
@@ -271,9 +272,11 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
 
     @SuppressLint("SetTextI18n")
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
         UtLogConfig.logLevel = Log.VERBOSE
         UtLib.initialize(application)
+        Settings.applyTheme(this)
+
+        super.onCreate(savedInstanceState)
 
         enableEdgeToEdge()
         controls = ActivityMainBinding.inflate(layoutInflater)
@@ -389,6 +392,9 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
             .visibilityBinding(controls.buttonPane, viewModel.editorModel.cropHandler.isCroppingNow, BoolConvert.Inverse)
             .clickBinding(controls.menuButton) {
                 viewModel.projectPanelOpened.toggle()
+            }
+            .clickBinding(controls.titleBar) {
+                ColorVariationDialog.show(Settings)
             }
             .observe(viewModel.editorModel.cropHandler.isCroppingNow) {
                 if (it) {

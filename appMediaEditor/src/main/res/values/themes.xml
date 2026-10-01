@@ -1,6 +1,14 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme. -->
-    <style name="DefaultTheme" parent="Theme.Material3.DynamicColors.DayNight.NoActionBar">
+    <style name="DynamicTheme" parent="Theme.Material3.DynamicColors.DayNight.NoActionBar">
+        <item name="ampPlayerBackground">?attr/colorSurfaceBright</item>"
+        <item name="ampPanelBackgroundColor">@color/surface_50</item>
+        <item name="ampPanelForegroundColor">?attr/colorOnSurface</item>
+        <item name="ampPanelPaddingBottom">10dp</item>
+        <item name="ampPanelPaddingStart">15dp</item>
+        <item name="ampPanelPaddingEnd">15dp</item>
+    </style>
+    <style name="BaseTheme" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="ampPlayerBackground">?attr/colorSurfaceBright</item>"
         <item name="ampPanelBackgroundColor">@color/surface_50</item>
         <item name="ampPanelForegroundColor">?attr/colorOnSurface</item>
