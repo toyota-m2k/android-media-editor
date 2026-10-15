@@ -73,6 +73,10 @@ class ProjectListView @JvmOverloads constructor(
             return proj
         }
 
+        fun replaceProject(project: Project) {
+            projectList.replaceAll { if (it.id == project.id) project else it }
+        }
+
         // プロジェクト追加
         val commandAddProject = LiteUnitCommand {
             UtImmortalTask.launchTask {
@@ -137,7 +141,6 @@ class ProjectListView @JvmOverloads constructor(
                     val project = oldProject.modified(name = currentProjectName.value) ?: return@withLock // not modified
                     projectDb.updateProject(project)
                     setCurrentProject(project)
-                    projectList.replaceAll { if (it.id == project.id) project else it }
                 }
             }
         }
