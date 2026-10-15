@@ -231,7 +231,9 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
                         source.chapterList.serialize(),
                         editorModel.cropHandler.maskViewModel.getParams().serialize(),
                         editorModel.cropHandler.resolutionInt
-                    )
+                    ).also { newProject ->
+                        projectListViewModel.replaceProject(newProject)
+                    }
                 }
             }
         }
