@@ -45,7 +45,6 @@ import io.github.toyota32k.lib.player.common.formatSize
 import io.github.toyota32k.lib.player.model.IMutableChapterList
 import io.github.toyota32k.lib.player.model.PhotoSizeOption
 import io.github.toyota32k.lib.player.model.Range
-import io.github.toyota32k.lib.player.model.StandardPhotoLoader
 import io.github.toyota32k.lib.player.model.chapter.MutableChapterList
 import io.github.toyota32k.lib.themes.ColorVariationDialog
 import io.github.toyota32k.logger.UtLog
@@ -161,7 +160,7 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
                 enableSeekLarge(5000, 10000)
                 enableSliderLock(true)
                 enablePhotoViewer(photoSizeOption=PhotoSizeOption.Original)
-                customPhotoLoader(StandardPhotoLoader())    // 画像ファイルのSHA1ハッシュをsignatureとしてGlideによる画像ロードを利用
+//                customPhotoLoader(MinGlidePhotoLoader())  C&Cはローカルファイルしか扱わないので、デフォルトのローダーで間に合う
             }
             .supportChapterEditor()
             .supportCrop()
@@ -171,6 +170,7 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
             .setOutputFileSelector(CustomExportToDirectoryFileSelector(projectName))
             .enableBuiltInMagnifySlider()
             .build()
+
 
         fun snapshot(pos:Long, bitmap: RefBitmap) {
             UtImmortalTask.launchTask("MainViewModel.snapshot") {
@@ -304,7 +304,14 @@ class MainActivity : UtMortalActivity(), IUtActivityBrokerStoreProvider {
         gestureManager = UtScaleGestureManager(this.applicationContext, enableDoubleTap = true, controls.editorPlayerView.manipulationTarget, minScale = 1f)
             .setup(this) {
                 onTap {
-                    viewModel.editorModel.playerModel.togglePlay()
+                    if(viewModel.targetMediaSource.value?.isPhoto==true) {
+                        // 静止画のときは、プロジェクトパネルを閉じる
+                        viewModel.projectPanelOpened.value = false
+                    } else {
+                        // 動画の時は、再生をトグルする。
+                        // 再生が始まれば、自動的にプロジェクトパネルは閉じる
+                        viewModel.editorModel.playerModel.togglePlay()
+                    }
                 }
                 onDoubleTap {
                     gestureManager.agent.resetScrollAndScale()

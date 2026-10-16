@@ -48,19 +48,19 @@ class RealTimeBitmapScaler : IUtPropOwner, IDisposable {
     var tryAgain = false
 
 
-    private var enabled:Boolean = false
-
-    fun enable(scopeForDeflateNow: CoroutineScope?=null) {
-        enabled = true
-        if (scopeForDeflateNow!=null && sourceBitmap != null) {
-            scopeForDeflateNow.launch {
-                deflateBitmap(longSideLength.value / orgLongSideLength.value)
-            }
-        }
-    }
-    fun disable() {
-        enabled = false
-    }
+//    private var enabled:Boolean = false
+//
+//    fun enable(scopeForDeflateNow: CoroutineScope?=null) {
+//        enabled = true
+//        if (scopeForDeflateNow!=null && sourceBitmap != null) {
+//            scopeForDeflateNow.launch {
+//                deflateBitmap(longSideLength.value / orgLongSideLength.value)
+//            }
+//        }
+//    }
+//    fun disable() {
+//        enabled = false
+//    }
 
     fun setSource(sourceBitmap:RefBitmap?) {
         if (this.sourceBitmap === sourceBitmap) return
@@ -121,13 +121,13 @@ class RealTimeBitmapScaler : IUtPropOwner, IDisposable {
     }
 
     private suspend fun deflateBitmap(newScale:Float) {
-        if (!enabled) {
-            this.bitmap.mutable.value = null
-            scaledWidth = 0
-            scaledHeight = 0
-            AmeGlobal.logger.debug("Scaler: longSideLength=${longSideLength.value}")
-            return
-        }
+//        if (!enabled) {
+//            this.bitmap.mutable.value = null
+//            scaledWidth = 0
+//            scaledHeight = 0
+//            AmeGlobal.logger.debug("Scaler: longSideLength=${longSideLength.value}")
+//            return
+//        }
         val sourceBitmap = this.sourceBitmap?.takeIf { it.hasBitmap } ?: return
         if (!busy.getAndSet(true)) {
             var s = newScale
