@@ -98,16 +98,16 @@ open class CropHandler(val playerModel: IPlayerModel, croppable: Boolean, showCo
     open fun onBeginResolutionChanging() {
         oldResolutionValue = cropImageModel.bitmapScaler.longSideLength.value
         resolutionChangingNow.value = true
-        cropImageModel.bitmapScaler.enable()
+//        cropImageModel.bitmapScaler.enable()
     }
     open fun onCompleteResolutionChanging() {
         resolutionChangingNow.value = false
-        cropImageModel.bitmapScaler.disable()
+//        cropImageModel.bitmapScaler.disable()
     }
     open fun onCancelResolutionChanging() {
         cropImageModel.bitmapScaler.longSideLength.value = oldResolutionValue
         resolutionChangingNow.value = false
-        cropImageModel.bitmapScaler.disable()
+//        cropImageModel.bitmapScaler.disable()
     }
     open fun onResetResolutionChanging() {
         cropImageModel.bitmapScaler.resetResolution()
