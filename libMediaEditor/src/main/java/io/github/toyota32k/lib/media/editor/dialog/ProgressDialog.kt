@@ -18,15 +18,12 @@ import io.github.toyota32k.lib.media.editor.handler.save.IProgressSink
 import io.github.toyota32k.media.lib.processor.contract.ICancellable
 import io.github.toyota32k.media.lib.processor.contract.IMultiPhaseProgress
 import io.github.toyota32k.media.lib.processor.contract.IProgress
-import io.github.toyota32k.media.lib.processor.optimizer.OptimizingProcessorPhase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.Locale
-import kotlin.also
-import kotlin.ranges.coerceIn
 
 class ProgressDialog : UtDialogEx() {
     class ProgressSink(val viewModel: ProgressViewModel, canceller: ICancellable?) : IProgressSink {
